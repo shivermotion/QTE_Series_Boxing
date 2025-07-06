@@ -290,6 +290,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
     let newAvatarState = gameState.avatarState;
     let newCombo = gameState.combo;
 
+    // Check for missed targets and remove them
+    const missedTargets: Target[] = [];
     updatedTargets.forEach(target => {
       if (target.position < 0.15) {
         // Reversed: miss when target goes above hit zone
@@ -301,11 +303,15 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
         createParticles(getLaneX(target.lane), screenHeight * 0.2, '#ff0000', 12); // Updated position
         createFeedbackText('MISS!', getLaneX(target.lane), screenHeight * 0.3, '#ff0000'); // Updated position
         playSound(missSound);
+        missedTargets.push(target);
       }
     });
 
+    // Remove missed targets from the game
+    const targetsAfterMisses = updatedTargets.filter(target => !missedTargets.includes(target));
+
     // Spawn new targets at the bottom
-    let newTargets = [...updatedTargets];
+    let newTargets = [...targetsAfterMisses];
     if (currentTime - lastSpawnTime >= 2000) {
       const lanes: ('left' | 'center' | 'right')[] = ['left', 'center', 'right'];
       const randomLane = lanes[Math.floor(Math.random() * lanes.length)];
@@ -442,6 +448,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
         createFeedbackText('POWER!', getLaneX(zone), screenHeight * 0.4, '#ff00ff'); // Updated position
       }
     } else {
+      // Player missed (tapped but no target) - only reset combo, don't lose life
       setGameState(prev => ({
         ...prev,
         combo: 0,
