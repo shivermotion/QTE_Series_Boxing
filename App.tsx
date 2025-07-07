@@ -4,7 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MainMenu from './src/screens/MainMenu';
-import GameScreen from './src/components/GameScreen';
+import GameScreen from './src/screens/GameScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
