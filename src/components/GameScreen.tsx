@@ -1,8 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Animated,
+  Image,
+} from 'react-native';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import GameOverScreen from '../screens/GameOverScreen';
+
+// Avatar images
+import neutralImg from '../../assets/avatar/neutral.jpg';
+import shockedImg from '../../assets/avatar/shocked.jpg';
+import revvedImg from '../../assets/avatar/revved.jpg';
+import eyesClosedImg from '../../assets/avatar/eyes_closed.jpg';
+import elatedImg from '../../assets/avatar/elated.jpg';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -24,7 +39,7 @@ interface GameState {
   score: number;
   lives: number;
   targets: Target[];
-  avatarState: 'idle' | 'success' | 'failure';
+  avatarState: 'idle' | 'success' | 'failure' | 'perfect';
   combo: number;
   isPaused: boolean;
   gameTime: number;
@@ -88,6 +103,9 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
   const hitSound = useRef<Audio.Sound | null>(null);
   const missSound = useRef<Audio.Sound | null>(null);
   const comboSound = useRef<Audio.Sound | null>(null);
+
+  // Blinking effect: periodically toggle isBlinking in idle state
+  const [isBlinking, setIsBlinking] = useState(false);
 
   // Load audio
   useEffect(() => {
@@ -269,6 +287,33 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
     return () => clearInterval(animationLoop);
   }, []);
 
+  // Blinking effect: periodically toggle isBlinking in idle state
+  useEffect(() => {
+    if (gameState.avatarState !== 'idle') {
+      setIsBlinking(false);
+      return;
+    }
+    let blinkTimeout: NodeJS.Timeout;
+    let blinkDurationTimeout: NodeJS.Timeout;
+    const startBlink = () => {
+      setIsBlinking(true);
+      blinkDurationTimeout = setTimeout(() => {
+        setIsBlinking(false);
+        scheduleNextBlink();
+      }, 120); // blink closed for 120ms
+    };
+    const scheduleNextBlink = () => {
+      blinkTimeout = setTimeout(() => {
+        startBlink();
+      }, 1800 + Math.random() * 1200); // blink every 1.8-3s
+    };
+    scheduleNextBlink();
+    return () => {
+      clearTimeout(blinkTimeout);
+      clearTimeout(blinkDurationTimeout);
+    };
+  }, [gameState.avatarState]);
+
   const updateGame = () => {
     const currentTime = Date.now();
     const deltaTime = currentTime - lastFrameTime;
@@ -316,11 +361,17 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
       const lanes: ('left' | 'center' | 'right')[] = ['left', 'center', 'right'];
       const randomLane = lanes[Math.floor(Math.random() * lanes.length)];
 
+      // Halve the speed for arcade and endless modes
+      let targetSpeed = 0.002;
+      if (gameMode === 'arcade' || gameMode === 'endless') {
+        targetSpeed = 0.001;
+      }
+
       newTargets.push({
         id: `target_${Date.now()}_${Math.random()}`,
         lane: randomLane,
         position: 1.2, // Start at bottom (reversed)
-        speed: 0.002,
+        speed: targetSpeed,
         type: 'normal',
       });
       setLastSpawnTime(currentTime);
@@ -407,31 +458,44 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
         color = '#00ff00';
         triggerHaptic('medium');
         playSound(hitSound);
+        setGameState(prev => ({
+          ...prev,
+          score: prev.score + points,
+          combo: prev.combo + 1,
+          avatarState: 'perfect',
+          targets: prev.targets.filter(t => t.id !== target.id),
+        }));
       } else if (distance <= 0.05) {
         points = hitType === 'swipe' ? 200 : 75;
         feedback = 'GOOD!';
         color = '#ffff00';
         triggerHaptic('light');
         playSound(hitSound);
+        setGameState(prev => ({
+          ...prev,
+          score: prev.score + points,
+          combo: prev.combo + 1,
+          avatarState: 'success',
+          targets: prev.targets.filter(t => t.id !== target.id),
+        }));
       } else {
         points = hitType === 'swipe' ? 100 : 50;
         feedback = 'OK';
         color = '#ff8800';
         triggerHaptic('light');
         playSound(hitSound);
+        setGameState(prev => ({
+          ...prev,
+          score: prev.score + points,
+          combo: prev.combo + 1,
+          avatarState: 'success',
+          targets: prev.targets.filter(t => t.id !== target.id),
+        }));
       }
 
       const newCombo = gameState.combo + 1;
       const comboMultiplier = newCombo >= 10 ? 3 : newCombo >= 5 ? 2 : 1;
       const totalPoints = points * comboMultiplier;
-
-      setGameState(prev => ({
-        ...prev,
-        score: prev.score + totalPoints,
-        combo: newCombo,
-        avatarState: 'success',
-        targets: prev.targets.filter(t => t.id !== target.id),
-      }));
 
       // Visual feedback
       animateAvatar();
@@ -496,6 +560,22 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
     setIsGameOver(false);
     setParticles([]);
     setFeedbackTexts([]);
+  };
+
+  const getAvatarImage = (state: 'idle' | 'success' | 'failure' | 'perfect') => {
+    if (state === 'idle') {
+      return isBlinking ? eyesClosedImg : neutralImg;
+    }
+    switch (state) {
+      case 'perfect':
+        return elatedImg;
+      case 'success':
+        return revvedImg;
+      case 'failure':
+        return shockedImg;
+      default:
+        return neutralImg;
+    }
   };
 
   const getAvatarColor = (): string => {
@@ -604,11 +684,16 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
           style={[
             styles.avatar,
             {
-              backgroundColor: getAvatarColor(),
               transform: [{ scale: avatarScaleAnim }],
             },
           ]}
-        />
+        >
+          <Image
+            source={getAvatarImage(gameState.avatarState)}
+            style={styles.avatarImage}
+            resizeMode="cover"
+          />
+        </Animated.View>
 
         {/* Hit Zone */}
         <View style={styles.hitZone} />
@@ -793,6 +878,11 @@ const styles = StyleSheet.create({
     borderRadius: 64,
     borderWidth: 4,
     borderColor: '#00ffff',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 64,
   },
   hitZone: {
     position: 'absolute',
