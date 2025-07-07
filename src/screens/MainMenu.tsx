@@ -18,6 +18,8 @@ import {
   Skia,
 } from '@shopify/react-native-skia';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Audio } from 'expo-av';
+import BoxerImg from '../../assets/main_menu/boxer.png';
 
 interface MainMenuProps {
   onStartGame: (mode: 'arcade' | 'endless') => void;
@@ -215,7 +217,7 @@ const ElegantTitle: React.FC = () => {
 };
 
 // Brash Boxing Title Animation Component
-const BrashBoxingTitle: React.FC = () => {
+const BrashBoxingTitle: React.FC<{ onAnimDone?: () => void }> = ({ onAnimDone }) => {
   const boxingOpacity = useRef(new Animated.Value(0)).current;
   const boxingScale = useRef(new Animated.Value(0.3)).current;
   const boxingTranslateX = useRef(new Animated.Value(-100)).current;
@@ -252,7 +254,9 @@ const BrashBoxingTitle: React.FC = () => {
           useNativeDriver: true,
         }),
       ]),
-    ]).start();
+    ]).start(() => {
+      if (onAnimDone) onAnimDone();
+    });
 
     // Continuous pounding/shake effect
     Animated.loop(
@@ -305,17 +309,30 @@ const BrashBoxingTitle: React.FC = () => {
   );
 };
 
-// Animated Button Component
-const AnimatedButton: React.FC<{
+interface AnimatedButtonProps {
   onPress: () => void;
   style?: any;
   children: React.ReactNode;
   delay?: number;
-}> = ({ onPress, style, children, delay = 0 }) => {
-  const buttonScale = useRef(new Animated.Value(0.8)).current;
-  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  instant?: boolean;
+}
+
+const AnimatedButton: React.FC<AnimatedButtonProps> = ({
+  onPress,
+  style,
+  children,
+  delay = 0,
+  instant = false,
+}) => {
+  const buttonScale = useRef(new Animated.Value(instant ? 1 : 0.8)).current;
+  const buttonOpacity = useRef(new Animated.Value(instant ? 1 : 0)).current;
 
   useEffect(() => {
+    if (instant) {
+      buttonScale.setValue(1);
+      buttonOpacity.setValue(1);
+      return;
+    }
     Animated.sequence([
       Animated.delay(3500 + delay), // Start after titles
       Animated.parallel([
@@ -333,7 +350,7 @@ const AnimatedButton: React.FC<{
         }),
       ]),
     ]).start();
-  }, [buttonOpacity, buttonScale, delay]);
+  }, [buttonOpacity, buttonScale, delay, instant]);
 
   const handlePressIn = () => {
     Animated.timing(buttonScale, {
@@ -485,8 +502,60 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
   // UI visibility toggle for debugging
   const [showUI, setShowUI] = React.useState(true);
+  // Add state for tap-to-start overlay
+  const [showTapToStart, setShowTapToStart] = React.useState(false); // initially false
+  // Add state for flash sequence
+  const [flashing, setFlashing] = React.useState(false);
+  const flashAnim = useRef(new Animated.Value(0)).current;
+  // Animated opacity for flashing Tap to Start
+  const tapToStartOpacity = useRef(new Animated.Value(1)).current;
+  // Track if menu area is allowed to render at all
+  const [menuAreaReady, setMenuAreaReady] = React.useState(false);
+
+  // Boxer image slide-in animation
+  const boxerTranslateX = useRef(new Animated.Value(screenWidth * 0.7)).current; // start off-screen right (mirrored)
+  const [boxerVisible, setBoxerVisible] = React.useState(false);
+  const [boxerBehindOverlay, setBoxerBehindOverlay] = React.useState(false);
 
   const insets = useSafeAreaInsets();
+
+  // Helper to run the flash sequence
+  const runFlashSequence = () => {
+    setFlashing(true);
+    setBoxerVisible(true);
+    // Animate boxer sliding in during flashes
+    Animated.timing(boxerTranslateX, {
+      toValue: 0, // snapped to right edge
+      duration: 440, // match total flash duration
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+    // Sequence: flash white 3 times
+    Animated.sequence([
+      Animated.timing(flashAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 80, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 1, duration: 40, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
+    ]).start(() => {
+      setFlashing(false);
+      setShowTapToStart(true);
+      setMenuAreaReady(true);
+      setBoxerBehindOverlay(true);
+    });
+  };
+
+  // Track when the boxing animation is done
+  const [boxingAnimDone, setBoxingAnimDone] = React.useState(false);
+
+  // When boxing animation is done, run the flash sequence
+  useEffect(() => {
+    if (boxingAnimDone) {
+      runFlashSequence();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boxingAnimDone]);
 
   useEffect(() => {
     leftAnims.forEach((anim, i) => {
@@ -527,6 +596,59 @@ const MainMenu: React.FC<MainMenuProps> = ({
     });
   }, []);
 
+  // Animate Tap to Start flashing
+  useEffect(() => {
+    if (showTapToStart) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(tapToStartOpacity, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(tapToStartOpacity, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      loop.start();
+      return () => loop.stop();
+    } else {
+      tapToStartOpacity.setValue(1);
+    }
+  }, [showTapToStart]);
+
+  // Handler for tap-to-start overlay
+  const handleTapToStart = () => {
+    setShowTapToStart(false);
+  };
+
+  // Play main theme music on mount
+  useEffect(() => {
+    let sound: Audio.Sound | undefined;
+    let isMounted = true;
+    (async () => {
+      try {
+        sound = new Audio.Sound();
+        await sound.loadAsync(require('../../assets/audio/main_theme.mp3'));
+        await sound.setIsLoopingAsync(true);
+        await sound.playAsync();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.log('Error loading/playing main theme:', e);
+      }
+    })();
+    return () => {
+      isMounted = false;
+      if (sound) {
+        sound.stopAsync();
+        sound.unloadAsync();
+      }
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <ImageBackground
@@ -534,6 +656,23 @@ const MainMenu: React.FC<MainMenuProps> = ({
         style={styles.backgroundImage}
         resizeMode="cover"
       >
+        {/* Boxer image slides in during flashes, then moves behind overlay */}
+        {boxerVisible && (
+          <Animated.Image
+            source={BoxerImg}
+            style={[
+              styles.boxerImage,
+              boxerBehindOverlay ? styles.boxerImageBehind : styles.boxerImageFront,
+              {
+                transform: [{ translateX: boxerTranslateX }, { scaleX: -1 }, { scale: 1.35 }],
+                right: 0,
+                left: undefined,
+              },
+            ]}
+            resizeMode="contain"
+          />
+        )}
+
         {/* Camera Flashes: above background, below overlay */}
         <CameraFlashes />
 
@@ -554,78 +693,116 @@ const MainMenu: React.FC<MainMenuProps> = ({
           <Text style={styles.hideUIButtonText}>{showUI ? 'Hide UI' : 'Show UI'}</Text>
         </TouchableOpacity>
 
-        {/* All other UI is hidden when showUI is false */}
+        {/* White flash overlay */}
+        {flashing && (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.flashOverlay, { opacity: flashAnim }]}
+          />
+        )}
+
+        {/* All other UI is hidden when showUI is false or tap-to-start is active */}
         {showUI && (
           <View style={styles.contentContainer}>
             {/* Animated Titles */}
             <View style={styles.titleContainer}>
               <ElegantTitle />
-              <BrashBoxingTitle />
+              <BrashBoxingTitle onAnimDone={() => setBoxingAnimDone(true)} />
             </View>
 
-            {/* Menu buttons */}
-            <View style={styles.menuContainer}>
-              <AnimatedButton style={styles.button} onPress={() => onStartGame('arcade')} delay={0}>
-                <Text style={styles.buttonText}>Arcade Mode</Text>
-              </AnimatedButton>
+            {/* Menu area: show Tap to Start or menu buttons */}
+            {menuAreaReady && (
+              <View style={styles.menuContainer}>
+                {showTapToStart ? (
+                  <TouchableOpacity
+                    style={styles.tapToStartMenuArea}
+                    activeOpacity={1}
+                    onPress={handleTapToStart}
+                  >
+                    <Animated.Text style={[styles.tapToStartText, { opacity: tapToStartOpacity }]}>
+                      Tap to Start
+                    </Animated.Text>
+                  </TouchableOpacity>
+                ) : (
+                  <>
+                    <AnimatedButton
+                      style={styles.button}
+                      onPress={() => onStartGame('arcade')}
+                      delay={0}
+                      instant={true}
+                    >
+                      <Text style={styles.buttonText}>Arcade Mode</Text>
+                    </AnimatedButton>
 
-              <AnimatedButton
-                style={styles.button}
-                onPress={() => onStartGame('endless')}
-                delay={100}
-              >
-                <Text style={styles.buttonText}>Endless</Text>
-              </AnimatedButton>
+                    <AnimatedButton
+                      style={styles.button}
+                      onPress={() => onStartGame('endless')}
+                      delay={0}
+                      instant={true}
+                    >
+                      <Text style={styles.buttonText}>Endless</Text>
+                    </AnimatedButton>
 
-              <AnimatedButton
-                style={[styles.button, styles.settingsButton]}
-                onPress={onOpenSettings}
-                delay={200}
-              >
-                <Text style={styles.buttonText}>Settings</Text>
-              </AnimatedButton>
+                    <AnimatedButton
+                      style={[styles.button, styles.settingsButton]}
+                      onPress={onOpenSettings}
+                      delay={0}
+                      instant={true}
+                    >
+                      <Text style={styles.buttonText}>Settings</Text>
+                    </AnimatedButton>
 
-              <AnimatedButton
-                style={[styles.button, styles.audioDebugButton]}
-                onPress={onOpenAudioDebug}
-                delay={300}
-              >
-                <Text style={styles.buttonText}>Audio Debug</Text>
-              </AnimatedButton>
+                    <AnimatedButton
+                      style={[styles.button, styles.audioDebugButton]}
+                      onPress={onOpenAudioDebug}
+                      delay={0}
+                      instant={true}
+                    >
+                      <Text style={styles.buttonText}>Audio Debug</Text>
+                    </AnimatedButton>
 
-              <AnimatedButton
-                style={[styles.button, styles.uiDebugButton]}
-                onPress={onOpenUIDebug}
-                delay={400}
-              >
-                <Text style={styles.buttonText}>UI Debug</Text>
-              </AnimatedButton>
+                    <AnimatedButton
+                      style={[styles.button, styles.uiDebugButton]}
+                      onPress={onOpenUIDebug}
+                      delay={0}
+                      instant={true}
+                    >
+                      <Text style={styles.buttonText}>UI Debug</Text>
+                    </AnimatedButton>
 
-              {/* Debug Mode Toggle */}
-              <AnimatedButton
-                style={[styles.button, styles.debugButton, debugMode && styles.debugButtonActive]}
-                onPress={onToggleDebugMode}
-                delay={500}
-              >
-                <Text style={styles.buttonText}>
-                  {debugMode ? 'Debug Mode: ON' : 'Debug Mode: OFF'}
-                </Text>
-              </AnimatedButton>
-            </View>
+                    {/* Debug Mode Toggle */}
+                    <AnimatedButton
+                      style={[
+                        styles.button,
+                        styles.debugButton,
+                        debugMode && styles.debugButtonActive,
+                      ]}
+                      onPress={onToggleDebugMode}
+                      delay={0}
+                      instant={true}
+                    >
+                      <Text style={styles.buttonText}>
+                        {debugMode ? 'Debug Mode: ON' : 'Debug Mode: OFF'}
+                      </Text>
+                    </AnimatedButton>
 
-            {/* Instructions */}
-            <View style={styles.instructionsContainer}>
-              <Text style={styles.instructionsTitle}>How to Play:</Text>
-              <Text style={styles.instruction}>• Tap to hit targets in the hit zone</Text>
-              <Text style={styles.instruction}>• Swipe up for power hits</Text>
-              <Text style={styles.instruction}>• Perfect timing = more points</Text>
-              <Text style={styles.instruction}>• Don't let targets pass the line!</Text>
-              {debugMode && (
-                <Text style={styles.debugInstruction}>
-                  • Debug mode shows hit zones and game info
-                </Text>
-              )}
-            </View>
+                    {/* Instructions: Only show with menu buttons */}
+                    <View style={styles.instructionsContainer}>
+                      <Text style={styles.instructionsTitle}>How to Play:</Text>
+                      <Text style={styles.instruction}>• Tap to hit targets in the hit zone</Text>
+                      <Text style={styles.instruction}>• Swipe up for power hits</Text>
+                      <Text style={styles.instruction}>• Perfect timing = more points</Text>
+                      <Text style={styles.instruction}>• Don't let targets pass the line!</Text>
+                      {debugMode && (
+                        <Text style={styles.debugInstruction}>
+                          • Debug mode shows hit zones and game info
+                        </Text>
+                      )}
+                    </View>
+                  </>
+                )}
+              </View>
+            )}
           </View>
         )}
       </ImageBackground>
@@ -762,6 +939,49 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  tapToStartOverlay: {
+    // (no longer used)
+  },
+  tapToStartContent: {
+    // (no longer used)
+  },
+  tapToStartText: {
+    color: '#00ffff',
+    fontSize: 36,
+    fontWeight: 'bold',
+    textShadowColor: '#000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 8,
+    letterSpacing: 2,
+    padding: 24,
+    textAlign: 'center',
+  },
+  tapToStartMenuArea: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 220,
+    paddingVertical: 40,
+  },
+  flashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'white',
+    zIndex: 30,
+  },
+  boxerImage: {
+    position: 'absolute',
+    bottom: -screenHeight * 0.07, // lower below the screen edge
+    right: 0,
+    width: screenWidth * 0.7,
+    aspectRatio: 0.7, // maintain image proportions (adjust as needed)
+    maxHeight: screenHeight,
+  },
+  boxerImageFront: {
+    zIndex: 14, // above overlay during flashes
+  },
+  boxerImageBehind: {
+    zIndex: 2, // behind overlay after flashes
   },
 });
 
