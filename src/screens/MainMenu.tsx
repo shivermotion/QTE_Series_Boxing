@@ -16,7 +16,10 @@ import {
   vec,
   Group,
   Skia,
+  Paint,
+  useClock,
 } from '@shopify/react-native-skia';
+import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import BoxerImg from '../../assets/main_menu/boxer.png';
@@ -86,12 +89,15 @@ const StageBeam = ({
 const AnimatedStageBeams = ({
   corner,
   anims,
+  maxBeams = 3,
 }: {
   corner: 'left' | 'right';
   anims: Animated.Value[];
+  maxBeams?: number;
 }) => {
   // corner: 'left' or 'right'
   // anims: array of Animated.Value (one per beam)
+  // maxBeams: maximum number of beams to show (default 3)
   const baseX = corner === 'left' ? screenWidth * 0.1 : screenWidth * 0.9;
   const baseY = screenHeight * 0.02; // TOP corners now
   const length = screenHeight * 1.1;
@@ -104,9 +110,8 @@ const AnimatedStageBeams = ({
   return (
     <>
       {anims.map((anim: Animated.Value, i: number) => {
-        // Animate angle between -delta and +delta around baseAngle
+        // Always call hooks for all beams, but only render up to maxBeams
         const delta = Math.PI / 12; // 15 degrees sweep
-        // Use Animated for angle, but Skia expects a number, so we need to use listeners
         const [angle, setAngle] = React.useState<number>(baseAngles[i]);
         useEffect(() => {
           const id = anim.addListener(({ value }: { value: number }) => {
@@ -114,6 +119,7 @@ const AnimatedStageBeams = ({
           });
           return () => anim.removeListener(id);
         }, [anim]);
+        if (i >= maxBeams) return null;
         return (
           <StageBeam
             key={i}
@@ -488,6 +494,105 @@ const AnimatedCircleFlash = ({
   );
 };
 
+// Helper for overlay rectangle (Skia)
+function makeOverlayRect(x: number, y: number, width: number, height: number) {
+  const path = Skia.Path.Make();
+  path.addRect({ x, y, width, height });
+  return path;
+}
+
+// Skia Overlay with Eraser Spotlights
+const OverlayWithSpotlights = ({ revealingMode = false }: { revealingMode?: boolean }) => {
+  // Animate 3 beams sweeping from top
+  const clock = useClock();
+  // Beam configs
+  const beams = [
+    {
+      baseX: screenWidth * 0.1, // Left corner
+      baseY: 0,
+      sweep: Math.PI / 8, // 22.5 degrees sweep
+      speed: 0.0008,
+      width: screenWidth * 0.18,
+      length: screenHeight * 1.2,
+      phase: 0,
+    },
+    {
+      baseX: screenWidth * 0.5, // Center
+      baseY: 0,
+      sweep: Math.PI / 10, // 18 degrees sweep
+      speed: 0.0005,
+      width: screenWidth * 0.16,
+      length: screenHeight * 1.2,
+      phase: Math.PI / 3,
+    },
+    {
+      baseX: screenWidth * 0.9, // Right corner
+      baseY: 0,
+      sweep: Math.PI / 8, // 22.5 degrees sweep
+      speed: 0.001,
+      width: screenWidth * 0.2,
+      length: screenHeight * 1.2,
+      phase: Math.PI / 1.5,
+    },
+  ];
+
+  // Store angles in React state
+  const [angles, setAngles] = React.useState([0, 0, 0]);
+
+  React.useEffect(() => {
+    let running = true;
+    function animate() {
+      if (!running) return;
+      const c = clock.value; // Only read here, not in render
+      setAngles(
+        beams.map((b, i) => {
+          // Use the same baseAngle logic as before
+          let baseAngle;
+          if (i === 0) {
+            baseAngle = Math.PI / 2.8;
+          } else if (i === 1) {
+            baseAngle = Math.PI / 2.2;
+          } else {
+            baseAngle = Math.PI / 2.1;
+          }
+          return baseAngle + b.sweep * Math.sin(c * b.speed + b.phase);
+        })
+      );
+      requestAnimationFrame(animate);
+    }
+    animate();
+    return () => {
+      running = false;
+    };
+  }, [clock]);
+
+  return (
+    <Canvas style={[StyleSheet.absoluteFillObject, { zIndex: 3 }]} pointerEvents="none">
+      {/* Overlay rectangle */}
+      <SkiaPath
+        path={makeOverlayRect(0, 0, screenWidth, screenHeight)}
+        style="fill"
+        color="rgba(0,0,0,0.7)"
+      />
+      {/* Eraser beams with glow and diffusion effects - only show in revealing mode */}
+      {revealingMode &&
+        beams.map((b, i) => {
+          const { path, tip } = createBeamPath(b.baseX, b.baseY, angles[i], b.width, b.length);
+          return (
+            <SkiaPath key={i} path={path} style="fill" blendMode="clear">
+              <LinearGradient
+                start={vec(b.baseX, b.baseY)}
+                end={vec(tip.x, tip.y)}
+                colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)', 'rgba(255,255,255,0.3)']}
+                positions={[0, 0.6, 1]}
+              />
+            </SkiaPath>
+          );
+        })}
+    </Canvas>
+  );
+};
+
 const MainMenu: React.FC<MainMenuProps> = ({
   onStartGame,
   onOpenSettings,
@@ -502,6 +607,8 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
   // UI visibility toggle for debugging
   const [showUI, setShowUI] = React.useState(true);
+  // Spotlight mode toggle
+  const [revealingSpotlights, setRevealingSpotlights] = React.useState(true);
   // Add state for tap-to-start overlay
   const [showTapToStart, setShowTapToStart] = React.useState(false); // initially false
   // Add state for flash sequence
@@ -656,13 +763,29 @@ const MainMenu: React.FC<MainMenuProps> = ({
         style={styles.backgroundImage}
         resizeMode="cover"
       >
+        {/* Camera Flashes: above background, below overlay */}
+        <CameraFlashes />
+
+        {/* Skia Canvas for stage light beams - show in both modes */}
+        <Canvas style={StyleSheet.absoluteFillObject}>
+          <AnimatedStageBeams
+            corner="left"
+            anims={leftAnims}
+            maxBeams={revealingSpotlights ? 1 : 3}
+          />
+          <AnimatedStageBeams
+            corner="right"
+            anims={rightAnims}
+            maxBeams={revealingSpotlights ? 1 : 3}
+          />
+        </Canvas>
+
         {/* Boxer image slides in during flashes, then moves behind overlay */}
         {boxerVisible && (
           <Animated.Image
             source={BoxerImg}
             style={[
               styles.boxerImage,
-              boxerBehindOverlay ? styles.boxerImageBehind : styles.boxerImageFront,
               {
                 transform: [{ translateX: boxerTranslateX }, { scaleX: -1 }, { scale: 1.35 }],
                 right: 0,
@@ -673,17 +796,8 @@ const MainMenu: React.FC<MainMenuProps> = ({
           />
         )}
 
-        {/* Camera Flashes: above background, below overlay */}
-        <CameraFlashes />
-
-        {/* Skia Canvas for stage light beams */}
-        <Canvas style={StyleSheet.absoluteFillObject}>
-          <AnimatedStageBeams corner="left" anims={leftAnims} />
-          <AnimatedStageBeams corner="right" anims={rightAnims} />
-        </Canvas>
-
-        {/* Overlay for readability */}
-        <View style={styles.overlay} />
+        {/* Skia overlay - always present to cover boxer image */}
+        <OverlayWithSpotlights revealingMode={revealingSpotlights} />
 
         {/* Hide UI toggle button (always visible, above overlay) */}
         <TouchableOpacity
@@ -691,6 +805,16 @@ const MainMenu: React.FC<MainMenuProps> = ({
           onPress={() => setShowUI(v => !v)}
         >
           <Text style={styles.hideUIButtonText}>{showUI ? 'Hide UI' : 'Show UI'}</Text>
+        </TouchableOpacity>
+
+        {/* Spotlight mode toggle button */}
+        <TouchableOpacity
+          style={[styles.spotlightToggleButton, { top: insets.top + 12, left: 20, zIndex: 10 }]}
+          onPress={() => setRevealingSpotlights(v => !v)}
+        >
+          <Text style={styles.hideUIButtonText}>
+            {revealingSpotlights ? 'Show Regular Spotlights' : 'Show Revealing Spotlights'}
+          </Text>
         </TouchableOpacity>
 
         {/* White flash overlay */}
@@ -935,6 +1059,13 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
   },
+  spotlightToggleButton: {
+    position: 'absolute',
+    left: 20,
+    backgroundColor: '#00ff00',
+    padding: 10,
+    borderRadius: 8,
+  },
   hideUIButtonText: {
     color: 'white',
     fontSize: 16,
@@ -976,12 +1107,7 @@ const styles = StyleSheet.create({
     width: screenWidth * 0.7,
     aspectRatio: 0.7, // maintain image proportions (adjust as needed)
     maxHeight: screenHeight,
-  },
-  boxerImageFront: {
-    zIndex: 14, // above overlay during flashes
-  },
-  boxerImageBehind: {
-    zIndex: 2, // behind overlay after flashes
+    zIndex: 0, // always below overlay
   },
 });
 
