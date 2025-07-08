@@ -601,6 +601,10 @@ const MainMenu: React.FC<MainMenuProps> = ({
   debugMode,
   onToggleDebugMode,
 }) => {
+  // Fade-in animation for the entire menu
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [fadeInComplete, setFadeInComplete] = React.useState(false);
+
   // Animated values for each beam (3 per corner)
   const leftAnims = [0, 1, 2].map(() => useRef(new Animated.Value(0)).current);
   const rightAnims = [0, 1, 2].map(() => useRef(new Animated.Value(0)).current);
@@ -628,8 +632,24 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
   const punchSoundRef = React.useRef<Audio.Sound | null>(null);
   const bellSoundRef = React.useRef<Audio.Sound | null>(null);
+  const crowdCheerRef = React.useRef<Audio.Sound | null>(null);
+
+  // Start fade-in animation when component mounts
+  React.useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1500,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      setFadeInComplete(true);
+    });
+  }, [fadeAnim]);
 
   React.useEffect(() => {
+    // Only start animations and load audio after fade-in is complete
+    if (!fadeInComplete) return;
+
     // Preload punch sound
     const loadPunch = async () => {
       try {
@@ -656,6 +676,20 @@ const MainMenu: React.FC<MainMenuProps> = ({
     };
     loadBell();
 
+    // Load and play crowd cheer sound
+    const loadAndPlayCrowdCheer = async () => {
+      try {
+        const crowdCheer = new Audio.Sound();
+        await crowdCheer.loadAsync(require('../../assets/main_menu/crowd_cheer.mp3'));
+        await crowdCheer.playAsync();
+        crowdCheerRef.current = crowdCheer;
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.log('Error loading/playing crowd cheer sound:', e);
+      }
+    };
+    loadAndPlayCrowdCheer();
+
     return () => {
       if (punchSoundRef.current) {
         punchSoundRef.current.unloadAsync();
@@ -663,8 +697,12 @@ const MainMenu: React.FC<MainMenuProps> = ({
       if (bellSoundRef.current) {
         bellSoundRef.current.unloadAsync();
       }
+      if (crowdCheerRef.current) {
+        crowdCheerRef.current.stopAsync();
+        crowdCheerRef.current.unloadAsync();
+      }
     };
-  }, []);
+  }, [fadeInComplete]);
 
   const playPunchSound = async () => {
     try {
@@ -720,13 +758,16 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
   // When boxing animation is done, run the flash sequence
   useEffect(() => {
-    if (boxingAnimDone) {
+    if (boxingAnimDone && fadeInComplete) {
       runFlashSequence();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boxingAnimDone]);
+  }, [boxingAnimDone, fadeInComplete]);
 
   useEffect(() => {
+    // Only start beam animations after fade-in is complete
+    if (!fadeInComplete) return;
+
     leftAnims.forEach((anim, i) => {
       Animated.loop(
         Animated.sequence([
@@ -763,7 +804,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
         ])
       ).start();
     });
-  }, []);
+  }, [fadeInComplete, leftAnims, rightAnims]);
 
   // Animate Tap to Start flashing
   useEffect(() => {
@@ -797,6 +838,9 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
   // Play main theme music on mount
   useEffect(() => {
+    // Only start music after fade-in is complete
+    if (!fadeInComplete) return;
+
     let sound: Audio.Sound | undefined;
     let isMounted = true;
     (async () => {
@@ -817,10 +861,10 @@ const MainMenu: React.FC<MainMenuProps> = ({
         sound.unloadAsync();
       }
     };
-  }, []);
+  }, [fadeInComplete]);
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <ImageBackground
         source={require('../../assets/main_menu/boxing_ring.jpg')}
         style={styles.backgroundImage}
@@ -1011,7 +1055,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
           </View>
         )}
       </ImageBackground>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -1088,6 +1132,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'System',
   },
   settingsButton: {
     backgroundColor: '#ff8800',
@@ -1119,12 +1164,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     textAlign: 'center',
+    fontFamily: 'System',
   },
   instruction: {
     color: 'white',
     fontSize: 14,
     marginBottom: 5,
     textAlign: 'center',
+    fontFamily: 'System',
   },
   debugInstruction: {
     color: '#00ff00',
@@ -1132,6 +1179,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     textAlign: 'center',
     fontStyle: 'italic',
+    fontFamily: 'System',
   },
   hideUIButton: {
     position: 'absolute',
@@ -1151,6 +1199,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+    fontFamily: 'System',
   },
   tapToStartOverlay: {
     // (no longer used)
@@ -1168,6 +1217,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     padding: 24,
     textAlign: 'center',
+    fontFamily: 'System',
   },
   tapToStartMenuArea: {
     width: '100%',
