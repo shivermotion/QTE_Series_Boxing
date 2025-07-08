@@ -22,6 +22,7 @@ import {
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
+import { useAudio } from '../contexts/AudioContext';
 import BoxerImg from '../../assets/main_menu/boxer.png';
 
 interface MainMenuProps {
@@ -601,6 +602,8 @@ const MainMenu: React.FC<MainMenuProps> = ({
   debugMode,
   onToggleDebugMode,
 }) => {
+  const { getEffectiveVolume, startMainTheme, isMainThemePlaying } = useAudio();
+
   // Fade-in animation for the entire menu
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [fadeInComplete, setFadeInComplete] = React.useState(false);
@@ -681,6 +684,8 @@ const MainMenu: React.FC<MainMenuProps> = ({
       try {
         const crowdCheer = new Audio.Sound();
         await crowdCheer.loadAsync(require('../../assets/main_menu/crowd_cheer.mp3'));
+        const effectiveVolume = getEffectiveVolume('sfx');
+        await crowdCheer.setVolumeAsync(effectiveVolume);
         await crowdCheer.playAsync();
         crowdCheerRef.current = crowdCheer;
       } catch (e) {
@@ -702,11 +707,13 @@ const MainMenu: React.FC<MainMenuProps> = ({
         crowdCheerRef.current.unloadAsync();
       }
     };
-  }, [fadeInComplete]);
+  }, [fadeInComplete, getEffectiveVolume]);
 
   const playPunchSound = async () => {
     try {
       if (punchSoundRef.current) {
+        const effectiveVolume = getEffectiveVolume('sfx');
+        await punchSoundRef.current.setVolumeAsync(effectiveVolume);
         await punchSoundRef.current.replayAsync();
       }
     } catch (e) {
@@ -718,6 +725,8 @@ const MainMenu: React.FC<MainMenuProps> = ({
   const playBellSound = async () => {
     try {
       if (bellSoundRef.current) {
+        const effectiveVolume = getEffectiveVolume('sfx');
+        await bellSoundRef.current.setVolumeAsync(effectiveVolume);
         await bellSoundRef.current.replayAsync();
       }
     } catch (e) {
@@ -836,32 +845,12 @@ const MainMenu: React.FC<MainMenuProps> = ({
     setShowTapToStart(false);
   };
 
-  // Play main theme music on mount
+  // Start main theme music after fade-in is complete
   useEffect(() => {
-    // Only start music after fade-in is complete
-    if (!fadeInComplete) return;
-
-    let sound: Audio.Sound | undefined;
-    let isMounted = true;
-    (async () => {
-      try {
-        sound = new Audio.Sound();
-        await sound.loadAsync(require('../../assets/audio/main_theme.mp3'));
-        await sound.setIsLoopingAsync(true);
-        await sound.playAsync();
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.log('Error loading/playing main theme:', e);
-      }
-    })();
-    return () => {
-      isMounted = false;
-      if (sound) {
-        sound.stopAsync();
-        sound.unloadAsync();
-      }
-    };
-  }, [fadeInComplete]);
+    if (fadeInComplete && !isMainThemePlaying) {
+      startMainTheme();
+    }
+  }, [fadeInComplete, isMainThemePlaying, startMainTheme]);
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>

@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 'react-native';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
+import { useAudio } from '../contexts/AudioContext';
 
 interface AudioDebugScreenProps {
   onBackToMenu: () => void;
 }
 
 const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => {
+  const { stopMainTheme } = useAudio();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [volume, setVolume] = useState(1.0);
@@ -34,13 +36,14 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
   // State to toggle between label and file name for each sound
   const [showFileNames, setShowFileNames] = useState<Record<string, boolean>>({});
 
-  // Load audio on component mount
+  // Load audio on component mount and stop main theme
   useEffect(() => {
+    stopMainTheme();
     loadAudio();
     return () => {
       unloadAudio();
     };
-  }, []);
+  }, [stopMainTheme]);
 
   async function loadWithTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
     let timeout: NodeJS.Timeout;

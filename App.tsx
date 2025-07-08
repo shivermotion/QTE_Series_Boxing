@@ -5,9 +5,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import { AudioProvider } from './src/contexts/AudioContext';
 import MainMenu from './src/screens/MainMenu';
 import GameScreen from './src/screens/GameScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import CreditsScreen from './src/screens/CreditsScreen';
 import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
 import SplashScreenComponent from './src/screens/SplashScreen';
@@ -16,9 +18,9 @@ import SplashScreenComponent from './src/screens/SplashScreen';
 SplashScreen.preventAutoHideAsync();
 
 type GameMode = 'arcade' | 'endless';
-type Screen = 'splash' | 'menu' | 'game' | 'settings' | 'audioDebug' | 'uiDebug';
+type Screen = 'splash' | 'menu' | 'game' | 'settings' | 'credits' | 'audioDebug' | 'uiDebug';
 
-export default function App() {
+function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [gameMode, setGameMode] = useState<GameMode>('arcade');
   const [debugMode, setDebugMode] = useState(false);
@@ -59,6 +61,10 @@ export default function App() {
     setCurrentScreen('settings');
   };
 
+  const handleOpenCredits = () => {
+    setCurrentScreen('credits');
+  };
+
   const handleOpenAudioDebug = () => {
     setCurrentScreen('audioDebug');
   };
@@ -90,7 +96,9 @@ export default function App() {
         ) : currentScreen === 'game' ? (
           <GameScreen gameMode={gameMode} onBackToMenu={handleBackToMenu} debugMode={debugMode} />
         ) : currentScreen === 'settings' ? (
-          <SettingsScreen onBackToMenu={handleBackToMenu} />
+          <SettingsScreen onBackToMenu={handleBackToMenu} onOpenCredits={handleOpenCredits} />
+        ) : currentScreen === 'credits' ? (
+          <CreditsScreen onBackToMenu={handleBackToMenu} />
         ) : currentScreen === 'audioDebug' ? (
           <AudioDebugScreen onBackToMenu={handleBackToMenu} />
         ) : (
@@ -98,6 +106,14 @@ export default function App() {
         )}
       </GestureHandlerRootView>
     </SafeAreaProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AudioProvider>
+      <AppContent />
+    </AudioProvider>
   );
 }
 

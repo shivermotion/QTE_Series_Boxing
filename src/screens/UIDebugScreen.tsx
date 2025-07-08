@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import { useAudio } from '../contexts/AudioContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -37,6 +38,7 @@ interface FeedbackText {
 }
 
 const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
+  const { stopMainTheme } = useAudio();
   const [particles, setParticles] = useState<Particle[]>([]);
   const [feedbackTexts, setFeedbackTexts] = useState<FeedbackText[]>([]);
   const [avatarState, setAvatarState] = useState<'idle' | 'success' | 'failure'>('idle');
@@ -45,6 +47,11 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
   const [lives, setLives] = useState(3);
   const [showHitZones, setShowHitZones] = useState(false);
   const [showTargets, setShowTargets] = useState(false);
+
+  // Stop main theme when component mounts
+  useEffect(() => {
+    stopMainTheme();
+  }, [stopMainTheme]);
 
   // Animation refs
   const screenShakeAnim = useRef(new Animated.Value(0)).current;

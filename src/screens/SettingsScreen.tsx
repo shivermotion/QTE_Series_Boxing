@@ -1,19 +1,55 @@
-import React, { useState } from 'react';
+import React, { useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Switch, ScrollView } from 'react-native';
+import Slider from '@react-native-community/slider';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAudio } from '../contexts/AudioContext';
+import { Audio } from 'expo-av';
 
 interface SettingsScreenProps {
   onBackToMenu: () => void;
+  onOpenCredits: () => void;
 }
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [hapticsEnabled, setHapticsEnabled] = useState(true);
-  const [highContrast, setHighContrast] = useState(false);
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCredits }) => {
+  const insets = useSafeAreaInsets();
+
+  const {
+    settings,
+    updateMasterVolume,
+    updateSoundEffectsVolume,
+    updateMusicVolume,
+    toggleAudioEnabled,
+    getEffectiveVolume,
+  } = useAudio();
+
+  const bellSoundRef = useRef<Audio.Sound | null>(null);
+
+  const formatVolume = (value: number) => {
+    return Math.round(value * 100) + '%';
+  };
+
+  const playTestSound = async () => {
+    try {
+      if (bellSoundRef.current) {
+        await bellSoundRef.current.stopAsync();
+        await bellSoundRef.current.unloadAsync();
+      }
+
+      const bell = new Audio.Sound();
+      await bell.loadAsync(require('../../assets/audio/boxing_bell_1.mp3'));
+      const effectiveVolume = getEffectiveVolume('sfx');
+      await bell.setVolumeAsync(effectiveVolume);
+      await bell.playAsync();
+      bellSoundRef.current = bell;
+    } catch (e) {
+      console.log('Error playing test sound:', e);
+    }
+  };
 
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity style={styles.backButton} onPress={onBackToMenu}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -21,28 +57,71 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={[styles.content, { paddingBottom: insets.bottom + 20 }]}>
         {/* Audio Settings */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Audio</Text>
 
           <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>Master Volume</Text>
+            <Text style={styles.volumeValue}>{formatVolume(settings.masterVolume)}</Text>
+          </View>
+          <Slider
+            style={styles.slider}
+            value={settings.masterVolume}
+            onValueChange={updateMasterVolume}
+            minimumValue={0}
+            maximumValue={1}
+            step={0.05}
+            minimumTrackTintColor="#ff00ff"
+            maximumTrackTintColor="#333"
+            thumbTintColor="#ff00ff"
+          />
+
+          <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>Sound Effects</Text>
-            <Switch
-              value={soundEnabled}
-              onValueChange={setSoundEnabled}
-              trackColor={{ false: '#767577', true: '#ff00ff' }}
-              thumbColor={soundEnabled ? '#00ffff' : '#f4f3f4'}
+            <Text style={styles.volumeValue}>{formatVolume(settings.soundEffectsVolume)}</Text>
+          </View>
+          <TouchableOpacity style={styles.testButton} onPress={playTestSound}>
+            <Text style={styles.testButtonText}>Test Sound</Text>
+          </TouchableOpacity>
+          <View style={styles.sliderContainer}>
+            <Slider
+              style={styles.slider}
+              value={settings.soundEffectsVolume}
+              onValueChange={updateSoundEffectsVolume}
+              minimumValue={0}
+              maximumValue={1}
+              step={0.05}
+              minimumTrackTintColor="#00ffff"
+              maximumTrackTintColor="#333"
+              thumbTintColor="#00ffff"
             />
           </View>
 
           <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>Background Music</Text>
+            <Text style={styles.settingLabel}>Music</Text>
+            <Text style={styles.volumeValue}>{formatVolume(settings.musicVolume)}</Text>
+          </View>
+          <Slider
+            style={styles.slider}
+            value={settings.musicVolume}
+            onValueChange={updateMusicVolume}
+            minimumValue={0}
+            maximumValue={1}
+            step={0.05}
+            minimumTrackTintColor="#ff8800"
+            maximumTrackTintColor="#333"
+            thumbTintColor="#ff8800"
+          />
+
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>Audio Enabled</Text>
             <Switch
-              value={soundEnabled}
-              onValueChange={setSoundEnabled}
+              value={settings.audioEnabled}
+              onValueChange={toggleAudioEnabled}
               trackColor={{ false: '#767577', true: '#ff00ff' }}
-              thumbColor={soundEnabled ? '#00ffff' : '#f4f3f4'}
+              thumbColor={settings.audioEnabled ? '#00ffff' : '#f4f3f4'}
             />
           </View>
         </View>
@@ -54,20 +133,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
           <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>Haptic Feedback</Text>
             <Switch
-              value={hapticsEnabled}
-              onValueChange={setHapticsEnabled}
+              value={true}
+              onValueChange={() => {}}
               trackColor={{ false: '#767577', true: '#ff00ff' }}
-              thumbColor={hapticsEnabled ? '#00ffff' : '#f4f3f4'}
-            />
-          </View>
-
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>High Contrast Mode</Text>
-            <Switch
-              value={highContrast}
-              onValueChange={setHighContrast}
-              trackColor={{ false: '#767577', true: '#ff00ff' }}
-              thumbColor={highContrast ? '#00ffff' : '#f4f3f4'}
+              thumbColor={'#00ffff'}
             />
           </View>
         </View>
@@ -101,6 +170,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
             Pixel art aesthetic{'\n'}
             Chiptune audio design
           </Text>
+          <TouchableOpacity style={styles.watchCreditsButton} onPress={onOpenCredits}>
+            <Text style={styles.watchCreditsButtonText}>Watch Credits</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -117,7 +189,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
     paddingBottom: 20,
     borderBottomWidth: 2,
     borderBottomColor: '#00ffff',
@@ -186,6 +257,51 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 14,
     lineHeight: 20,
+  },
+  slider: {
+    width: '100%',
+    height: 40,
+    marginBottom: 15,
+  },
+  volumeValue: {
+    color: '#00ffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    minWidth: 50,
+    textAlign: 'right',
+  },
+  testButton: {
+    backgroundColor: '#ff00ff',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+    alignSelf: 'flex-start',
+    marginTop: 15,
+    marginBottom: 15,
+  },
+  testButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  sliderContainer: {
+    width: '100%',
+    height: 40,
+    marginBottom: 15,
+  },
+  watchCreditsButton: {
+    backgroundColor: '#ff00ff',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+    alignSelf: 'flex-start',
+    marginTop: 15,
+    marginBottom: 15,
+  },
+  watchCreditsButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
 
