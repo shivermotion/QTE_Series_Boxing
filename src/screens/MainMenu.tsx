@@ -626,6 +626,68 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
   const insets = useSafeAreaInsets();
 
+  const punchSoundRef = React.useRef<Audio.Sound | null>(null);
+  const bellSoundRef = React.useRef<Audio.Sound | null>(null);
+
+  React.useEffect(() => {
+    // Preload punch sound
+    const loadPunch = async () => {
+      try {
+        const punch = new Audio.Sound();
+        await punch.loadAsync(require('../../assets/audio/punch_1.mp3'));
+        punchSoundRef.current = punch;
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.log('Error preloading punch sound:', e);
+      }
+    };
+    loadPunch();
+
+    // Preload bell sound
+    const loadBell = async () => {
+      try {
+        const bell = new Audio.Sound();
+        await bell.loadAsync(require('../../assets/audio/boxing_bell_1.mp3'));
+        bellSoundRef.current = bell;
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.log('Error preloading bell sound:', e);
+      }
+    };
+    loadBell();
+
+    return () => {
+      if (punchSoundRef.current) {
+        punchSoundRef.current.unloadAsync();
+      }
+      if (bellSoundRef.current) {
+        bellSoundRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  const playPunchSound = async () => {
+    try {
+      if (punchSoundRef.current) {
+        await punchSoundRef.current.replayAsync();
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.log('Error playing punch sound:', e);
+    }
+  };
+
+  const playBellSound = async () => {
+    try {
+      if (bellSoundRef.current) {
+        await bellSoundRef.current.replayAsync();
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.log('Error playing bell sound:', e);
+    }
+  };
+
   // Helper to run the flash sequence
   const runFlashSequence = () => {
     setFlashing(true);
@@ -728,7 +790,8 @@ const MainMenu: React.FC<MainMenuProps> = ({
   }, [showTapToStart]);
 
   // Handler for tap-to-start overlay
-  const handleTapToStart = () => {
+  const handleTapToStart = async () => {
+    await playBellSound();
     setShowTapToStart(false);
   };
 
@@ -851,7 +914,10 @@ const MainMenu: React.FC<MainMenuProps> = ({
                   <>
                     <AnimatedButton
                       style={styles.button}
-                      onPress={() => onStartGame('arcade')}
+                      onPress={async () => {
+                        await playPunchSound();
+                        onStartGame('arcade');
+                      }}
                       delay={0}
                       instant={true}
                     >
@@ -860,7 +926,10 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
                     <AnimatedButton
                       style={styles.button}
-                      onPress={() => onStartGame('endless')}
+                      onPress={async () => {
+                        await playPunchSound();
+                        onStartGame('endless');
+                      }}
                       delay={0}
                       instant={true}
                     >
@@ -869,7 +938,10 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
                     <AnimatedButton
                       style={[styles.button, styles.settingsButton]}
-                      onPress={onOpenSettings}
+                      onPress={async () => {
+                        await playPunchSound();
+                        onOpenSettings();
+                      }}
                       delay={0}
                       instant={true}
                     >
@@ -878,7 +950,10 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
                     <AnimatedButton
                       style={[styles.button, styles.audioDebugButton]}
-                      onPress={onOpenAudioDebug}
+                      onPress={async () => {
+                        await playPunchSound();
+                        onOpenAudioDebug();
+                      }}
                       delay={0}
                       instant={true}
                     >
@@ -887,7 +962,10 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
                     <AnimatedButton
                       style={[styles.button, styles.uiDebugButton]}
-                      onPress={onOpenUIDebug}
+                      onPress={async () => {
+                        await playPunchSound();
+                        onOpenUIDebug();
+                      }}
                       delay={0}
                       instant={true}
                     >
@@ -901,7 +979,10 @@ const MainMenu: React.FC<MainMenuProps> = ({
                         styles.debugButton,
                         debugMode && styles.debugButtonActive,
                       ]}
-                      onPress={onToggleDebugMode}
+                      onPress={async () => {
+                        await playPunchSound();
+                        onToggleDebugMode();
+                      }}
                       delay={0}
                       instant={true}
                     >

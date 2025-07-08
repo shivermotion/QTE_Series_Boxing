@@ -12,11 +12,27 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const [volume, setVolume] = useState(1.0);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingSoundName, setLoadingSoundName] = useState<string | null>(null);
 
   // Audio refs
   const hitSound = useRef<Audio.Sound | null>(null);
   const missSound = useRef<Audio.Sound | null>(null);
   const comboSound = useRef<Audio.Sound | null>(null);
+  const bellSound = useRef<Audio.Sound | null>(null);
+  const punchSound = useRef<Audio.Sound | null>(null);
+  const mainThemeSound = useRef<Audio.Sound | null>(null);
+
+  const audioFiles: Record<string, any> = {
+    hit: require('../../assets/audio/hit.mp3'),
+    miss: require('../../assets/audio/hit.mp3'),
+    combo: require('../../assets/audio/hit.mp3'),
+    bell: require('../../assets/audio/boxing_bell_1.mp3'),
+    punch: require('../../assets/audio/punch_1.mp3'),
+    'main theme': require('../../assets/audio/main_theme.mp3'),
+  };
+
+  // State to toggle between label and file name for each sound
+  const [showFileNames, setShowFileNames] = useState<Record<string, boolean>>({});
 
   // Load audio on component mount
   useEffect(() => {
@@ -26,31 +42,49 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
     };
   }, []);
 
+  async function loadWithTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
+    let timeout: NodeJS.Timeout;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeout = setTimeout(() => reject(new Error(`Timeout loading ${name}`)), ms);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeout));
+  }
+
   const loadAudio = async () => {
     setIsLoading(true);
-    try {
-      const { sound: hit } = await Audio.Sound.createAsync(require('../../assets/audio/hit.mp3'));
-      hitSound.current = hit;
-
-      // Create placeholder sounds for miss and combo
-      const { sound: miss } = await Audio.Sound.createAsync(require('../../assets/audio/hit.mp3'));
-      missSound.current = miss;
-
-      const { sound: combo } = await Audio.Sound.createAsync(require('../../assets/audio/hit.mp3'));
-      comboSound.current = combo;
-
-      console.log('Audio loaded successfully');
-    } catch (error) {
-      console.log('Audio loading error:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    // Helper to try loading a sound from the mapping
+    const tryLoad = async (label: string, ref: React.MutableRefObject<Audio.Sound | null>) => {
+      setLoadingSoundName(label);
+      const mod = audioFiles[label];
+      if (!mod) {
+        console.log(`Audio file for ${label} not found in mapping.`);
+        return;
+      }
+      try {
+        const { sound } = await loadWithTimeout(Audio.Sound.createAsync(mod), 5000, label);
+        ref.current = sound;
+        console.log(`Loaded ${label} sound (${getFileName(label)})`);
+      } catch (error) {
+        console.log(`Audio loading error (${label}):`, error);
+      }
+    };
+    await tryLoad('hit', hitSound);
+    await tryLoad('miss', missSound);
+    await tryLoad('combo', comboSound);
+    await tryLoad('bell', bellSound);
+    await tryLoad('punch', punchSound);
+    await tryLoad('main theme', mainThemeSound);
+    setLoadingSoundName(null);
+    setIsLoading(false);
   };
 
   const unloadAudio = async () => {
     if (hitSound.current) await hitSound.current.unloadAsync();
     if (missSound.current) await missSound.current.unloadAsync();
     if (comboSound.current) await comboSound.current.unloadAsync();
+    if (bellSound.current) await bellSound.current.unloadAsync();
+    if (punchSound.current) await punchSound.current.unloadAsync();
+    if (mainThemeSound.current) await mainThemeSound.current.unloadAsync();
   };
 
   const playSound = async (
@@ -72,6 +106,22 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
       }
     } catch (error) {
       console.log(`${soundName} play error:`, error);
+    }
+  };
+
+  const pauseSound = async (
+    soundRef: React.MutableRefObject<Audio.Sound | null>,
+    soundName: string
+  ) => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.pauseAsync();
+        console.log(`Paused ${soundName}`);
+      } else {
+        console.log(`${soundName} not loaded`);
+      }
+    } catch (error) {
+      console.log(`${soundName} pause error:`, error);
     }
   };
 
@@ -124,6 +174,39 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
     setVolume(Math.max(0, Math.min(1, newVolume)));
   };
 
+  // Helper to stop a sound
+  const stopSound = async (
+    soundRef: React.MutableRefObject<Audio.Sound | null>,
+    soundName: string
+  ) => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        console.log(`Stopped ${soundName}`);
+      } else {
+        console.log(`${soundName} not loaded`);
+      }
+    } catch (error) {
+      console.log(`${soundName} stop error:`, error);
+    }
+  };
+
+  // Helper to get file name from mapping
+  const getFileName = (label: string) => {
+    const mod = audioFiles[label];
+    if (!mod) return '';
+    // Try to extract file name from the module (works in Expo/Metro)
+    if (typeof mod === 'number') return label + '.mp3'; // fallback
+    if (mod.uri) return mod.uri.split('/').pop();
+    if (mod.default && mod.default.split) return mod.default.split('/').pop();
+    return label + '.mp3';
+  };
+
+  // Helper to toggle label/file name
+  const toggleShowFileName = (label: string) => {
+    setShowFileNames(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -144,7 +227,9 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
             <Text
               style={[styles.statusValue, isLoading ? styles.statusError : styles.statusSuccess]}
             >
-              {isLoading ? 'Loading...' : 'Ready'}
+              {isLoading
+                ? `Loading...${loadingSoundName ? ` (${loadingSoundName})` : ''}`
+                : 'Ready'}
             </Text>
           </View>
           <View style={styles.statusRow}>
@@ -180,82 +265,112 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
               {comboSound.current ? 'Loaded' : 'Not Loaded'}
             </Text>
           </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Bell Sound:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                bellSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {bellSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Punch Sound:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                punchSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {punchSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Main Theme:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                mainThemeSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {mainThemeSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
         </View>
 
-        {/* Settings */}
+        {/* Test all sounds/music - SFX */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Settings</Text>
-
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>Sound Effects</Text>
-            <Switch
-              value={soundEnabled}
-              onValueChange={setSoundEnabled}
-              trackColor={{ false: '#767577', true: '#ff00ff' }}
-              thumbColor={soundEnabled ? '#00ffff' : '#f4f3f4'}
-            />
-          </View>
-
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>Haptic Feedback</Text>
-            <Switch
-              value={hapticsEnabled}
-              onValueChange={setHapticsEnabled}
-              trackColor={{ false: '#767577', true: '#ff00ff' }}
-              thumbColor={hapticsEnabled ? '#00ffff' : '#f4f3f4'}
-            />
-          </View>
-
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>Volume: {Math.round(volume * 100)}%</Text>
-            <View style={styles.volumeContainer}>
+          <Text style={styles.sectionTitle}>Test SFX</Text>
+          {(
+            [
+              ['Hit', 'hit', hitSound],
+              ['Miss', 'miss', missSound],
+              ['Combo', 'combo', comboSound],
+              ['Bell', 'bell', bellSound],
+              ['Punch', 'punch', punchSound],
+            ] as [string, string, React.MutableRefObject<Audio.Sound | null>][]
+          ).map(([label, key, ref]) => (
+            <View
+              key={key}
+              style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}
+            >
               <TouchableOpacity
-                style={styles.volumeButton}
-                onPress={() => adjustVolume(volume - 0.1)}
+                style={[styles.testButton, styles.flexButton]}
+                onPress={() => toggleShowFileName(key)}
+                disabled={isLoading}
               >
-                <Text style={styles.volumeButtonText}>-</Text>
+                <Text style={styles.testButtonText} numberOfLines={1} ellipsizeMode="tail">
+                  {showFileNames[key] ? getFileName(key) : label}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.volumeButton}
-                onPress={() => adjustVolume(volume + 0.1)}
+                style={styles.iconOnlyButton}
+                onPress={() => playSound(ref, `${label} Sound`)}
+                disabled={isLoading || !ref.current}
               >
-                <Text style={styles.volumeButtonText}>+</Text>
+                <Text style={styles.iconText}>▶️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.iconOnlyButton, styles.stopButton]}
+                onPress={() => stopSound(ref, `${label} Sound`)}
+                disabled={isLoading || !ref.current}
+              >
+                <Text style={styles.iconText}>⏹️</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          ))}
         </View>
 
-        {/* Test Buttons */}
+        {/* Test all sounds/music - Music */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Test Audio</Text>
-
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={() => playSound(hitSound, 'Hit Sound')}
-          >
-            <Text style={styles.testButtonText}>Test Hit Sound</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={() => playSound(missSound, 'Miss Sound')}
-          >
-            <Text style={styles.testButtonText}>Test Miss Sound</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={() => playSound(comboSound, 'Combo Sound')}
-          >
-            <Text style={styles.testButtonText}>Test Combo Sound</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.testButton, styles.testAllButton]}
-            onPress={testAllAudio}
-          >
-            <Text style={styles.testButtonText}>Test All Audio</Text>
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Test Music</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+            <TouchableOpacity
+              style={[styles.testButton, styles.flexButton]}
+              onPress={() => toggleShowFileName('main theme')}
+              disabled={isLoading}
+            >
+              <Text style={styles.testButtonText} numberOfLines={1} ellipsizeMode="tail">
+                {showFileNames['main theme'] ? getFileName('main theme') : 'Main Theme'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconOnlyButton}
+              onPress={() => playSound(mainThemeSound, 'Main Theme')}
+              disabled={isLoading || !mainThemeSound.current}
+            >
+              <Text style={styles.iconText}>▶️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.iconOnlyButton, styles.stopButton]}
+              onPress={() => stopSound(mainThemeSound, 'Main Theme')}
+              disabled={isLoading || !mainThemeSound.current}
+            >
+              <Text style={styles.iconText}>⏹️</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Haptic Test */}
@@ -288,10 +403,14 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Instructions</Text>
           <Text style={styles.instructionText}>
-            • Use the switches to enable/disable sound and haptics{'\n'}• Adjust volume with the +/-
-            buttons{'\n'}• Test individual sounds and haptics{'\n'}• Use "Test All Audio" to play
-            everything in sequence{'\n'}• Check the console for detailed feedback{'\n'}• Make sure
-            your device volume is turned up
+            {`
+• Tap the left button to toggle between the sound label and file name
+• Use ▶️ to play and ⏹️ to stop each sound or music
+• Test haptic feedback with the buttons below
+• Check the status section above for which sounds are loaded
+• Check the console for detailed feedback and errors
+• Make sure your device volume is turned up
+            `}
           </Text>
         </View>
       </ScrollView>
@@ -368,35 +487,6 @@ const styles = StyleSheet.create({
   statusError: {
     color: '#ff0000',
   },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-  },
-  settingLabel: {
-    color: 'white',
-    fontSize: 16,
-  },
-  volumeContainer: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  volumeButton: {
-    backgroundColor: '#ff00ff',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  volumeButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
   testButton: {
     backgroundColor: '#ff00ff',
     paddingHorizontal: 20,
@@ -406,10 +496,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#00ffff',
-  },
-  testAllButton: {
-    backgroundColor: '#00ff00',
-    borderColor: '#ff00ff',
   },
   testButtonText: {
     color: 'white',
@@ -435,6 +521,37 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 14,
     lineHeight: 20,
+  },
+  flexButton: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    marginRight: 0,
+    marginLeft: 0,
+    paddingHorizontal: 16,
+    minWidth: 0,
+  },
+  iconOnlyButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#ff00ff',
+    borderRadius: 8,
+    marginLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#00ffff',
+    paddingHorizontal: 0,
+  },
+  stopButton: {
+    backgroundColor: '#888',
+    borderColor: '#888',
+  },
+  iconText: {
+    fontSize: 20,
+    marginLeft: 2,
+    marginRight: 2,
   },
 });
 
