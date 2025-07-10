@@ -1,18 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  Animated,
-  Image,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image } from 'react-native';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { useAudio } from '../contexts/AudioContext';
 import GameOverScreen from './GameOverScreen';
+import {
+  Canvas,
+  Text as SkiaText,
+  useFont,
+  Skia,
+  LinearGradient,
+  vec,
+  Group,
+  Blur,
+  Shadow,
+} from '@shopify/react-native-skia';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  withSpring,
+  withDelay,
+  Easing,
+  interpolate,
+  runOnJS,
+} from 'react-native-reanimated';
 
 // Avatar images
 import neutralImg from '../../assets/avatar/neutral.jpg';
@@ -120,17 +134,54 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
   const [lastTapTime, setLastTapTime] = useState(0);
   const [tapCount, setTapCount] = useState(0);
 
+  // Pre-round state
+  const [isPreRound, setIsPreRound] = useState(true);
+  const [preRoundText, setPreRoundText] = useState('');
+
+  // Reanimated values for pre-round animations
+  const preRoundScale = useSharedValue(0);
+  const preRoundOpacity = useSharedValue(0);
+  const preRoundRotation = useSharedValue(0);
+  const preRoundBlur = useSharedValue(10);
+  const flashOpacity = useSharedValue(0);
+  const particleScale = useSharedValue(0);
+
   const particleIdCounter = useRef(0);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
   const powerDecayRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Animation refs
-  const screenShakeAnim = useRef(new Animated.Value(0)).current;
-  const powerMeterAnim = useRef(new Animated.Value(0)).current;
-  const avatarScaleAnim = useRef(new Animated.Value(1)).current;
-  const promptScaleAnim = useRef(new Animated.Value(1)).current;
-  const holdCircleAnim = useRef(new Animated.Value(0)).current;
-  const holdProgressAnim = useRef(new Animated.Value(0)).current;
+  // Animation values
+  const screenShakeAnim = useSharedValue(0);
+  const powerMeterAnim = useSharedValue(0);
+  const avatarScaleAnim = useSharedValue(1);
+  const promptScaleAnim = useSharedValue(1);
+  const holdCircleAnim = useSharedValue(0);
+  const holdProgressAnim = useSharedValue(0);
+
+  // Animated styles
+  const screenShakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: screenShakeAnim.value }],
+  }));
+
+  const avatarScaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: avatarScaleAnim.value }],
+  }));
+
+  const promptScaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: promptScaleAnim.value }],
+  }));
+
+  const holdCircleStyle = useAnimatedStyle(() => ({
+    opacity: holdCircleAnim.value,
+  }));
+
+  const holdProgressStyle = useAnimatedStyle(() => ({
+    width: `${holdProgressAnim.value * 100}%`,
+  }));
+
+  const powerMeterStyle = useAnimatedStyle(() => ({
+    width: `${powerMeterAnim.value}%`,
+  }));
 
   // Audio refs
   const hitSound = useRef<Audio.Sound | null>(null);
@@ -144,6 +195,11 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
     return () => {
       unloadAudio();
     };
+  }, []);
+
+  // Start pre-round sequence on mount
+  useEffect(() => {
+    startPreRoundSequence();
   }, []);
 
   const loadAudio = async () => {
@@ -238,53 +294,25 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
   };
 
   const screenShake = () => {
-    Animated.sequence([
-      Animated.timing(screenShakeAnim, {
-        toValue: 10,
-        duration: 50,
-        useNativeDriver: true,
-      }),
-      Animated.timing(screenShakeAnim, {
-        toValue: -10,
-        duration: 50,
-        useNativeDriver: true,
-      }),
-      Animated.timing(screenShakeAnim, {
-        toValue: 0,
-        duration: 50,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    screenShakeAnim.value = withSequence(
+      withTiming(10, { duration: 50 }),
+      withTiming(-10, { duration: 50 }),
+      withTiming(0, { duration: 50 })
+    );
   };
 
   const animateAvatar = () => {
-    Animated.sequence([
-      Animated.timing(avatarScaleAnim, {
-        toValue: 1.2,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(avatarScaleAnim, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    avatarScaleAnim.value = withSequence(
+      withTiming(1.2, { duration: 150 }),
+      withTiming(1, { duration: 150 })
+    );
   };
 
   const animatePrompt = () => {
-    Animated.sequence([
-      Animated.timing(promptScaleAnim, {
-        toValue: 1.3,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(promptScaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    promptScaleAnim.value = withSequence(
+      withTiming(1.3, { duration: 100 }),
+      withTiming(1, { duration: 100 })
+    );
   };
 
   const generatePrompt = (): Prompt => {
@@ -430,13 +458,127 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
   };
 
   const completeRound = () => {
+    const nextRound = gameState.currentRound + 1;
+
     setGameState(prev => ({
       ...prev,
-      currentRound: prev.currentRound + 1,
+      currentRound: nextRound,
       roundHPGoal: Math.max(0, prev.roundHPGoal - 250),
+      isPaused: true, // Pause game during pre-round
     }));
 
     createFeedbackText('ROUND COMPLETE!', screenWidth / 2, screenHeight * 0.3, '#00ffff');
+
+    // Start pre-round sequence for next round
+    setTimeout(() => {
+      setIsPreRound(true);
+      startPreRoundSequence(nextRound);
+    }, 1000);
+  };
+
+  const startPreRoundSequence = (roundNumber?: number) => {
+    'worklet';
+
+    const currentRoundNumber = roundNumber || gameState.currentRound;
+
+    // Reset all animation values
+    preRoundScale.value = 0;
+    preRoundOpacity.value = 0;
+    preRoundRotation.value = 0;
+    preRoundBlur.value = 10;
+    flashOpacity.value = 0;
+    particleScale.value = 0;
+
+    // Round number animation
+    runOnJS(setPreRoundText)(`ROUND ${currentRoundNumber}`);
+
+    // Epic entrance animation
+    preRoundScale.value = withSequence(
+      withSpring(1.5, { damping: 8, stiffness: 100 }),
+      withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) })
+    );
+
+    preRoundOpacity.value = withTiming(1, { duration: 300 });
+
+    preRoundRotation.value = withSequence(
+      withTiming(360, { duration: 500, easing: Easing.out(Easing.cubic) }),
+      withTiming(0, { duration: 0 })
+    );
+
+    preRoundBlur.value = withTiming(0, { duration: 400 });
+
+    // Flash effect
+    flashOpacity.value = withSequence(
+      withTiming(0.8, { duration: 200 }),
+      withTiming(0, { duration: 300 })
+    );
+
+    // Particle explosion
+    particleScale.value = withSequence(
+      withDelay(200, withSpring(1.2, { damping: 8 })),
+      withTiming(0, { duration: 400 })
+    );
+
+    // Transition to "GET READY!"
+    setTimeout(() => {
+      runOnJS(setPreRoundText)('GET READY!');
+
+      // Reset and animate again
+      preRoundScale.value = 0;
+      preRoundRotation.value = -180;
+
+      preRoundScale.value = withSequence(
+        withSpring(1.8, { damping: 6, stiffness: 120 }),
+        withTiming(1.2, { duration: 300 })
+      );
+
+      preRoundRotation.value = withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) });
+
+      flashOpacity.value = withSequence(
+        withTiming(0.6, { duration: 150 }),
+        withTiming(0, { duration: 250 })
+      );
+
+      particleScale.value = withSequence(
+        withSpring(1, { damping: 10 }),
+        withTiming(0, { duration: 300 })
+      );
+    }, 1500);
+
+    // Transition to "FIGHT!"
+    setTimeout(() => {
+      runOnJS(setPreRoundText)('FIGHT!');
+
+      // Epic final animation
+      preRoundScale.value = 0;
+      preRoundRotation.value = 0;
+
+      preRoundScale.value = withSequence(
+        withSpring(2.5, { damping: 4, stiffness: 150 }),
+        withDelay(500, withTiming(0, { duration: 300 }))
+      );
+
+      preRoundOpacity.value = withSequence(
+        withTiming(1, { duration: 100 }),
+        withDelay(500, withTiming(0, { duration: 300 }))
+      );
+
+      flashOpacity.value = withSequence(
+        withTiming(1, { duration: 100 }),
+        withTiming(0, { duration: 500 })
+      );
+
+      particleScale.value = withSequence(
+        withSpring(2, { damping: 6 }),
+        withTiming(0, { duration: 600 })
+      );
+
+      // End pre-round and start game
+      setTimeout(() => {
+        runOnJS(setIsPreRound)(false);
+        runOnJS(setGameState)(prev => ({ ...prev, isPaused: false }));
+      }, 1000);
+    }, 3000);
   };
 
   const completeLevel = () => {
@@ -572,7 +714,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
 
   // Game loop
   useEffect(() => {
-    if (gameState.isPaused || isGameOver) return;
+    if (gameState.isPaused || isGameOver || isPreRound) return;
 
     const gameLoop = () => {
       const now = Date.now();
@@ -581,7 +723,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
       if (
         !currentPrompt &&
         !gameState.isSuperComboActive &&
-        now - lastPromptTime > promptInterval
+        now - lastPromptTime > promptInterval &&
+        !isPreRound
       ) {
         spawnPrompt();
         setLastPromptTime(now);
@@ -616,6 +759,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
     currentPrompt,
     gameState.isPaused,
     isGameOver,
+    isPreRound,
     lastPromptTime,
     promptInterval,
     gameState.score,
@@ -676,20 +820,31 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
       setHoldDirection(currentPrompt.direction || null);
 
       // Start hold animation
-      Animated.timing(holdCircleAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }).start();
+      holdCircleAnim.value = withTiming(1, { duration: 1000 });
 
       // Start progress animation
-      Animated.timing(holdProgressAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }).start();
+      holdProgressAnim.value = withTiming(1, { duration: 1000 });
     }
   };
+
+  const preRoundAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: preRoundScale.value }, { rotate: `${preRoundRotation.value}deg` }],
+      opacity: preRoundOpacity.value,
+    };
+  });
+
+  const flashAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: flashOpacity.value,
+    };
+  });
+
+  const particleAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: particleScale.value }],
+    };
+  });
 
   const handleHoldEnd = () => {
     if (isHolding && holdDirection) {
@@ -709,17 +864,9 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
       setHoldDirection(null);
 
       // Reset animations
-      Animated.timing(holdCircleAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      holdCircleAnim.value = withTiming(0, { duration: 200 });
 
-      Animated.timing(holdProgressAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      holdProgressAnim.value = withTiming(0, { duration: 200 });
     }
   };
 
@@ -817,7 +964,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Animated.View style={[styles.container, { transform: [{ translateX: screenShakeAnim }] }]}>
+      <Animated.View style={[styles.container, screenShakeStyle]}>
         {/* Top HUD - Opponent */}
         <View style={styles.topHud}>
           <View style={styles.opponentRow}>
@@ -838,7 +985,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
             <View style={styles.avatarContainer}>
               <Animated.Image
                 source={getAvatarImage(gameState.avatarState)}
-                style={[styles.avatar, { transform: [{ scale: avatarScaleAnim }] }]}
+                style={[styles.avatar, avatarScaleStyle]}
               />
             </View>
           </View>
@@ -850,7 +997,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
             <View style={styles.playerAvatarContainer}>
               <Animated.Image
                 source={getAvatarImage(gameState.avatarState)}
-                style={[styles.avatar, { transform: [{ scale: avatarScaleAnim }] }]}
+                style={[styles.avatar, avatarScaleStyle]}
               />
             </View>
             <View style={styles.playerContainer}>
@@ -877,8 +1024,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
                     styles.powerFill,
                     {
                       width: `${gameState.powerMeter}%`,
-                      transform: [{ scaleX: powerMeterAnim }],
                     },
+                    powerMeterStyle,
                   ]}
                 />
               </View>
@@ -894,8 +1041,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
                 styles.promptContainer,
                 {
                   backgroundColor: getPromptColor(currentPrompt),
-                  transform: [{ scale: promptScaleAnim }],
                 },
+                promptScaleStyle,
               ]}
             >
               <Text style={styles.promptIcon}>{getPromptIcon(currentPrompt)}</Text>
@@ -910,17 +1057,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
               {/* Hold-and-flick progress indicator */}
               {currentPrompt.type === 'hold-and-flick' && (
                 <View style={styles.holdProgressContainer}>
-                  <Animated.View
-                    style={[
-                      styles.holdProgressBar,
-                      {
-                        width: holdProgressAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: ['0%', '100%'],
-                        }),
-                      },
-                    ]}
-                  />
+                  <Animated.View style={[styles.holdProgressBar, holdProgressStyle]} />
                 </View>
               )}
             </Animated.View>
@@ -934,8 +1071,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
                   styles.promptContainer,
                   {
                     backgroundColor: getPromptColor(superComboSequence[superComboIndex]),
-                    transform: [{ scale: promptScaleAnim }],
                   },
+                  promptScaleStyle,
                 ]}
               >
                 <Text style={styles.promptIcon}>
@@ -1034,8 +1171,20 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
           <Text style={styles.pauseButtonText}>⏸️</Text>
         </TouchableOpacity>
 
+        {/* Test Pre-Round Button */}
+        <TouchableOpacity
+          style={styles.testPreRoundButton}
+          onPress={() => {
+            setIsPreRound(true);
+            setPreRoundText('ROUND 1');
+            startPreRoundSequence(1);
+          }}
+        >
+          <Text style={styles.testPreRoundButtonText}>🎬</Text>
+        </TouchableOpacity>
+
         {/* Pause Overlay */}
-        {gameState.isPaused && (
+        {gameState.isPaused && !isPreRound && (
           <View style={styles.pauseOverlay}>
             <Text style={styles.pauseText}>PAUSED</Text>
             <TouchableOpacity
@@ -1047,6 +1196,70 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
             <TouchableOpacity style={styles.quitButton} onPress={onBackToMenu}>
               <Text style={styles.quitButtonText}>QUIT TO MENU</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Pre-round Display */}
+        {isPreRound && (
+          <View style={styles.preRoundOverlay}>
+            {/* Flash effect background */}
+            <Animated.View style={[styles.flashBackground, flashAnimatedStyle]} />
+
+            {/* Particle effects */}
+            <Animated.View style={[styles.particleContainer, particleAnimatedStyle]}>
+              {[...Array(8)].map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.preRoundParticle,
+                    {
+                      transform: [{ rotate: `${i * 45}deg` }, { translateY: -100 }],
+                    },
+                  ]}
+                />
+              ))}
+            </Animated.View>
+
+            {/* Main text with Skia */}
+            <Animated.View style={[styles.preRoundTextContainer, preRoundAnimatedStyle]}>
+              <Canvas style={styles.skiaCanvas}>
+                <Group>
+                  {/* Gradient background */}
+                  <LinearGradient
+                    start={vec(0, 0)}
+                    end={vec(0, 200)}
+                    colors={['#FFD700', '#FF6B00', '#FF0000']}
+                  />
+
+                  {/* Shadow effect */}
+                  <SkiaText
+                    x={screenWidth / 2}
+                    y={100}
+                    text={preRoundText}
+                    font={null}
+                    color="rgba(0,0,0,0.5)"
+                    style="fill"
+                  >
+                    <Shadow dx={4} dy={4} blur={10} color="rgba(0,0,0,0.8)" />
+                  </SkiaText>
+
+                  {/* Main text with blur */}
+                  <SkiaText
+                    x={screenWidth / 2}
+                    y={100}
+                    text={preRoundText}
+                    font={null}
+                    color="#FFFFFF"
+                    style="fill"
+                  >
+                    <Blur blur={preRoundBlur} />
+                  </SkiaText>
+                </Group>
+              </Canvas>
+
+              {/* Fallback text */}
+              <Text style={styles.preRoundText}>{preRoundText}</Text>
+            </Animated.View>
           </View>
         )}
       </Animated.View>
@@ -1393,6 +1606,19 @@ const styles = StyleSheet.create({
   pauseButtonText: {
     fontSize: 20,
   },
+  testPreRoundButton: {
+    position: 'absolute',
+    top: 120,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 12,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  testPreRoundButtonText: {
+    fontSize: 20,
+  },
   pauseOverlay: {
     position: 'absolute',
     top: 0,
@@ -1445,6 +1671,59 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#ffff00',
     borderRadius: 4,
+  },
+  preRoundOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  flashBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF',
+  },
+  particleContainer: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  preRoundParticle: {
+    position: 'absolute',
+    width: 8,
+    height: 80,
+    backgroundColor: '#FFD700',
+    borderRadius: 4,
+  },
+  preRoundTextContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  skiaCanvas: {
+    width: screenWidth,
+    height: 200,
+    position: 'absolute',
+  },
+  preRoundText: {
+    fontSize: 72,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 4, height: 4 },
+    textShadowRadius: 10,
+    letterSpacing: 4,
+    textTransform: 'uppercase',
   },
 });
 
