@@ -39,6 +39,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface GameScreenProps {
   gameMode: 'arcade' | 'endless';
+  selectedLevel?: number;
   onBackToMenu: () => void;
   debugMode: boolean;
 }
@@ -96,7 +97,12 @@ interface TouchState {
   holdStartTime: number;
 }
 
-const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMode }) => {
+const GameScreen: React.FC<GameScreenProps> = ({
+  gameMode,
+  selectedLevel = 1,
+  onBackToMenu,
+  debugMode,
+}) => {
   const { getEffectiveVolume } = useAudio();
 
   const [gameState, setGameState] = useState<GameState>({
@@ -110,7 +116,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameMode, onBackToMenu, debugMo
     avatarState: 'idle',
     isPaused: false,
     gameTime: 0,
-    level: 1,
+    level: selectedLevel,
   });
 
   const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);

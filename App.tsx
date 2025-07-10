@@ -7,6 +7,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { AudioProvider } from './src/contexts/AudioContext';
 import MainMenu from './src/screens/MainMenu';
+import ChooseLevelScreen from './src/screens/ChooseLevelScreen';
 import GameScreen from './src/screens/GameScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import CreditsScreen from './src/screens/CreditsScreen';
@@ -18,11 +19,20 @@ import SplashScreenComponent from './src/screens/SplashScreen';
 SplashScreen.preventAutoHideAsync();
 
 type GameMode = 'arcade' | 'endless';
-type Screen = 'splash' | 'menu' | 'game' | 'settings' | 'credits' | 'audioDebug' | 'uiDebug';
+type Screen =
+  | 'splash'
+  | 'menu'
+  | 'chooseLevel'
+  | 'game'
+  | 'settings'
+  | 'credits'
+  | 'audioDebug'
+  | 'uiDebug';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [gameMode, setGameMode] = useState<GameMode>('arcade');
+  const [selectedLevel, setSelectedLevel] = useState(1);
   const [debugMode, setDebugMode] = useState(false);
 
   // Load custom fonts
@@ -50,7 +60,20 @@ function AppContent() {
 
   const handleStartGame = (mode: GameMode) => {
     setGameMode(mode);
+    if (mode === 'arcade') {
+      setCurrentScreen('chooseLevel');
+    } else {
+      setCurrentScreen('game');
+    }
+  };
+
+  const handleSelectLevel = (level: number) => {
+    setSelectedLevel(level);
     setCurrentScreen('game');
+  };
+
+  const handleBackFromLevelSelect = () => {
+    setCurrentScreen('menu');
   };
 
   const handleBackToMenu = () => {
@@ -93,8 +116,15 @@ function AppContent() {
             debugMode={debugMode}
             onToggleDebugMode={toggleDebugMode}
           />
+        ) : currentScreen === 'chooseLevel' ? (
+          <ChooseLevelScreen onSelectLevel={handleSelectLevel} onBack={handleBackFromLevelSelect} />
         ) : currentScreen === 'game' ? (
-          <GameScreen gameMode={gameMode} onBackToMenu={handleBackToMenu} debugMode={debugMode} />
+          <GameScreen
+            gameMode={gameMode}
+            selectedLevel={selectedLevel}
+            onBackToMenu={handleBackToMenu}
+            debugMode={debugMode}
+          />
         ) : currentScreen === 'settings' ? (
           <SettingsScreen onBackToMenu={handleBackToMenu} onOpenCredits={handleOpenCredits} />
         ) : currentScreen === 'credits' ? (
