@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -14,15 +14,24 @@ import CreditsScreen from './src/screens/CreditsScreen';
 import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
 import SplashScreenComponent from './src/screens/SplashScreen';
+import CutsceneScreen from './src/screens/CutsceneScreen';
+import cutscenes from './src/data/cutscenes';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
+
+// TODO: Remove once react-native-reanimated publishes React 19 compatible release.
+LogBox.ignoreLogs([
+  'useInsertionEffect must not schedule updates',
+  'Tried to modify key `current`',
+]);
 
 type GameMode = 'arcade' | 'endless';
 type Screen =
   | 'splash'
   | 'menu'
   | 'chooseLevel'
+  | 'cutscene'
   | 'game'
   | 'settings'
   | 'credits'
@@ -69,6 +78,10 @@ function AppContent() {
 
   const handleSelectLevel = (level: number) => {
     setSelectedLevel(level);
+    setCurrentScreen('cutscene');
+  };
+
+  const handleCutsceneFinish = () => {
     setCurrentScreen('game');
   };
 
@@ -118,6 +131,8 @@ function AppContent() {
           />
         ) : currentScreen === 'chooseLevel' ? (
           <ChooseLevelScreen onSelectLevel={handleSelectLevel} onBack={handleBackFromLevelSelect} />
+        ) : currentScreen === 'cutscene' ? (
+          <CutsceneScreen images={cutscenes[selectedLevel] || []} onFinish={handleCutsceneFinish} />
         ) : currentScreen === 'game' ? (
           <GameScreen
             gameMode={gameMode}
