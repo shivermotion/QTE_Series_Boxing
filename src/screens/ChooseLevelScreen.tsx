@@ -443,11 +443,19 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
     }
   };
 
-  const handleLevelSelect = async (level: number) => {
-    // Show modal when a level is selected
+  // Replace handleLevelSelect with just selection logic
+  const handleLevelSelect = (level: number) => {
     setSelectedLevel(level);
-    setModalVisible(true);
   };
+
+  // Open modal when a level is selected
+  useEffect(() => {
+    if (selectedLevel !== null) {
+      // Give time for selection animation (e.g., 350ms)
+      const timer = setTimeout(() => setModalVisible(true), 350);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedLevel]);
 
   const handleModalClose = () => {
     setModalVisible(false);
@@ -522,8 +530,8 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
                   onPress={handleLevelSelect}
                   delay={500 + i * 400}
                   onPressIn={playButtonSound}
-                  isSelected={false}
-                  onSelect={() => {}}
+                  isSelected={selectedLevel === i + 1}
+                  onSelect={setSelectedLevel}
                   backgroundImage={getLevelBackgroundImage(i + 1)}
                 />
               ))}
