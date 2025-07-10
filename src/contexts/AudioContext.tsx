@@ -36,10 +36,10 @@ interface AudioProviderProps {
 
 export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   const [settings, setSettings] = useState<AudioSettings>({
-    masterVolume: 0.7,
-    soundEffectsVolume: 0.7,
-    musicVolume: 0.7,
-    audioEnabled: true,
+    masterVolume: __DEV__ ? 0 : 0.7,
+    soundEffectsVolume: __DEV__ ? 0 : 0.7,
+    musicVolume: __DEV__ ? 0 : 0.7,
+    audioEnabled: __DEV__ ? false : true,
   });
 
   const [isMainThemePlaying, setIsMainThemePlaying] = useState(false);
