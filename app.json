@@ -13,7 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jday89.QTE-Series-Boxing"
     },
     "android": {
       "adaptiveIcon": {
