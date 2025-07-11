@@ -15,7 +15,7 @@ import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
 import SplashScreenComponent from './src/screens/SplashScreen';
 import CutsceneScreen from './src/screens/CutsceneScreen';
-import cutscenes from './src/data/cutscenes';
+import { cutscenes } from './src/data/cutscenes';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -46,8 +46,9 @@ function AppContent() {
 
   // Load custom fonts
   const [fontsLoaded, fontError] = useFonts({
-    BOXING: require('./assets/fonts/BOXING.ttf'),
-    'BOXING-Striped': require('./assets/fonts/BOXING_striped.ttf'),
+    BOXING: require('./assets/fonts/boxing/BOXING.ttf'),
+    'BOXING-Striped': require('./assets/fonts/boxing/BOXING_striped.ttf'),
+    DigitalStrip: require('./assets/fonts/digital_strip/digistrip.ttf'),
   });
 
   // Handle font loading
@@ -132,7 +133,10 @@ function AppContent() {
         ) : currentScreen === 'chooseLevel' ? (
           <ChooseLevelScreen onSelectLevel={handleSelectLevel} onBack={handleBackFromLevelSelect} />
         ) : currentScreen === 'cutscene' ? (
-          <CutsceneScreen images={cutscenes[selectedLevel] || []} onFinish={handleCutsceneFinish} />
+          <CutsceneScreen
+            images={(cutscenes as any)[`level${selectedLevel}`]?.cutscene || []}
+            onFinish={handleCutsceneFinish}
+          />
         ) : currentScreen === 'game' ? (
           <GameScreen
             gameMode={gameMode}

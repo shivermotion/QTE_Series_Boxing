@@ -21,10 +21,42 @@ import { Canvas, Circle, Group, Path, Skia } from '@shopify/react-native-skia';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+interface SpeechBubble {
+  id: string;
+  image: any; // Chat bubble background image
+  text: string;
+  position: {
+    x: number; // Percentage from left (0-100)
+    y: number; // Percentage from top (0-100)
+  };
+  size?: {
+    width: number; // Width in pixels
+    height: number; // Height in pixels
+  };
+  textStyle?: {
+    fontSize?: number;
+    color?: string;
+    fontWeight?:
+      | 'normal'
+      | 'bold'
+      | '100'
+      | '200'
+      | '300'
+      | '400'
+      | '500'
+      | '600'
+      | '700'
+      | '800'
+      | '900';
+    textAlign?: 'left' | 'center' | 'right';
+  };
+}
+
 interface CutsceneImage {
   image: any;
   transition?: string;
   params?: any;
+  speechBubbles?: SpeechBubble[];
 }
 
 interface CutsceneScreenProps {
@@ -32,6 +64,77 @@ interface CutsceneScreenProps {
   onFinish: () => void;
   autoAdvanceDelay?: number; // ms per image
 }
+
+// --- Speech Bubble Component ---
+
+const SpeechBubbleOverlay: React.FC<{
+  bubble: SpeechBubble;
+}> = ({ bubble }) => {
+  const defaultSize = { width: 200, height: 100 };
+  const defaultTextStyle = {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: 'normal' as const,
+    textAlign: 'center' as const,
+    fontFamily: 'DigitalStrip',
+  };
+
+  const size = bubble.size || defaultSize;
+  const textStyle = { ...defaultTextStyle, ...bubble.textStyle };
+
+  // Convert percentage positions to absolute pixels
+  const left = (bubble.position.x / 100) * screenWidth - size.width / 2;
+  const top = (bubble.position.y / 100) * screenHeight - size.height / 2;
+
+  return (
+    <View
+      style={[
+        styles.speechBubble,
+        {
+          left,
+          top,
+          width: size.width,
+          height: size.height,
+        },
+      ]}
+    >
+      <Image source={bubble.image} style={styles.speechBubbleImage} resizeMode="stretch" />
+      <View style={styles.speechBubbleTextContainer}>
+        <Text style={[styles.speechBubbleText, textStyle]}>{bubble.text}</Text>
+      </View>
+    </View>
+  );
+};
+
+// --- Animated Speech Bubble Wrapper ---
+const AnimatedSpeechBubble: React.FC<{ bubble: SpeechBubble; visible: boolean }> = ({
+  bubble,
+  visible,
+}) => {
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.85);
+
+  React.useEffect(() => {
+    if (visible) {
+      opacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
+      scale.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
+    } else {
+      opacity.value = withTiming(0, { duration: 250 });
+      scale.value = withTiming(0.85, { duration: 250 });
+    }
+  }, [visible]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View style={style} pointerEvents={visible ? 'auto' : 'none'}>
+      <SpeechBubbleOverlay bubble={bubble} />
+    </Animated.View>
+  );
+};
 
 // --- Transition Components ---
 
@@ -97,10 +200,11 @@ const SKIP_METER_STROKE = 4;
 const CutsceneScreen: React.FC<CutsceneScreenProps> = ({
   images,
   onFinish,
-  autoAdvanceDelay = 2200,
+  // autoAdvanceDelay = 4000, // Remove auto-advance
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [skipping, setSkipping] = useState(false);
+  const [revealedBubbles, setRevealedBubbles] = useState(0);
   const fadeAnim = useRef(new RNAnimated.Value(1)).current;
   const skipHoldTimeout = useRef<NodeJS.Timeout | null>(null);
   const skipHoldActive = useRef(false);
@@ -124,19 +228,28 @@ const CutsceneScreen: React.FC<CutsceneScreenProps> = ({
     fadeAnim.setValue(1);
   }, [fadeAnim]);
 
-  // Auto-advance logic
+  // Reset revealedBubbles when image changes
   useEffect(() => {
+    setRevealedBubbles(0);
+  }, [currentIndex]);
+
+  // Remove auto-advance logic
+  // useEffect(() => { ... });
+
+  // Tap handler for progressing bubbles/images
+  const handleCutsceneTap = () => {
     if (skipping) return;
-    if (currentIndex >= images.length) return;
-    const timer = setTimeout(() => {
-      if (currentIndex < images.length - 1) {
-        setCurrentIndex(idx => idx + 1);
-      } else {
-        handleFinish();
-      }
-    }, autoAdvanceDelay);
-    return () => clearTimeout(timer);
-  }, [currentIndex, skipping, images.length, autoAdvanceDelay]);
+    const current = images[Math.min(currentIndex, images.length - 1)];
+    const bubbles = current.speechBubbles || [];
+    if (revealedBubbles < bubbles.length) {
+      setRevealedBubbles(r => r + 1);
+    } else if (currentIndex < images.length - 1) {
+      setCurrentIndex(idx => idx + 1);
+    } else {
+      setSkipping(true);
+      handleFinish();
+    }
+  };
 
   // Fade out and finish
   const handleFinish = () => {
@@ -203,6 +316,20 @@ const CutsceneScreen: React.FC<CutsceneScreenProps> = ({
     <RNAnimated.View style={[styles.container, { opacity: fadeAnim }]}>
       <Transition visible={true} {...params}>
         <Image source={current.image} style={styles.image} resizeMode="cover" />
+        {/* Render animated speech bubbles up to revealedBubbles, each animates in as it is revealed */}
+        {current.speechBubbles?.slice(0, revealedBubbles).map((bubble, idx) => (
+          <AnimatedSpeechBubble
+            key={`${currentIndex}-${bubble.id}`}
+            bubble={bubble}
+            visible={true}
+          />
+        ))}
+        {/* Overlay to capture taps */}
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          onPress={handleCutsceneTap}
+          activeOpacity={1}
+        />
       </Transition>
       <TouchableOpacity
         style={styles.skipButton}
@@ -258,6 +385,27 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
+  },
+  speechBubble: {
+    position: 'absolute',
+    zIndex: 10,
+  },
+  speechBubbleImage: {
+    width: '100%',
+    height: '100%',
+  },
+  speechBubbleTextContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
+  },
+  speechBubbleText: {
+    textAlign: 'center',
   },
   skipButton: {
     position: 'absolute',
