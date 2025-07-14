@@ -5,7 +5,7 @@ const cutsceneImage3 = require('../../assets/level_select/image (13).jpg');
 const cutsceneImage4 = require('../../assets/level_select/knockout.png');
 
 // Import your speech bubble images (you'll need to add these to your assets)
-const speechBubbleImage = require('../../assets/speech_bubbles/standard.png');
+const speechBubbleImage = require('../../assets/speech_bubbles/speech_bubble.png');
 
 export const cutscenes = {
   level1: {

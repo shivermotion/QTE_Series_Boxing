@@ -997,6 +997,22 @@ const GameScreen: React.FC<GameScreenProps> = ({
           </View>
         </View>
 
+        {/* Opponent 3D Model Area - Above Interactive Zone */}
+        <View style={styles.opponentModelArea}>
+          <View style={styles.modelPlaceholder}>
+            <Text style={styles.modelPlaceholderText}>OPPONENT 3D MODEL</Text>
+            <Text style={styles.modelPlaceholderSubtext}>Will be placed here</Text>
+          </View>
+        </View>
+
+        {/* Player 3D Model Area - Below Interactive Zone */}
+        <View style={styles.playerModelArea}>
+          <View style={styles.modelPlaceholder}>
+            <Text style={styles.modelPlaceholderText}>PLAYER 3D MODEL</Text>
+            <Text style={styles.modelPlaceholderSubtext}>Will be placed here</Text>
+          </View>
+        </View>
+
         {/* Bottom HUD - Player */}
         <View style={styles.bottomHud}>
           <View style={styles.playerRow}>
@@ -1039,63 +1055,62 @@ const GameScreen: React.FC<GameScreenProps> = ({
           </View>
         </View>
 
-        {/* Prompt Area */}
-        <View style={styles.promptArea}>
-          {currentPrompt && currentPrompt.isActive && (
-            <Animated.View
-              style={[
-                styles.promptContainer,
-                {
-                  backgroundColor: getPromptColor(currentPrompt),
-                },
-                promptScaleStyle,
-              ]}
-            >
-              <Text style={styles.promptIcon}>{getPromptIcon(currentPrompt)}</Text>
-              <Text style={styles.promptText}>
-                {currentPrompt.type === 'tap'
-                  ? 'TAP!'
-                  : currentPrompt.type === 'swipe'
-                  ? `SWIPE ${currentPrompt.direction?.toUpperCase()}!`
-                  : `HOLD & FLICK ${currentPrompt.direction?.toUpperCase()}!`}
-              </Text>
-
-              {/* Hold-and-flick progress indicator */}
-              {currentPrompt.type === 'hold-and-flick' && (
-                <View style={styles.holdProgressContainer}>
-                  <Animated.View style={[styles.holdProgressBar, holdProgressStyle]} />
-                </View>
-              )}
-            </Animated.View>
-          )}
-
-          {gameState.isSuperComboActive && superComboSequence[superComboIndex] && (
-            <View style={styles.superComboContainer}>
-              <Text style={styles.superComboLabel}>SUPER COMBO!</Text>
+        {/* Input Area - Centered */}
+        <View style={styles.inputArea}>
+          {/* Prompt Area - Inside Input Area */}
+          <View style={styles.promptArea}>
+            {currentPrompt && currentPrompt.isActive && (
               <Animated.View
                 style={[
                   styles.promptContainer,
                   {
-                    backgroundColor: getPromptColor(superComboSequence[superComboIndex]),
+                    backgroundColor: getPromptColor(currentPrompt),
                   },
                   promptScaleStyle,
                 ]}
               >
-                <Text style={styles.promptIcon}>
-                  {getPromptIcon(superComboSequence[superComboIndex])}
-                </Text>
+                <Text style={styles.promptIcon}>{getPromptIcon(currentPrompt)}</Text>
                 <Text style={styles.promptText}>
-                  {superComboSequence[superComboIndex].type === 'tap'
+                  {currentPrompt.type === 'tap'
                     ? 'TAP!'
-                    : `SWIPE ${superComboSequence[superComboIndex].direction?.toUpperCase()}!`}
+                    : currentPrompt.type === 'swipe'
+                    ? `SWIPE ${currentPrompt.direction?.toUpperCase()}!`
+                    : `HOLD & FLICK ${currentPrompt.direction?.toUpperCase()}!`}
                 </Text>
-              </Animated.View>
-            </View>
-          )}
-        </View>
 
-        {/* Input Area */}
-        <View style={styles.inputArea}>
+                {/* Hold-and-flick progress indicator */}
+                {currentPrompt.type === 'hold-and-flick' && (
+                  <View style={styles.holdProgressContainer}>
+                    <Animated.View style={[styles.holdProgressBar, holdProgressStyle]} />
+                  </View>
+                )}
+              </Animated.View>
+            )}
+
+            {gameState.isSuperComboActive && superComboSequence[superComboIndex] && (
+              <View style={styles.superComboContainer}>
+                <Text style={styles.superComboLabel}>SUPER COMBO!</Text>
+                <Animated.View
+                  style={[
+                    styles.promptContainer,
+                    {
+                      backgroundColor: getPromptColor(superComboSequence[superComboIndex]),
+                    },
+                    promptScaleStyle,
+                  ]}
+                >
+                  <Text style={styles.promptIcon}>
+                    {getPromptIcon(superComboSequence[superComboIndex])}
+                  </Text>
+                  <Text style={styles.promptText}>
+                    {superComboSequence[superComboIndex].type === 'tap'
+                      ? 'TAP!'
+                      : `SWIPE ${superComboSequence[superComboIndex].direction?.toUpperCase()}!`}
+                  </Text>
+                </Animated.View>
+              </View>
+            )}
+          </View>
           <PanGestureHandler
             onGestureEvent={event => {
               if (currentPrompt?.type === 'hold-and-flick') {
@@ -1497,11 +1512,12 @@ const styles = StyleSheet.create({
   },
   promptArea: {
     position: 'absolute',
-    top: '45%',
-    left: 20,
-    right: 20,
+    top: '50%',
+    left: '50%',
     alignItems: 'center',
-    transform: [{ translateY: -50 }],
+    justifyContent: 'center',
+    transform: [{ translateX: -60 }, { translateY: -60 }],
+    zIndex: 5,
   },
   promptContainer: {
     width: 120,
@@ -1533,11 +1549,16 @@ const styles = StyleSheet.create({
   },
   inputArea: {
     position: 'absolute',
-    bottom: 120,
-    left: 20,
-    right: 20,
+    top: '50%',
+    left: '50%',
+    width: 400,
+    height: 400,
+    transform: [{ translateX: -200 }, { translateY: -200 }],
     borderWidth: 2,
     borderColor: '#00ff00',
+    backgroundColor: 'rgba(0, 255, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   superComboButton: {
     backgroundColor: '#ff00ff',
@@ -1553,8 +1574,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   tapArea: {
-    width: 200,
-    height: 200,
+    width: 350,
+    height: 350,
     backgroundColor: 'transparent',
     alignSelf: 'center',
   },
@@ -1564,28 +1585,30 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    width: 400,
+    height: 400,
   },
   swipeArea: {
     position: 'absolute',
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
     backgroundColor: 'transparent',
   },
   swipeLeft: {
-    left: 0,
-    top: 50,
+    left: 20,
+    top: 160,
   },
   swipeRight: {
-    right: 0,
-    top: 50,
+    right: 20,
+    top: 160,
   },
   swipeUp: {
-    top: 0,
-    left: 50,
+    top: 20,
+    left: 160,
   },
   swipeDown: {
-    bottom: 0,
-    left: 50,
+    bottom: 20,
+    left: 160,
   },
   particle: {
     position: 'absolute',
@@ -1730,6 +1753,49 @@ const styles = StyleSheet.create({
     textShadowRadius: 10,
     letterSpacing: 4,
     textTransform: 'uppercase',
+  },
+  opponentModelArea: {
+    position: 'absolute',
+    top: 120,
+    left: 20,
+    right: 20,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  playerModelArea: {
+    position: 'absolute',
+    bottom: 120,
+    left: 20,
+    right: 20,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  modelPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(255, 0, 0, 0.2)',
+    borderWidth: 2,
+    borderColor: '#ff0000',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  modelPlaceholderText: {
+    color: '#ff0000',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  modelPlaceholderSubtext: {
+    color: '#ff6666',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 5,
   },
 });
 
