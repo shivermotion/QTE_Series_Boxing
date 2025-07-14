@@ -5,6 +5,9 @@ import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { useAudio } from '../contexts/AudioContext';
 import GameOverScreen from './GameOverScreen';
+import LottiePrompt from '../components/LottiePrompt';
+// LottiePrompt component replaces text-based input prompts with animated Lottie files
+// Currently falls back to emoji-based prompts when Lottie files are not available
 import {
   Canvas,
   Text as SkiaText,
@@ -130,11 +133,11 @@ const GameScreen: React.FC<GameScreenProps> = ({
   const [lastPromptTime, setLastPromptTime] = useState(0);
   const [promptInterval, setPromptInterval] = useState(1500); // 1.5s initial interval
 
-  // Hold-and-flick state
-  const [isHolding, setIsHolding] = useState(false);
-  const [holdStartTime, setHoldStartTime] = useState(0);
-  const [holdProgress, setHoldProgress] = useState(0);
-  const [holdDirection, setHoldDirection] = useState<'left' | 'right' | 'up' | 'down' | null>(null);
+  // Hold-and-flick state (disabled for arrow testing)
+  // const [isHolding, setIsHolding] = useState(false);
+  // const [holdStartTime, setHoldStartTime] = useState(0);
+  // const [holdProgress, setHoldProgress] = useState(0);
+  // const [holdDirection, setHoldDirection] = useState<'left' | 'right' | 'up' | 'down' | null>(null);
 
   // Double-tap detection
   const [lastTapTime, setLastTapTime] = useState(0);
@@ -314,24 +317,21 @@ const GameScreen: React.FC<GameScreenProps> = ({
     );
   };
 
-  const animatePrompt = () => {
-    promptScaleAnim.value = withSequence(
-      withTiming(1.3, { duration: 100 }),
-      withTiming(1, { duration: 100 })
-    );
-  };
+  // const animatePrompt = () => {
+  //   promptScaleAnim.value = withSequence(
+  //     withTiming(1.3, { duration: 100 }),
+  //     withTiming(1, { duration: 100 })
+  //   );
+  // };
 
   const generatePrompt = (): Prompt => {
-    const types: ('tap' | 'swipe' | 'hold-and-flick')[] = ['tap', 'swipe', 'hold-and-flick'];
+    // Only generate swipe prompts for testing arrow directions
     const directions: ('left' | 'right' | 'up' | 'down')[] = ['left', 'right', 'up', 'down'];
-
-    const type = types[Math.floor(Math.random() * types.length)];
-    const direction =
-      type !== 'tap' ? directions[Math.floor(Math.random() * directions.length)] : undefined;
+    const direction = directions[Math.floor(Math.random() * directions.length)];
 
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type,
+      type: 'swipe',
       direction,
       startTime: Date.now(),
       duration: 600, // 600ms window
@@ -342,17 +342,14 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
   const generateSuperComboSequence = (): Prompt[] => {
     const sequence: Prompt[] = [];
-    const types: ('tap' | 'swipe')[] = ['tap', 'swipe'];
     const directions: ('left' | 'right' | 'up' | 'down')[] = ['left', 'right', 'up', 'down'];
 
     for (let i = 0; i < 4; i++) {
-      const type = types[Math.floor(Math.random() * types.length)];
-      const direction =
-        type === 'swipe' ? directions[Math.floor(Math.random() * directions.length)] : undefined;
+      const direction = directions[Math.floor(Math.random() * directions.length)];
 
       sequence.push({
         id: `super_${i}_${Date.now()}`,
-        type,
+        type: 'swipe',
         direction,
         startTime: Date.now() + i * 1000, // 1s intervals
         duration: 800,
@@ -369,7 +366,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
     const prompt = generatePrompt();
     setCurrentPrompt(prompt);
-    animatePrompt();
+    // animatePrompt(); // Removed since we're not using circular container
   };
 
   const processInput = (
@@ -626,7 +623,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
   };
 
   const processSuperComboInput = (
-    inputType: 'tap' | 'swipe',
+    inputType: 'swipe',
     direction?: 'left' | 'right' | 'up' | 'down'
   ) => {
     const currentSuperPrompt = superComboSequence[superComboIndex];
@@ -635,9 +632,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
     const now = Date.now();
     const timeDiff = now - currentSuperPrompt.startTime;
 
-    const isCorrectInput =
-      currentSuperPrompt.type === inputType &&
-      (inputType === 'tap' || currentSuperPrompt.direction === direction);
+    const isCorrectInput = currentSuperPrompt.direction === direction;
 
     if (isCorrectInput && timeDiff <= currentSuperPrompt.duration) {
       // Success
@@ -801,11 +796,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
       setTapCount(1);
       setLastTapTime(now);
 
-      // Process normal tap input
+      // Process normal tap input (only for super combo now)
       if (gameState.isSuperComboActive) {
-        processSuperComboInput('tap');
-      } else {
-        processInput('tap');
+        processSuperComboInput('swipe', 'up'); // Use swipe up for tap in super combo
       }
     }
   };
@@ -818,20 +811,20 @@ const GameScreen: React.FC<GameScreenProps> = ({
     }
   };
 
-  const handleHoldStart = () => {
-    if (currentPrompt?.type === 'hold-and-flick') {
-      setIsHolding(true);
-      setHoldStartTime(Date.now());
-      setHoldProgress(0);
-      setHoldDirection(currentPrompt.direction || null);
+  // const handleHoldStart = () => {
+  //   if (currentPrompt?.type === 'hold-and-flick') {
+  //     setIsHolding(true);
+  //     setHoldStartTime(Date.now());
+  //     setHoldProgress(0);
+  //     setHoldDirection(currentPrompt.direction || null);
 
-      // Start hold animation
-      holdCircleAnim.value = withTiming(1, { duration: 1000 });
+  //     // Start hold animation
+  //     holdCircleAnim.value = withTiming(1, { duration: 1000 });
 
-      // Start progress animation
-      holdProgressAnim.value = withTiming(1, { duration: 1000 });
-    }
-  };
+  //     // Start progress animation
+  //     holdProgressAnim.value = withTiming(1, { duration: 1000 });
+  //   }
+  // };
 
   const preRoundAnimatedStyle = useAnimatedStyle(() => {
     return {
@@ -852,29 +845,29 @@ const GameScreen: React.FC<GameScreenProps> = ({
     };
   });
 
-  const handleHoldEnd = () => {
-    if (isHolding && holdDirection) {
-      const holdDuration = Date.now() - holdStartTime;
-      if (holdDuration >= 1000) {
-        // Successful hold-and-flick
-        processInput('hold-and-flick', holdDirection);
-        triggerHaptic('heavy');
-      } else {
-        // Failed hold - too short
-        handleMiss();
-      }
+  // const handleHoldEnd = () => {
+  //   if (isHolding && holdDirection) {
+  //     const holdDuration = Date.now() - holdStartTime;
+  //     if (holdDuration >= 1000) {
+  //       // Successful hold-and-flick
+  //       processInput('hold-and-flick', holdDirection);
+  //       triggerHaptic('heavy');
+  //     } else {
+  //       // Failed hold - too short
+  //       handleMiss();
+  //     }
 
-      // Reset hold state
-      setIsHolding(false);
-      setHoldProgress(0);
-      setHoldDirection(null);
+  //     // Reset hold state
+  //     setIsHolding(false);
+  //     setHoldProgress(0);
+  //     setHoldDirection(null);
 
-      // Reset animations
-      holdCircleAnim.value = withTiming(0, { duration: 200 });
+  //     // Reset animations
+  //     holdCircleAnim.value = withTiming(0, { duration: 200 });
 
-      holdProgressAnim.value = withTiming(0, { duration: 200 });
-    }
-  };
+  //     holdProgressAnim.value = withTiming(0, { duration: 200 });
+  //   }
+  // };
 
   const getAvatarImage = (state: 'idle' | 'success' | 'failure' | 'perfect') => {
     if (isBlinking) return eyesClosedImg;
@@ -891,53 +884,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
     }
   };
 
-  const getPromptIcon = (prompt: Prompt) => {
-    switch (prompt.type) {
-      case 'tap':
-        return '👊';
-      case 'swipe':
-        switch (prompt.direction) {
-          case 'left':
-            return '⬅️';
-          case 'right':
-            return '➡️';
-          case 'up':
-            return '⬆️';
-          case 'down':
-            return '⬇️';
-          default:
-            return '➡️';
-        }
-      case 'hold-and-flick':
-        return isHolding ? '💥' : '⭕';
-      default:
-        return '❓';
-    }
-  };
-
-  const getPromptColor = (prompt: Prompt) => {
-    switch (prompt.type) {
-      case 'tap':
-        return '#ff0000';
-      case 'swipe':
-        switch (prompt.direction) {
-          case 'left':
-            return '#ff8800';
-          case 'right':
-            return '#00ff00';
-          case 'up':
-            return '#0088ff';
-          case 'down':
-            return '#ff00ff';
-          default:
-            return '#ffffff';
-        }
-      case 'hold-and-flick':
-        return '#ffff00';
-      default:
-        return '#ffffff';
-    }
-  };
+  // Note: getPromptIcon and getPromptColor functions have been removed
+  // as they are no longer needed with Lottie animations
 
   if (isGameOver) {
     return (
@@ -1060,58 +1008,26 @@ const GameScreen: React.FC<GameScreenProps> = ({
           {/* Prompt Area - Inside Input Area */}
           <View style={styles.promptArea}>
             {currentPrompt && currentPrompt.isActive && (
-              <Animated.View
-                style={[
-                  styles.promptContainer,
-                  {
-                    backgroundColor: getPromptColor(currentPrompt),
-                  },
-                  promptScaleStyle,
-                ]}
-              >
-                <Text style={styles.promptIcon}>{getPromptIcon(currentPrompt)}</Text>
-                <Text style={styles.promptText}>
-                  {currentPrompt.type === 'tap'
-                    ? 'TAP!'
-                    : currentPrompt.type === 'swipe'
-                    ? `SWIPE ${currentPrompt.direction?.toUpperCase()}!`
-                    : `HOLD & FLICK ${currentPrompt.direction?.toUpperCase()}!`}
-                </Text>
-
-                {/* Hold-and-flick progress indicator */}
-                {currentPrompt.type === 'hold-and-flick' && (
-                  <View style={styles.holdProgressContainer}>
-                    <Animated.View style={[styles.holdProgressBar, holdProgressStyle]} />
-                  </View>
-                )}
-              </Animated.View>
+              <LottiePrompt
+                type={currentPrompt.type}
+                direction={currentPrompt.direction}
+                isActive={currentPrompt.isActive}
+              />
             )}
 
             {gameState.isSuperComboActive && superComboSequence[superComboIndex] && (
               <View style={styles.superComboContainer}>
                 <Text style={styles.superComboLabel}>SUPER COMBO!</Text>
-                <Animated.View
-                  style={[
-                    styles.promptContainer,
-                    {
-                      backgroundColor: getPromptColor(superComboSequence[superComboIndex]),
-                    },
-                    promptScaleStyle,
-                  ]}
-                >
-                  <Text style={styles.promptIcon}>
-                    {getPromptIcon(superComboSequence[superComboIndex])}
-                  </Text>
-                  <Text style={styles.promptText}>
-                    {superComboSequence[superComboIndex].type === 'tap'
-                      ? 'TAP!'
-                      : `SWIPE ${superComboSequence[superComboIndex].direction?.toUpperCase()}!`}
-                  </Text>
-                </Animated.View>
+                <LottiePrompt
+                  type={superComboSequence[superComboIndex].type}
+                  direction={superComboSequence[superComboIndex].direction}
+                  isActive={superComboSequence[superComboIndex].isActive}
+                />
               </View>
             )}
           </View>
-          <PanGestureHandler
+          {/* PanGestureHandler disabled for arrow testing */}
+          {/* <PanGestureHandler
             onGestureEvent={event => {
               if (currentPrompt?.type === 'hold-and-flick') {
                 if (event.nativeEvent.state === State.BEGAN) {
@@ -1121,9 +1037,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
                 }
               }
             }}
-          >
-            <TouchableOpacity style={styles.tapArea} onPress={handleTap} activeOpacity={0.7} />
-          </PanGestureHandler>
+          > */}
+          <TouchableOpacity style={styles.tapArea} onPress={handleTap} activeOpacity={0.7} />
+          {/* </PanGestureHandler> */}
 
           {/* Swipe areas */}
           <View style={styles.swipeAreas}>
@@ -1516,28 +1432,21 @@ const styles = StyleSheet.create({
     left: '50%',
     alignItems: 'center',
     justifyContent: 'center',
-    transform: [{ translateX: -60 }, { translateY: -60 }],
+    transform: [{ translateX: -200 }, { translateY: -200 }],
     zIndex: 5,
   },
-  promptContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#ffffff',
-  },
-  promptIcon: {
-    fontSize: 48,
-  },
-  promptText: {
-    color: '#000000',
-    fontSize: 10,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginTop: 5,
-  },
+  // promptContainer: {
+  //   width: 120,
+  //   height: 120,
+  //   borderRadius: 60,
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  //   borderWidth: 2,
+  //   borderColor: 'rgba(255, 255, 255, 0.3)',
+  //   backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  // },
+  // Note: promptIcon and promptText styles have been removed
+  // as they are no longer needed with Lottie animations
   superComboContainer: {
     alignItems: 'center',
   },
