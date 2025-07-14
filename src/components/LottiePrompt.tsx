@@ -27,11 +27,12 @@ const LottiePrompt: React.FC<LottiePromptProps> = ({ type, direction, isActive }
   // Control animation based on isActive prop
   useEffect(() => {
     if (isActive) {
+      console.log(`🎬 LottiePrompt activated - type: ${type}, direction: ${direction}`);
       playAnimation();
     } else {
       pauseAnimation();
     }
-  }, [isActive]);
+  }, [isActive, type, direction]);
 
   const getLottieSource = () => {
     try {
@@ -55,13 +56,13 @@ const LottiePrompt: React.FC<LottiePromptProps> = ({ type, direction, isActive }
   const getArrowRotation = () => {
     switch (direction) {
       case 'left':
-        return '0deg'; // Default arrow points right, so left is 0deg
+        return '90deg'; // Rotate 90deg for left (from up)
       case 'right':
-        return '180deg'; // Rotate 180deg for right
+        return '270deg'; // Rotate 270deg for right (from up)
       case 'up':
-        return '270deg'; // Rotate 270deg for up
+        return '180deg'; // Rotate 180deg for up (from up)
       case 'down':
-        return '90deg'; // Rotate 90deg for down
+        return '0deg'; // Default arrow points down
       default:
         return '0deg';
     }
@@ -92,6 +93,7 @@ const LottiePrompt: React.FC<LottiePromptProps> = ({ type, direction, isActive }
   };
 
   if (!isActive) {
+    console.log('🚫 LottiePrompt not active, returning null');
     return null;
   }
 
@@ -111,6 +113,9 @@ const LottiePrompt: React.FC<LottiePromptProps> = ({ type, direction, isActive }
             styles.lottieAnimation,
             type === 'swipe' && { transform: [{ rotate: getArrowRotation() }] },
           ]}
+          onAnimationFailure={error => {
+            console.log('❌ Lottie animation failed:', error);
+          }}
         />
       )}
 
@@ -125,7 +130,6 @@ const LottiePrompt: React.FC<LottiePromptProps> = ({ type, direction, isActive }
               ? `SWIPE ${direction?.toUpperCase()}!`
               : `HOLD & FLICK ${direction?.toUpperCase()}!`}
           </Text>
-          <Text style={styles.fallbackIndicator}>FALLBACK</Text>
         </View>
       )}
     </View>

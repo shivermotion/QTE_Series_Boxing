@@ -208,7 +208,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
   // Start pre-round sequence on mount
   useEffect(() => {
-    startPreRoundSequence();
+    // Skip pre-round for testing - start game immediately
+    // startPreRoundSequence();
+    setIsPreRound(false);
+    setGameState(prev => ({ ...prev, isPaused: false }));
   }, []);
 
   const loadAudio = async () => {
@@ -334,7 +337,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
       type: 'swipe',
       direction,
       startTime: Date.now(),
-      duration: 600, // 600ms window
+      duration: 3000, // 3 second window for testing
       isActive: true,
       isCompleted: false,
     };
@@ -365,6 +368,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
     if (gameState.isSuperComboActive) return;
 
     const prompt = generatePrompt();
+    console.log(`🎯 SPAWNING NEW PROMPT: ${prompt.type} ${prompt.direction || ''}`);
+    console.log(`🎯 Prompt details:`, prompt);
     setCurrentPrompt(prompt);
     // animatePrompt(); // Removed since we're not using circular container
   };
@@ -373,15 +378,25 @@ const GameScreen: React.FC<GameScreenProps> = ({
     inputType: 'tap' | 'swipe' | 'hold-and-flick',
     direction?: 'left' | 'right' | 'up' | 'down'
   ) => {
-    if (!currentPrompt || !currentPrompt.isActive) return;
+    console.log(`🎮 Processing input: ${inputType} ${direction || ''}`);
+
+    if (!currentPrompt || !currentPrompt.isActive) {
+      console.log('❌ No active prompt to process');
+      return;
+    }
 
     const now = Date.now();
     const timeDiff = now - currentPrompt.startTime;
+
+    console.log(`⏱️ Time diff: ${timeDiff}ms (max: ${currentPrompt.duration}ms)`);
+    console.log(`🎯 Expected: ${currentPrompt.type} ${currentPrompt.direction || ''}`);
 
     // Check if input matches prompt
     const isCorrectInput =
       currentPrompt.type === inputType &&
       (inputType === 'tap' || currentPrompt.direction === direction);
+
+    console.log(`✅ Input correct: ${isCorrectInput}`);
 
     if (isCorrectInput && timeDiff <= currentPrompt.duration) {
       // Determine hit quality
@@ -390,20 +405,22 @@ const GameScreen: React.FC<GameScreenProps> = ({
       let damage = 0;
       let powerGain = 0;
 
-      if (timeDiff <= 200) {
+      if (timeDiff <= 1000) {
         hitQuality = 'perfect';
         points = 100;
         damage = 50;
         powerGain = 10;
+        console.log('🏆 PERFECT HIT! +100 points');
         triggerHaptic('heavy');
         playSound(hitSound);
         createParticles(screenWidth / 2, screenHeight * 0.4, '#00ff00', 12);
         createFeedbackText('PERFECT!', screenWidth / 2, screenHeight * 0.5, '#00ff00');
-      } else if (timeDiff <= 400) {
+      } else if (timeDiff <= 2000) {
         hitQuality = 'good';
         points = 50;
         damage = 25;
         powerGain = 5;
+        console.log('👍 GOOD HIT! +50 points');
         triggerHaptic('medium');
         playSound(hitSound);
         createParticles(screenWidth / 2, screenHeight * 0.4, '#ffff00', 8);
@@ -433,10 +450,12 @@ const GameScreen: React.FC<GameScreenProps> = ({
       }
     } else {
       // Miss
+      console.log('❌ MISS! Wrong input or too slow');
       handleMiss();
     }
 
     // Clear current prompt
+    console.log('🗑️ Clearing current prompt');
     setCurrentPrompt(null);
   };
 
@@ -724,7 +743,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
       if (
         !currentPrompt &&
         !gameState.isSuperComboActive &&
-        now - lastPromptTime > promptInterval &&
+        (now - lastPromptTime > promptInterval || lastPromptTime === 0) &&
         !isPreRound
       ) {
         spawnPrompt();
@@ -780,33 +799,44 @@ const GameScreen: React.FC<GameScreenProps> = ({
   }, []);
 
   const handleTap = () => {
+    console.log('🎯 TAP DETECTED in interactive area');
     const now = Date.now();
     const timeSinceLastTap = now - lastTapTime;
 
     // Check for double-tap (within 300ms)
     if (timeSinceLastTap < 300) {
+      console.log('🔄 DOUBLE-TAP detected');
       // Double-tap detected
       if (gameState.powerMeter >= 100 && !gameState.isSuperComboActive) {
+        console.log('💥 ACTIVATING SUPER COMBO via double-tap');
         activateSuperCombo();
       }
       setTapCount(0);
       setLastTapTime(0);
     } else {
+      console.log('👆 SINGLE TAP detected');
       // Single tap
       setTapCount(1);
       setLastTapTime(now);
 
       // Process normal tap input (only for super combo now)
       if (gameState.isSuperComboActive) {
+        console.log('⚡ Processing tap as swipe up for super combo');
         processSuperComboInput('swipe', 'up'); // Use swipe up for tap in super combo
+      } else {
+        console.log('ℹ️ Tap ignored - no active super combo');
       }
     }
   };
 
   const handleSwipe = (direction: 'left' | 'right' | 'up' | 'down') => {
+    console.log(`🔄 SWIPE DETECTED: ${direction.toUpperCase()}`);
+
     if (gameState.isSuperComboActive) {
+      console.log('⚡ Processing swipe for super combo');
       processSuperComboInput('swipe', direction);
     } else {
+      console.log('🎯 Processing swipe for normal prompt');
       processInput('swipe', direction);
     }
   };
@@ -1038,32 +1068,89 @@ const GameScreen: React.FC<GameScreenProps> = ({
               }
             }}
           > */}
-          <TouchableOpacity style={styles.tapArea} onPress={handleTap} activeOpacity={0.7} />
+
           {/* </PanGestureHandler> */}
 
-          {/* Swipe areas */}
-          <View style={styles.swipeAreas}>
-            <TouchableOpacity
-              style={[styles.swipeArea, styles.swipeLeft]}
-              onPress={() => handleSwipe('left')}
-              activeOpacity={0.7}
-            />
-            <TouchableOpacity
-              style={[styles.swipeArea, styles.swipeRight]}
-              onPress={() => handleSwipe('right')}
-              activeOpacity={0.7}
-            />
-            <TouchableOpacity
-              style={[styles.swipeArea, styles.swipeUp]}
-              onPress={() => handleSwipe('up')}
-              activeOpacity={0.7}
-            />
-            <TouchableOpacity
-              style={[styles.swipeArea, styles.swipeDown]}
-              onPress={() => handleSwipe('down')}
-              activeOpacity={0.7}
-            />
-          </View>
+          {/* Swipe gesture area */}
+          <PanGestureHandler
+            onGestureEvent={event => {
+              const { translationX, translationY, state } = event.nativeEvent;
+
+              console.log(
+                `🖐️ Gesture event - state: ${state}, translationX: ${translationX}, translationY: ${translationY}`
+              );
+
+              if (state === State.BEGAN) {
+                console.log('👆 Gesture began');
+              } else if (state === State.ACTIVE) {
+                console.log('🔄 Gesture active');
+              } else if (state === State.END) {
+                console.log('👋 Gesture ended');
+              } else {
+                console.log(`❓ Unknown gesture state: ${state}`);
+              }
+            }}
+            onHandlerStateChange={event => {
+              const { state, translationX, translationY } = event.nativeEvent;
+              console.log(`🔄 Handler state change: ${state}`);
+
+              if (state === State.END) {
+                console.log('👋 Handler state END detected');
+
+                // Determine swipe direction based on translation
+                const minSwipeDistance = 50; // Minimum distance for a swipe
+                const absX = Math.abs(translationX);
+                const absY = Math.abs(translationY);
+
+                console.log(
+                  `📏 Swipe analysis - absX: ${absX}, absY: ${absY}, minDistance: ${minSwipeDistance}`
+                );
+
+                if (absX > absY && absX > minSwipeDistance) {
+                  // Horizontal swipe
+                  if (translationX > 0) {
+                    console.log('🔄 SWIPE GESTURE DETECTED: RIGHT');
+                    handleSwipe('right');
+                  } else {
+                    console.log('🔄 SWIPE GESTURE DETECTED: LEFT');
+                    handleSwipe('left');
+                  }
+                } else if (absY > absX && absY > minSwipeDistance) {
+                  // Vertical swipe
+                  if (translationY > 0) {
+                    console.log('🔄 SWIPE GESTURE DETECTED: DOWN');
+                    handleSwipe('down');
+                  } else {
+                    console.log('🔄 SWIPE GESTURE DETECTED: UP');
+                    handleSwipe('up');
+                  }
+                } else {
+                  console.log('❌ Swipe too short or invalid');
+                }
+              }
+            }}
+            activeOffsetX={[-10, 10]}
+            activeOffsetY={[-10, 10]}
+          >
+            <View style={styles.swipeGestureArea}>
+              <Text style={styles.swipeGestureLabel}>SWIPE HERE</Text>
+              <TouchableOpacity
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  backgroundColor: 'red',
+                  padding: 10,
+                  borderRadius: 5,
+                }}
+                onPress={() => {
+                  console.log('🔴 TEST TOUCH WORKING');
+                }}
+              >
+                <Text style={{ color: 'white', fontSize: 12 }}>TEST</Text>
+              </TouchableOpacity>
+            </View>
+          </PanGestureHandler>
         </View>
 
         {/* Particles */}
@@ -1468,6 +1555,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 255, 0, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 20, // Ensure it's above other elements
   },
   superComboButton: {
     backgroundColor: '#ff00ff',
@@ -1485,8 +1573,13 @@ const styles = StyleSheet.create({
   tapArea: {
     width: 350,
     height: 350,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 255, 0, 0.3)', // More visible green for debugging
+    borderWidth: 2,
+    borderColor: 'rgba(0, 255, 0, 0.6)',
+    borderRadius: 175,
     alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   swipeAreas: {
     position: 'absolute',
@@ -1496,28 +1589,66 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 400,
     height: 400,
+    zIndex: 25, // Ensure swipe areas are on top
   },
   swipeArea: {
     position: 'absolute',
-    width: 80,
-    height: 80,
-    backgroundColor: 'transparent',
+    width: 100,
+    height: 100,
+    backgroundColor: 'rgba(255, 255, 0, 0.6)', // More visible yellow for debugging
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 0, 1.0)',
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   swipeLeft: {
-    left: 20,
+    left: 0,
     top: 160,
   },
   swipeRight: {
-    right: 20,
+    right: 0,
     top: 160,
   },
   swipeUp: {
-    top: 20,
+    top: 0,
     left: 160,
   },
   swipeDown: {
-    bottom: 20,
+    bottom: 0,
     left: 160,
+  },
+  swipeAreaLabel: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 25,
+  },
+  tapAreaLabel: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 150,
+  },
+  swipeGestureArea: {
+    width: 400,
+    height: 400,
+    backgroundColor: 'rgba(255, 0, 255, 0.4)', // More visible magenta for debugging
+    borderWidth: 3,
+    borderColor: 'rgba(255, 0, 255, 0.8)',
+    borderRadius: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    zIndex: 30, // Ensure it's above everything
+  },
+  swipeGestureLabel: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   particle: {
     position: 'absolute',
@@ -1540,6 +1671,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+    zIndex: 50, // Higher than swipe gesture area
   },
   pauseButtonText: {
     fontSize: 20,
@@ -1553,6 +1685,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+    zIndex: 50, // Higher than swipe gesture area
   },
   testPreRoundButtonText: {
     fontSize: 20,
@@ -1566,6 +1699,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 200, // Highest z-index to cover everything
   },
   pauseText: {
     color: '#ffffff',
