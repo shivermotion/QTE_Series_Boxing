@@ -28,7 +28,10 @@ const LottiePrompt: React.FC<LottiePromptProps> = ({ type, direction, isActive }
   useEffect(() => {
     if (isActive) {
       console.log(`🎬 LottiePrompt activated - type: ${type}, direction: ${direction}`);
-      playAnimation();
+      // Small delay to ensure component is mounted
+      setTimeout(() => {
+        playAnimation();
+      }, 100);
     } else {
       pauseAnimation();
     }
@@ -144,8 +147,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   lottieAnimation: {
-    width: 400,
-    height: 400,
+    width: 500,
+    height: 500,
   },
   fallbackIcon: {
     fontSize: 48,

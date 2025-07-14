@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { useAudio } from '../contexts/AudioContext';
 import GameOverScreen from './GameOverScreen';
 import LottiePrompt from '../components/LottiePrompt';
+import TapGrid from '../components/TapGrid';
 // LottiePrompt component replaces text-based input prompts with animated Lottie files
 // Currently falls back to emoji-based prompts when Lottie files are not available
 import {
@@ -51,6 +52,15 @@ interface Prompt {
   id: string;
   type: 'tap' | 'swipe' | 'hold-and-flick';
   direction?: 'left' | 'right' | 'up' | 'down';
+  startTime: number;
+  duration: number;
+  isActive: boolean;
+  isCompleted: boolean;
+}
+
+interface TapPrompt {
+  id: string;
+  gridPosition: number; // 0-8 for 3x3 grid (0=top-left, 8=bottom-right)
   startTime: number;
   duration: number;
   isActive: boolean;
@@ -106,7 +116,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
   onBackToMenu,
   debugMode,
 }) => {
-  const { getEffectiveVolume } = useAudio();
+  const { getEffectiveVolume, stopMainTheme, startMainTheme } = useAudio();
 
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
@@ -123,6 +133,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
   });
 
   const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
+  const [activeTapPrompts, setActiveTapPrompts] = useState<TapPrompt[]>([]);
   const [superComboSequence, setSuperComboSequence] = useState<Prompt[]>([]);
   const [superComboIndex, setSuperComboIndex] = useState(0);
   const [isGameOver, setIsGameOver] = useState(false);
@@ -197,60 +208,148 @@ const GameScreen: React.FC<GameScreenProps> = ({
   const missSound = useRef<Audio.Sound | null>(null);
   const comboSound = useRef<Audio.Sound | null>(null);
   const powerUpSound = useRef<Audio.Sound | null>(null);
+  const qteSuccessSound = useRef<Audio.Sound | null>(null);
+  const qteFailureSound = useRef<Audio.Sound | null>(null);
 
-  // Load audio
+  // Restart main theme when leaving game
   useEffect(() => {
-    loadAudio();
     return () => {
-      unloadAudio();
+      // Restart main theme when component unmounts (returning to menu)
+      startMainTheme();
+      console.log('🎵 Restarted main theme for menu transition');
     };
-  }, []);
+  }, []); // Empty dependency array - only run on unmount
 
   // Start pre-round sequence on mount
   useEffect(() => {
-    // Skip pre-round for testing - start game immediately
-    // startPreRoundSequence();
-    setIsPreRound(false);
-    setGameState(prev => ({ ...prev, isPaused: false }));
+    console.log('🎬 Pre-round useEffect triggered');
+    // Start pre-round sequence when entering game
+    setIsPreRound(true);
+    setGameState(prev => ({ ...prev, isPaused: true }));
+    startPreRoundSequence(1);
   }, []);
 
+  // Stop main theme immediately when entering game (before pre-round)
+  useEffect(() => {
+    const stopMainThemeImmediately = async () => {
+      try {
+        await stopMainTheme();
+        console.log('🎵 Stopped main theme immediately for game transition');
+      } catch (error) {
+        console.log('Audio transition error:', error);
+      }
+    };
+
+    // Stop main theme right away when component mounts
+    stopMainThemeImmediately();
+  }, []); // Run only once on mount
+
+  // Helper function with timeout (like AudioDebugScreen)
+  async function loadWithTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
+    let timeout: NodeJS.Timeout;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeout = setTimeout(() => reject(new Error(`Timeout loading ${name}`)), ms);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeout));
+  }
+
   const loadAudio = async () => {
+    console.log('🎵 loadAudio function called!');
     try {
-      const { sound: hit } = await Audio.Sound.createAsync(require('../../assets/audio/hit.mp3'));
-      hitSound.current = hit;
+      console.log('🎵 Starting audio loading...');
 
-      const { sound: miss } = await Audio.Sound.createAsync(require('../../assets/audio/hit.mp3'));
-      missSound.current = miss;
+      // Audio file mapping (static requires)
+      const audioFiles: Record<string, any> = {
+        qte_success: require('../../assets/audio/qte_success.mp3'),
+        qte_failure: require('../../assets/audio/qte_failure.mp3'),
+      };
 
-      const { sound: combo } = await Audio.Sound.createAsync(require('../../assets/audio/hit.mp3'));
-      comboSound.current = combo;
+      // Helper to try loading a sound with timeout
+      const tryLoad = async (label: string, ref: React.MutableRefObject<Audio.Sound | null>) => {
+        console.log(`🎵 Loading ${label}...`);
+        const mod = audioFiles[label];
+        if (!mod) {
+          console.log(`❌ Audio file for ${label} not found in mapping.`);
+          return;
+        }
+        try {
+          const { sound } = await loadWithTimeout(Audio.Sound.createAsync(mod), 10000, label);
+          ref.current = sound;
+          console.log(`✅ ${label} sound loaded`);
+        } catch (error) {
+          console.log(`❌ Audio loading error (${label}):`, error);
+        }
+      };
 
-      const { sound: powerUp } = await Audio.Sound.createAsync(
-        require('../../assets/audio/hit.mp3')
-      );
-      powerUpSound.current = powerUp;
+      // Only load QTE sounds for now (the ones we need)
+      await tryLoad('qte_success', qteSuccessSound);
+      await tryLoad('qte_failure', qteFailureSound);
+
+      console.log('🎵 QTE Audio loading complete!');
     } catch (error) {
       console.log('Audio loading error:', error);
+      if (error instanceof Error) {
+        console.log('Error details:', error.message);
+      }
     }
   };
+
+  // Load audio in useEffect (like AudioDebugScreen)
+  useEffect(() => {
+    console.log('🎵 Audio loading useEffect triggered');
+    // Load audio without blocking the game start
+    loadAudio().catch(error => {
+      console.log('🎵 Audio loading failed:', error);
+    });
+    return () => {
+      console.log('🎵 Audio unloading on cleanup');
+      unloadAudio();
+    };
+  }, []);
 
   const unloadAudio = async () => {
     if (hitSound.current) await hitSound.current.unloadAsync();
     if (missSound.current) await missSound.current.unloadAsync();
     if (comboSound.current) await comboSound.current.unloadAsync();
     if (powerUpSound.current) await powerUpSound.current.unloadAsync();
+    if (qteSuccessSound.current) await qteSuccessSound.current.unloadAsync();
+    if (qteFailureSound.current) await qteFailureSound.current.unloadAsync();
   };
 
   const playSound = async (soundRef: React.MutableRefObject<Audio.Sound | null>) => {
     try {
       if (soundRef.current) {
         const effectiveVolume = getEffectiveVolume('sfx');
+        console.log(`🔊 Playing sound with volume: ${effectiveVolume}`);
+
+        // Check if audio is enabled
+        if (effectiveVolume === 0) {
+          console.log('🔇 Audio is muted - skipping sound playback');
+          return;
+        }
+
         await soundRef.current.setVolumeAsync(effectiveVolume);
         await soundRef.current.replayAsync();
+        console.log('✅ Sound played successfully');
+      } else {
+        console.log('❌ Sound ref is null - audio not loaded');
       }
     } catch (error) {
       console.log('Sound play error:', error);
     }
+  };
+
+  // Test function to manually trigger QTE sounds
+  const testQTESounds = async () => {
+    console.log('🧪 Testing QTE sounds...');
+    console.log('QTE Success sound ref:', qteSuccessSound.current);
+    console.log('QTE Failure sound ref:', qteFailureSound.current);
+    console.log('Effective SFX volume:', getEffectiveVolume('sfx'));
+
+    await playSound(qteSuccessSound);
+    setTimeout(async () => {
+      await playSound(qteFailureSound);
+    }, 1000);
   };
 
   const triggerHaptic = (type: 'light' | 'medium' | 'heavy') => {
@@ -328,19 +427,35 @@ const GameScreen: React.FC<GameScreenProps> = ({
   // };
 
   const generatePrompt = (): Prompt => {
-    // Only generate swipe prompts for testing arrow directions
-    const directions: ('left' | 'right' | 'up' | 'down')[] = ['left', 'right', 'up', 'down'];
-    const direction = directions[Math.floor(Math.random() * directions.length)];
+    // Generate both swipe and tap prompts
+    const promptTypes: ('swipe' | 'tap')[] = ['swipe', 'tap'];
+    const type = promptTypes[Math.floor(Math.random() * promptTypes.length)];
 
-    return {
-      id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type: 'swipe',
-      direction,
-      startTime: Date.now(),
-      duration: 3000, // 3 second window for testing
-      isActive: true,
-      isCompleted: false,
-    };
+    if (type === 'tap') {
+      // For tap prompts, we'll handle them separately in the tap system
+      return {
+        id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: 'tap',
+        startTime: Date.now(),
+        duration: 3000, // 3 second window for testing
+        isActive: true,
+        isCompleted: false,
+      };
+    } else {
+      // Swipe prompts
+      const directions: ('left' | 'right' | 'up' | 'down')[] = ['left', 'right', 'up', 'down'];
+      const direction = directions[Math.floor(Math.random() * directions.length)];
+
+      return {
+        id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: 'swipe',
+        direction,
+        startTime: Date.now(),
+        duration: 3000, // 3 second window for testing
+        isActive: true,
+        isCompleted: false,
+      };
+    }
   };
 
   const generateSuperComboSequence = (): Prompt[] => {
@@ -364,14 +479,50 @@ const GameScreen: React.FC<GameScreenProps> = ({
     return sequence;
   };
 
+  const generateTapPrompts = (): TapPrompt[] => {
+    const numPrompts = Math.floor(Math.random() * 3) + 1; // 1-3 prompts
+    const prompts: TapPrompt[] = [];
+    const usedPositions = new Set<number>();
+
+    for (let i = 0; i < numPrompts; i++) {
+      let position: number;
+      do {
+        position = Math.floor(Math.random() * 9); // 0-8 for 3x3 grid
+      } while (usedPositions.has(position));
+
+      usedPositions.add(position);
+
+      prompts.push({
+        id: `tap_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+        gridPosition: position,
+        startTime: Date.now(),
+        duration: 3000, // 3 second window
+        isActive: true,
+        isCompleted: false,
+      });
+    }
+
+    return prompts;
+  };
+
   const spawnPrompt = () => {
     if (gameState.isSuperComboActive) return;
 
     const prompt = generatePrompt();
     console.log(`🎯 SPAWNING NEW PROMPT: ${prompt.type} ${prompt.direction || ''}`);
     console.log(`🎯 Prompt details:`, prompt);
-    setCurrentPrompt(prompt);
-    // animatePrompt(); // Removed since we're not using circular container
+
+    if (prompt.type === 'tap') {
+      // Generate tap prompts for the 3x3 grid
+      const tapPrompts = generateTapPrompts();
+      console.log(`🎯 SPAWNING TAP PROMPTS:`, tapPrompts);
+      setActiveTapPrompts(tapPrompts);
+      setCurrentPrompt(null); // Clear current prompt for tap mode
+    } else {
+      // Handle swipe prompts as before
+      setCurrentPrompt(prompt);
+      setActiveTapPrompts([]); // Clear any active tap prompts
+    }
   };
 
   const processInput = (
@@ -412,7 +563,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         powerGain = 10;
         console.log('🏆 PERFECT HIT! +100 points');
         triggerHaptic('heavy');
-        playSound(hitSound);
+        playSound(qteSuccessSound);
         createParticles(screenWidth / 2, screenHeight * 0.4, '#00ff00', 12);
         createFeedbackText('PERFECT!', screenWidth / 2, screenHeight * 0.5, '#00ff00');
       } else if (timeDiff <= 2000) {
@@ -422,7 +573,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         powerGain = 5;
         console.log('👍 GOOD HIT! +50 points');
         triggerHaptic('medium');
-        playSound(hitSound);
+        playSound(qteSuccessSound);
         createParticles(screenWidth / 2, screenHeight * 0.4, '#ffff00', 8);
         createFeedbackText('GOOD!', screenWidth / 2, screenHeight * 0.5, '#ffff00');
       }
@@ -467,7 +618,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
     }));
 
     triggerHaptic('light');
-    playSound(missSound);
+    playSound(qteFailureSound);
     screenShake();
     createParticles(screenWidth / 2, screenHeight * 0.4, '#ff0000', 16);
     createFeedbackText('MISS!', screenWidth / 2, screenHeight * 0.5, '#ff0000');
@@ -754,18 +905,18 @@ const GameScreen: React.FC<GameScreenProps> = ({
       const newInterval = Math.max(1000, 1500 - Math.floor(gameState.score / 1000) * 100);
       setPromptInterval(newInterval);
 
-      // Update game time
-      setGameState(prev => ({
-        ...prev,
-        gameTime: prev.gameTime + 16, // ~60 FPS
-      }));
+      // Update game time (commented out to prevent infinite re-renders)
+      // setGameState(prev => ({
+      //   ...prev,
+      //   gameTime: prev.gameTime + 16, // ~60 FPS
+      // }));
 
-      // Reset avatar state after animation
-      if (gameState.avatarState !== 'idle') {
-        setTimeout(() => {
-          setGameState(prev => ({ ...prev, avatarState: 'idle' }));
-        }, 1000);
-      }
+      // Reset avatar state after animation (commented out to prevent re-renders)
+      // if (gameState.avatarState !== 'idle') {
+      //   setTimeout(() => {
+      //     setGameState(prev => ({ ...prev, avatarState: 'idle' }));
+      //   }, 1000);
+      // }
     };
 
     gameLoopRef.current = setInterval(gameLoop, 16);
@@ -826,6 +977,132 @@ const GameScreen: React.FC<GameScreenProps> = ({
       } else {
         console.log('ℹ️ Tap ignored - no active super combo');
       }
+    }
+  };
+
+  const handleGridTap = (gridPosition: number) => {
+    console.log(`👆 GRID TAP DETECTED at position: ${gridPosition}`);
+
+    // Find the tap prompt at this position
+    const tapPrompt = activeTapPrompts.find(
+      prompt => prompt.gridPosition === gridPosition && prompt.isActive && !prompt.isCompleted
+    );
+
+    if (tapPrompt) {
+      console.log(`✅ TAP PROMPT FOUND:`, tapPrompt);
+
+      const now = Date.now();
+      const timeDiff = now - tapPrompt.startTime;
+
+      console.log(`⏱️ Time diff: ${timeDiff}ms (max: ${tapPrompt.duration}ms)`);
+
+      if (timeDiff <= tapPrompt.duration) {
+        // Mark this tap prompt as completed
+        setActiveTapPrompts(prev =>
+          prev.map(prompt =>
+            prompt.id === tapPrompt.id ? { ...prompt, isCompleted: true } : prompt
+          )
+        );
+
+        // Check if all tap prompts are completed
+        const updatedPrompts = activeTapPrompts.map(prompt =>
+          prompt.id === tapPrompt.id ? { ...prompt, isCompleted: true } : prompt
+        );
+
+        const remainingPrompts = updatedPrompts.filter(p => p.isActive && !p.isCompleted);
+
+        console.log(`🎯 Tap completed. Remaining prompts: ${remainingPrompts.length}`);
+
+        if (remainingPrompts.length === 0) {
+          console.log('🎯 ALL TAP PROMPTS COMPLETED - PROCESSING FINAL SUCCESS');
+
+          // Calculate overall success based on all completed taps
+          const completedPrompts = updatedPrompts.filter(p => p.isCompleted);
+          const totalPrompts = activeTapPrompts.length;
+          const successfulTaps = completedPrompts.length;
+
+          console.log(`📊 Final stats: ${successfulTaps}/${totalPrompts} taps completed`);
+
+          // Determine overall hit quality based on completion
+          let hitQuality: 'perfect' | 'good' | 'miss' = 'miss';
+          let points = 0;
+          let damage = 0;
+          let powerGain = 0;
+
+          if (successfulTaps === totalPrompts) {
+            // All taps completed successfully
+            const avgTimeDiff =
+              completedPrompts.reduce((sum, p) => {
+                const timeDiff = now - p.startTime;
+                return sum + timeDiff;
+              }, 0) / successfulTaps;
+
+            if (avgTimeDiff <= 1000) {
+              hitQuality = 'perfect';
+              points = 100 * totalPrompts; // Bonus for multiple taps
+              damage = 50 * totalPrompts;
+              powerGain = 10 * totalPrompts;
+              console.log('🏆 PERFECT MULTI-TAP! +' + points + ' points');
+              triggerHaptic('heavy');
+              playSound(qteSuccessSound);
+              createParticles(screenWidth / 2, screenHeight * 0.4, '#00ff00', 12);
+              createFeedbackText('PERFECT!', screenWidth / 2, screenHeight * 0.5, '#00ff00');
+            } else if (avgTimeDiff <= 2000) {
+              hitQuality = 'good';
+              points = 50 * totalPrompts;
+              damage = 25 * totalPrompts;
+              powerGain = 5 * totalPrompts;
+              console.log('👍 GOOD MULTI-TAP! +' + points + ' points');
+              triggerHaptic('medium');
+              playSound(qteSuccessSound);
+              createParticles(screenWidth / 2, screenHeight * 0.4, '#ffff00', 8);
+              createFeedbackText('GOOD!', screenWidth / 2, screenHeight * 0.5, '#ffff00');
+            }
+          }
+
+          if (hitQuality !== 'miss') {
+            setGameState(prev => ({
+              ...prev,
+              score: prev.score + points,
+              opponentHP: Math.max(0, prev.opponentHP - damage),
+              powerMeter: Math.min(100, prev.powerMeter + powerGain),
+              avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
+            }));
+
+            animateAvatar();
+
+            // Check if round is complete
+            if (gameState.opponentHP - damage <= gameState.roundHPGoal) {
+              completeRound();
+            }
+
+            // Check if level is complete
+            if (gameState.opponentHP - damage <= 0) {
+              completeLevel();
+            }
+          } else {
+            console.log('❌ MULTI-TAP FAILED - Some taps were too late');
+            handleMiss();
+          }
+
+          // Clear all tap prompts
+          setActiveTapPrompts([]);
+        } else {
+          // Individual tap was successful, but more taps needed
+          console.log(`✅ Individual tap successful. ${remainingPrompts.length} more taps needed.`);
+          triggerHaptic('light');
+        }
+      } else {
+        console.log('❌ TAP TOO LATE');
+        handleMiss();
+        // Clear all tap prompts on failure
+        setActiveTapPrompts([]);
+      }
+    } else {
+      console.log('❌ NO TAP PROMPT AT THIS POSITION');
+      handleMiss();
+      // Clear all tap prompts on failure
+      setActiveTapPrompts([]);
     }
   };
 
@@ -1056,101 +1333,83 @@ const GameScreen: React.FC<GameScreenProps> = ({
               </View>
             )}
           </View>
-          {/* PanGestureHandler disabled for arrow testing */}
-          {/* <PanGestureHandler
-            onGestureEvent={event => {
-              if (currentPrompt?.type === 'hold-and-flick') {
-                if (event.nativeEvent.state === State.BEGAN) {
-                  handleHoldStart();
-                } else if (event.nativeEvent.state === State.END) {
-                  handleHoldEnd();
-                }
-              }
-            }}
-          > */}
 
-          {/* </PanGestureHandler> */}
-
-          {/* Swipe gesture area */}
-          <PanGestureHandler
-            onGestureEvent={event => {
-              const { translationX, translationY, state } = event.nativeEvent;
-
-              console.log(
-                `🖐️ Gesture event - state: ${state}, translationX: ${translationX}, translationY: ${translationY}`
-              );
-
-              if (state === State.BEGAN) {
-                console.log('👆 Gesture began');
-              } else if (state === State.ACTIVE) {
-                console.log('🔄 Gesture active');
-              } else if (state === State.END) {
-                console.log('👋 Gesture ended');
-              } else {
-                console.log(`❓ Unknown gesture state: ${state}`);
-              }
-            }}
-            onHandlerStateChange={event => {
-              const { state, translationX, translationY } = event.nativeEvent;
-              console.log(`🔄 Handler state change: ${state}`);
-
-              if (state === State.END) {
-                console.log('👋 Handler state END detected');
-
-                // Determine swipe direction based on translation
-                const minSwipeDistance = 50; // Minimum distance for a swipe
-                const absX = Math.abs(translationX);
-                const absY = Math.abs(translationY);
-
-                console.log(
-                  `📏 Swipe analysis - absX: ${absX}, absY: ${absY}, minDistance: ${minSwipeDistance}`
-                );
-
-                if (absX > absY && absX > minSwipeDistance) {
-                  // Horizontal swipe
-                  if (translationX > 0) {
-                    console.log('🔄 SWIPE GESTURE DETECTED: RIGHT');
-                    handleSwipe('right');
-                  } else {
-                    console.log('🔄 SWIPE GESTURE DETECTED: LEFT');
-                    handleSwipe('left');
-                  }
-                } else if (absY > absX && absY > minSwipeDistance) {
-                  // Vertical swipe
-                  if (translationY > 0) {
-                    console.log('🔄 SWIPE GESTURE DETECTED: DOWN');
-                    handleSwipe('down');
-                  } else {
-                    console.log('🔄 SWIPE GESTURE DETECTED: UP');
-                    handleSwipe('up');
-                  }
-                } else {
-                  console.log('❌ Swipe too short or invalid');
-                }
-              }
-            }}
-            activeOffsetX={[-10, 10]}
-            activeOffsetY={[-10, 10]}
-          >
-            <View style={styles.swipeGestureArea}>
-              <Text style={styles.swipeGestureLabel}>SWIPE HERE</Text>
-              <TouchableOpacity
-                style={{
-                  position: 'absolute',
-                  top: 10,
-                  right: 10,
-                  backgroundColor: 'red',
-                  padding: 10,
-                  borderRadius: 5,
-                }}
-                onPress={() => {
-                  console.log('🔴 TEST TOUCH WORKING');
-                }}
-              >
-                <Text style={{ color: 'white', fontSize: 12 }}>TEST</Text>
-              </TouchableOpacity>
+          {/* Tap Grid Area - For 3x3 tap prompts */}
+          {activeTapPrompts.length > 0 && (
+            <View style={styles.tapGridArea}>
+              <TapGrid activeTapPrompts={activeTapPrompts} onGridTap={handleGridTap} />
             </View>
-          </PanGestureHandler>
+          )}
+
+          {/* Swipe gesture handler - only active when there's a swipe prompt and no tap prompts */}
+          {currentPrompt && currentPrompt.type === 'swipe' && activeTapPrompts.length === 0 && (
+            <PanGestureHandler
+              onGestureEvent={event => {
+                const { translationX, translationY, state } = event.nativeEvent;
+
+                if (state === State.BEGAN) {
+                  console.log('👆 Gesture began');
+                } else if (state === State.END) {
+                  console.log('👋 Gesture ended');
+                }
+              }}
+              onBegan={() => {
+                console.log('🎯 PAN GESTURE BEGAN - Touch detected!');
+              }}
+              onFailed={() => {
+                console.log('❌ PAN GESTURE FAILED - Touch not recognized as pan');
+              }}
+              onHandlerStateChange={event => {
+                const { state, translationX, translationY } = event.nativeEvent;
+
+                if (state === State.END) {
+                  // Determine swipe direction based on translation
+                  const minSwipeDistance = 50; // Minimum distance for a swipe
+                  const absX = Math.abs(translationX);
+                  const absY = Math.abs(translationY);
+
+                  if (absX > absY && absX > minSwipeDistance) {
+                    // Horizontal swipe
+                    if (translationX > 0) {
+                      console.log('🔄 SWIPE GESTURE DETECTED: RIGHT');
+                      handleSwipe('right');
+                    } else {
+                      console.log('🔄 SWIPE GESTURE DETECTED: LEFT');
+                      handleSwipe('left');
+                    }
+                  } else if (absY > absX && absY > minSwipeDistance) {
+                    // Vertical swipe
+                    if (translationY > 0) {
+                      console.log('🔄 SWIPE GESTURE DETECTED: DOWN');
+                      handleSwipe('down');
+                    } else {
+                      console.log('🔄 SWIPE GESTURE DETECTED: UP');
+                      handleSwipe('up');
+                    }
+                  }
+                }
+              }}
+              activeOffsetX={[-10, 10]}
+              activeOffsetY={[-10, 10]}
+            >
+              <View style={styles.inputAreaGestureHandler}>
+                {/* Visual indicator of gesture handler area */}
+                <View style={styles.gestureAreaIndicator}>
+                  <Text style={styles.gestureAreaText}>GESTURE AREA</Text>
+                </View>
+
+                {/* This invisible view covers the entire input area for swipe detection */}
+                <TouchableOpacity
+                  style={styles.touchTestButton}
+                  onPress={() => {
+                    console.log('👆 TOUCH TEST BUTTON PRESSED - Area is touchable!');
+                  }}
+                >
+                  <Text style={styles.touchTestText}>TEST</Text>
+                </TouchableOpacity>
+              </View>
+            </PanGestureHandler>
+          )}
         </View>
 
         {/* Particles */}
@@ -1205,6 +1464,22 @@ const GameScreen: React.FC<GameScreenProps> = ({
           }}
         >
           <Text style={styles.testPreRoundButtonText}>🎬</Text>
+        </TouchableOpacity>
+
+        {/* Test QTE Sounds Button */}
+        <TouchableOpacity style={styles.testQTESoundsButton} onPress={testQTESounds}>
+          <Text style={styles.testQTESoundsButtonText}>🔊</Text>
+        </TouchableOpacity>
+
+        {/* Test Audio Loading Button */}
+        <TouchableOpacity
+          style={styles.testAudioLoadingButton}
+          onPress={() => {
+            console.log('🎵 Manual audio loading button pressed');
+            loadAudio();
+          }}
+        >
+          <Text style={styles.testAudioLoadingButtonText}>🎵</Text>
         </TouchableOpacity>
 
         {/* Pause Overlay */}
@@ -1557,6 +1832,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 20, // Ensure it's above other elements
   },
+  tapGridArea: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -200 }, { translateY: -200 }],
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 25, // Above input area but below gesture area
+  },
+  inputAreaGestureHandler: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: 400,
+    height: 400,
+    zIndex: 40, // Higher than other elements to receive touch events
+    // Invisible - just for gesture detection
+  },
+  touchTestButton: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+    padding: 5,
+    borderRadius: 5,
+    zIndex: 45, // Higher than gesture handler to be clickable
+  },
+  touchTestText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  gestureAreaIndicator: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0, 255, 255, 0.8)',
+    padding: 5,
+    borderRadius: 5,
+    zIndex: 50,
+  },
+  gestureAreaText: {
+    color: '#000000',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
   superComboButton: {
     backgroundColor: '#ff00ff',
     paddingHorizontal: 20,
@@ -1632,24 +1955,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 150,
   },
-  swipeGestureArea: {
-    width: 400,
-    height: 400,
-    backgroundColor: 'rgba(255, 0, 255, 0.4)', // More visible magenta for debugging
-    borderWidth: 3,
-    borderColor: 'rgba(255, 0, 255, 0.8)',
-    borderRadius: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-    zIndex: 30, // Ensure it's above everything
-  },
-  swipeGestureLabel: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
+
   particle: {
     position: 'absolute',
     width: 8,
@@ -1688,6 +1994,34 @@ const styles = StyleSheet.create({
     zIndex: 50, // Higher than swipe gesture area
   },
   testPreRoundButtonText: {
+    fontSize: 20,
+  },
+  testQTESoundsButton: {
+    position: 'absolute',
+    top: 120,
+    right: 80,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 12,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    zIndex: 50, // Higher than swipe gesture area
+  },
+  testQTESoundsButtonText: {
+    fontSize: 20,
+  },
+  testAudioLoadingButton: {
+    position: 'absolute',
+    top: 120,
+    right: 140,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 12,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    zIndex: 50, // Higher than swipe gesture area
+  },
+  testAudioLoadingButtonText: {
     fontSize: 20,
   },
   pauseOverlay: {

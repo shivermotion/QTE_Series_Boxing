@@ -23,6 +23,8 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
   const bellSound = useRef<Audio.Sound | null>(null);
   const punchSound = useRef<Audio.Sound | null>(null);
   const mainThemeSound = useRef<Audio.Sound | null>(null);
+  const qteSuccessSound = useRef<Audio.Sound | null>(null);
+  const qteFailureSound = useRef<Audio.Sound | null>(null);
 
   const audioFiles: Record<string, any> = {
     hit: require('../../assets/audio/hit.mp3'),
@@ -31,6 +33,8 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
     bell: require('../../assets/audio/boxing_bell_1.mp3'),
     punch: require('../../assets/audio/punch_1.mp3'),
     'main theme': require('../../assets/audio/main_theme.mp3'),
+    'qte success': require('../../assets/audio/qte_success.mp3'),
+    'qte failure': require('../../assets/audio/qte_failure.mp3'),
   };
 
   // State to toggle between label and file name for each sound
@@ -77,6 +81,8 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
     await tryLoad('bell', bellSound);
     await tryLoad('punch', punchSound);
     await tryLoad('main theme', mainThemeSound);
+    await tryLoad('qte success', qteSuccessSound);
+    await tryLoad('qte failure', qteFailureSound);
     setLoadingSoundName(null);
     setIsLoading(false);
   };
@@ -88,6 +94,8 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
     if (bellSound.current) await bellSound.current.unloadAsync();
     if (punchSound.current) await punchSound.current.unloadAsync();
     if (mainThemeSound.current) await mainThemeSound.current.unloadAsync();
+    if (qteSuccessSound.current) await qteSuccessSound.current.unloadAsync();
+    if (qteFailureSound.current) await qteFailureSound.current.unloadAsync();
   };
 
   const playSound = async (
@@ -301,6 +309,28 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
               {mainThemeSound.current ? 'Loaded' : 'Not Loaded'}
             </Text>
           </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>QTE Success:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                qteSuccessSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {qteSuccessSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>QTE Failure:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                qteFailureSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {qteFailureSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
         </View>
 
         {/* Test all sounds/music - SFX */}
@@ -313,6 +343,8 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
               ['Combo', 'combo', comboSound],
               ['Bell', 'bell', bellSound],
               ['Punch', 'punch', punchSound],
+              ['QTE Success', 'qte success', qteSuccessSound],
+              ['QTE Failure', 'qte failure', qteFailureSound],
             ] as [string, string, React.MutableRefObject<Audio.Sound | null>][]
           ).map(([label, key, ref]) => (
             <View
