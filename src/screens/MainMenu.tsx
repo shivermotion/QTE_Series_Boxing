@@ -271,6 +271,40 @@ const ShimmeringTwinkle = ({ x, y, scale }: { x: number; y: number; scale: numbe
   );
 };
 
+// Bright Gleam Component
+const BrightGleam = ({ flashAnim }: { flashAnim: Animated.Value }) => {
+  const [currentOpacity, setCurrentOpacity] = React.useState(0);
+  const clock = useClock();
+
+  React.useEffect(() => {
+    const id = flashAnim.addListener(({ value }) => setCurrentOpacity(value));
+    return () => flashAnim.removeListener(id);
+  }, [flashAnim]);
+
+  // Create a full-screen flash gleam
+  const gleamPath = Skia.Path.Make();
+
+  // Full screen rectangle
+  gleamPath.addRect({ x: 0, y: 0, width: screenWidth, height: screenHeight });
+
+  return (
+    <SkiaPath path={gleamPath} style="fill" opacity={currentOpacity}>
+      <LinearGradient
+        start={vec(0, 0)}
+        end={vec(screenWidth, screenHeight)}
+        colors={[
+          'rgba(255,255,255,0.3)',
+          'rgba(255,255,255,0.8)',
+          'rgba(255,255,255,1)',
+          'rgba(255,255,255,0.8)',
+          'rgba(255,255,255,0.3)',
+        ]}
+        positions={[0, 0.2, 0.5, 0.8, 1]}
+      />
+    </SkiaPath>
+  );
+};
+
 interface AnimatedButtonProps {
   onPress: () => void;
   style?: any;
@@ -910,12 +944,11 @@ const MainMenu: React.FC<MainMenuProps> = ({
           <Text style={styles.hideUIButtonText}>{showUI ? 'Hide UI' : 'Show UI'}</Text>
         </TouchableOpacity>
 
-        {/* White flash overlay */}
+        {/* Bright gleam effect */}
         {flashing && (
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.flashOverlay, { opacity: flashAnim }]}
-          />
+          <Canvas style={StyleSheet.absoluteFillObject} pointerEvents="none">
+            <BrightGleam flashAnim={flashAnim} />
+          </Canvas>
         )}
 
         {/* All other UI is hidden when showUI is false or tap-to-start is active */}
@@ -1176,11 +1209,7 @@ const styles = StyleSheet.create({
     minHeight: 220,
     paddingVertical: 40,
   },
-  flashOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'white',
-    zIndex: 30,
-  },
+
   boxerImage: {
     position: 'absolute',
     bottom: -screenHeight * 0.07, // lower below the screen edge
