@@ -4,9 +4,11 @@ import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-g
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { useAudio } from '../contexts/AudioContext';
+import { getOpponentConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/opponents';
 import GameOverScreen from './GameOverScreen';
 import LottiePrompt from '../components/LottiePrompt';
 import TapGrid from '../components/TapGrid';
+import TestArrow from '../components/TestArrow';
 // LottiePrompt component replaces text-based input prompts with animated Lottie files
 // Currently falls back to emoji-based prompts when Lottie files are not available
 import {
@@ -118,12 +120,15 @@ const GameScreen: React.FC<GameScreenProps> = ({
 }) => {
   const { getEffectiveVolume, stopMainTheme, startMainTheme } = useAudio();
 
+  // Get opponent configuration for current level
+  const opponentConfig = getOpponentConfig(selectedLevel);
+
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
     lives: 3,
-    opponentHP: 1000,
+    opponentHP: opponentConfig.hp,
     currentRound: 1,
-    roundHPGoal: 750,
+    roundHPGoal: getRoundHPGoal(opponentConfig, 1),
     powerMeter: 0,
     isSuperComboActive: false,
     avatarState: 'idle',
@@ -142,7 +147,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
   const [touchState, setTouchState] = useState<TouchState | null>(null);
   const [isBlinking, setIsBlinking] = useState(false);
   const [lastPromptTime, setLastPromptTime] = useState(0);
-  const [promptInterval, setPromptInterval] = useState(1500); // 1.5s initial interval
+  const [promptInterval, setPromptInterval] = useState(getRandomPromptInterval(opponentConfig, 1));
 
   // Hold-and-flick state (disabled for arrow testing)
   // const [isHolding, setIsHolding] = useState(false);
@@ -157,6 +162,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
   // Pre-round state
   const [isPreRound, setIsPreRound] = useState(true);
   const [preRoundText, setPreRoundText] = useState('');
+  const [showMissAnimation, setShowMissAnimation] = useState(false);
+  const [isInCooldown, setIsInCooldown] = useState(false);
 
   // Reanimated values for pre-round animations
   const preRoundScale = useSharedValue(0);
@@ -164,7 +171,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
   const preRoundRotation = useSharedValue(0);
   const preRoundBlur = useSharedValue(10);
   const flashOpacity = useSharedValue(0);
-  const particleScale = useSharedValue(0);
 
   const particleIdCounter = useRef(0);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
@@ -177,6 +183,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
   const promptScaleAnim = useSharedValue(1);
   const holdCircleAnim = useSharedValue(0);
   const holdProgressAnim = useSharedValue(0);
+  const missXScaleAnim = useSharedValue(0);
+  const missXOpacityAnim = useSharedValue(0);
 
   // Animated styles
   const screenShakeStyle = useAnimatedStyle(() => ({
@@ -203,6 +211,11 @@ const GameScreen: React.FC<GameScreenProps> = ({
     width: `${powerMeterAnim.value}%`,
   }));
 
+  const missXStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: missXScaleAnim.value }],
+    opacity: missXOpacityAnim.value,
+  }));
+
   // Audio refs
   const hitSound = useRef<Audio.Sound | null>(null);
   const missSound = useRef<Audio.Sound | null>(null);
@@ -210,6 +223,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
   const powerUpSound = useRef<Audio.Sound | null>(null);
   const qteSuccessSound = useRef<Audio.Sound | null>(null);
   const qteFailureSound = useRef<Audio.Sound | null>(null);
+  const boxingBell2Sound = useRef<Audio.Sound | null>(null);
+  const boxingBell1Sound = useRef<Audio.Sound | null>(null);
 
   // Restart main theme when leaving game
   useEffect(() => {
@@ -262,6 +277,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
       const audioFiles: Record<string, any> = {
         qte_success: require('../../assets/audio/qte_success.mp3'),
         qte_failure: require('../../assets/audio/qte_failure.mp3'),
+        boxing_bell_2: require('../../assets/audio/boxing_bell_2.mp3'),
+        boxing_bell_1: require('../../assets/audio/boxing_bell_1.mp3'),
       };
 
       // Helper to try loading a sound with timeout
@@ -281,9 +298,11 @@ const GameScreen: React.FC<GameScreenProps> = ({
         }
       };
 
-      // Only load QTE sounds for now (the ones we need)
+      // Load QTE sounds and boxing bells
       await tryLoad('qte_success', qteSuccessSound);
       await tryLoad('qte_failure', qteFailureSound);
+      await tryLoad('boxing_bell_2', boxingBell2Sound);
+      await tryLoad('boxing_bell_1', boxingBell1Sound);
 
       console.log('🎵 QTE Audio loading complete!');
     } catch (error) {
@@ -314,6 +333,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
     if (powerUpSound.current) await powerUpSound.current.unloadAsync();
     if (qteSuccessSound.current) await qteSuccessSound.current.unloadAsync();
     if (qteFailureSound.current) await qteFailureSound.current.unloadAsync();
+    if (boxingBell2Sound.current) await boxingBell2Sound.current.unloadAsync();
+    if (boxingBell1Sound.current) await boxingBell1Sound.current.unloadAsync();
   };
 
   const playSound = async (soundRef: React.MutableRefObject<Audio.Sound | null>) => {
@@ -339,20 +360,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
     }
   };
 
-  // Test function to manually trigger QTE sounds
-  const testQTESounds = async () => {
-    console.log('🧪 Testing QTE sounds...');
-    console.log('QTE Success sound ref:', qteSuccessSound.current);
-    console.log('QTE Failure sound ref:', qteFailureSound.current);
-    console.log('Effective SFX volume:', getEffectiveVolume('sfx'));
-
-    await playSound(qteSuccessSound);
-    setTimeout(async () => {
-      await playSound(qteFailureSound);
-    }, 1000);
-  };
-
-  const triggerHaptic = (type: 'light' | 'medium' | 'heavy') => {
+  const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning') => {
     try {
       switch (type) {
         case 'light':
@@ -363,6 +371,15 @@ const GameScreen: React.FC<GameScreenProps> = ({
           break;
         case 'heavy':
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          break;
+        case 'success':
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          break;
+        case 'error':
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          break;
+        case 'warning':
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           break;
       }
     } catch (error) {
@@ -417,6 +434,16 @@ const GameScreen: React.FC<GameScreenProps> = ({
       withTiming(1.2, { duration: 150 }),
       withTiming(1, { duration: 150 })
     );
+  };
+
+  const animateMissX = () => {
+    // Reset animations
+    missXScaleAnim.value = 0;
+    missXOpacityAnim.value = 0;
+
+    // Animate X appearing with scale and opacity
+    missXScaleAnim.value = withTiming(1, { duration: 300 });
+    missXOpacityAnim.value = withTiming(1, { duration: 200 });
   };
 
   // const animatePrompt = () => {
@@ -550,32 +577,28 @@ const GameScreen: React.FC<GameScreenProps> = ({
     console.log(`✅ Input correct: ${isCorrectInput}`);
 
     if (isCorrectInput && timeDiff <= currentPrompt.duration) {
-      // Determine hit quality
+      // Determine hit quality based on opponent's reaction time settings
       let hitQuality: 'perfect' | 'good' | 'miss' = 'miss';
       let points = 0;
       let damage = 0;
       let powerGain = 0;
 
-      if (timeDiff <= 1000) {
+      if (timeDiff <= opponentConfig.reactionTime.perfect) {
         hitQuality = 'perfect';
         points = 100;
-        damage = 50;
+        damage = opponentConfig.damage.perfect;
         powerGain = 10;
-        console.log('🏆 PERFECT HIT! +100 points');
-        triggerHaptic('heavy');
+        console.log(`🏆 PERFECT HIT! +100 points, ${damage} damage`);
+        triggerHaptic('success');
         playSound(qteSuccessSound);
-        createParticles(screenWidth / 2, screenHeight * 0.4, '#00ff00', 12);
-        createFeedbackText('PERFECT!', screenWidth / 2, screenHeight * 0.5, '#00ff00');
-      } else if (timeDiff <= 2000) {
+      } else if (timeDiff <= opponentConfig.reactionTime.good) {
         hitQuality = 'good';
         points = 50;
-        damage = 25;
+        damage = opponentConfig.damage.good;
         powerGain = 5;
-        console.log('👍 GOOD HIT! +50 points');
-        triggerHaptic('medium');
+        console.log(`👍 GOOD HIT! +50 points, ${damage} damage`);
+        triggerHaptic('success');
         playSound(qteSuccessSound);
-        createParticles(screenWidth / 2, screenHeight * 0.4, '#ffff00', 8);
-        createFeedbackText('GOOD!', screenWidth / 2, screenHeight * 0.5, '#ffff00');
       }
 
       if (hitQuality !== 'miss') {
@@ -617,12 +640,24 @@ const GameScreen: React.FC<GameScreenProps> = ({
       avatarState: 'failure',
     }));
 
-    triggerHaptic('light');
+    triggerHaptic('error');
     playSound(qteFailureSound);
     screenShake();
-    createParticles(screenWidth / 2, screenHeight * 0.4, '#ff0000', 16);
-    createFeedbackText('MISS!', screenWidth / 2, screenHeight * 0.5, '#ff0000');
     animateAvatar();
+
+    // Show big X animation and start cooldown period
+    setShowMissAnimation(true);
+    setIsInCooldown(true);
+    animateMissX();
+
+    // Cooldown period: 2.5 seconds total
+    // - 2 seconds for X animation
+    // - 0.5 seconds additional buffer for player to process
+    setTimeout(() => {
+      setShowMissAnimation(false);
+      setIsInCooldown(false);
+      console.log('🔄 Miss cooldown period ended - resuming normal gameplay');
+    }, 2500);
 
     // Check for game over
     if (gameState.lives <= 1) {
@@ -636,10 +671,15 @@ const GameScreen: React.FC<GameScreenProps> = ({
     setGameState(prev => ({
       ...prev,
       currentRound: nextRound,
-      roundHPGoal: Math.max(0, prev.roundHPGoal - 250),
+      roundHPGoal: getRoundHPGoal(opponentConfig, nextRound),
       isPaused: true, // Pause game during pre-round
     }));
 
+    // Generate new random prompt interval for next round
+    const newInterval = getRandomPromptInterval(opponentConfig, nextRound);
+    setPromptInterval(newInterval);
+
+    triggerHaptic('success');
     createFeedbackText('ROUND COMPLETE!', screenWidth / 2, screenHeight * 0.3, '#00ffff');
 
     // Start pre-round sequence for next round
@@ -660,7 +700,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
     preRoundRotation.value = 0;
     preRoundBlur.value = 10;
     flashOpacity.value = 0;
-    particleScale.value = 0;
 
     // Round number animation
     runOnJS(setPreRoundText)(`ROUND ${currentRoundNumber}`);
@@ -687,10 +726,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
     );
 
     // Particle explosion
-    particleScale.value = withSequence(
-      withDelay(200, withSpring(1.2, { damping: 8 })),
-      withTiming(0, { duration: 400 })
-    );
+    // particleScale.value = withSequence(
+    //   withDelay(200, withSpring(1.2, { damping: 8 })),
+    //   withTiming(0, { duration: 400 })
+    // );
 
     // Transition to "GET READY!"
     setTimeout(() => {
@@ -712,10 +751,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
         withTiming(0, { duration: 250 })
       );
 
-      particleScale.value = withSequence(
-        withSpring(1, { damping: 10 }),
-        withTiming(0, { duration: 300 })
-      );
+      // particleScale.value = withSequence(
+      //   withSpring(1, { damping: 10 }),
+      //   withTiming(0, { duration: 300 })
+      // );
     }, 1500);
 
     // Transition to "FIGHT!"
@@ -741,11 +780,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
         withTiming(0, { duration: 500 })
       );
 
-      particleScale.value = withSequence(
-        withSpring(2, { damping: 6 }),
-        withTiming(0, { duration: 600 })
-      );
-
       // End pre-round and start game
       setTimeout(() => {
         runOnJS(setIsPreRound)(false);
@@ -755,15 +789,19 @@ const GameScreen: React.FC<GameScreenProps> = ({
   };
 
   const completeLevel = () => {
+    const nextLevel = gameState.level + 1;
+    const nextOpponentConfig = getOpponentConfig(nextLevel);
+
     setGameState(prev => ({
       ...prev,
-      level: prev.level + 1,
-      opponentHP: 1000,
+      level: nextLevel,
+      opponentHP: nextOpponentConfig.hp,
       currentRound: 1,
-      roundHPGoal: 750,
+      roundHPGoal: getRoundHPGoal(nextOpponentConfig, 1),
       powerMeter: 0,
     }));
 
+    triggerHaptic('heavy');
     createFeedbackText('LEVEL COMPLETE!', screenWidth / 2, screenHeight * 0.3, '#ff00ff');
   };
 
@@ -779,6 +817,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
       powerMeter: 0,
     }));
 
+    triggerHaptic('heavy');
     playSound(powerUpSound);
     createFeedbackText('SUPER COMBO!', screenWidth / 2, screenHeight * 0.2, '#ff00ff');
 
@@ -817,6 +856,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         return newSeq;
       });
 
+      triggerHaptic('success');
       playSound(comboSound);
       createParticles(screenWidth / 2, screenHeight * 0.4, '#ff00ff', 10);
 
@@ -826,12 +866,13 @@ const GameScreen: React.FC<GameScreenProps> = ({
         setGameState(prev => ({
           ...prev,
           score: prev.score + 500,
-          opponentHP: Math.max(0, prev.opponentHP - 150),
+          opponentHP: Math.max(0, prev.opponentHP - opponentConfig.damage.superCombo),
           isSuperComboActive: false,
         }));
 
         setSuperComboSequence([]);
         setSuperComboIndex(0);
+        triggerHaptic('heavy');
         createFeedbackText('SUPER COMBO HIT!', screenWidth / 2, screenHeight * 0.3, '#ff00ff');
       }
     } else {
@@ -844,6 +885,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
       setSuperComboSequence([]);
       setSuperComboIndex(0);
+      triggerHaptic('error');
       createFeedbackText('COMBO FAILED!', screenWidth / 2, screenHeight * 0.3, '#ff0000');
     }
   };
@@ -895,14 +937,15 @@ const GameScreen: React.FC<GameScreenProps> = ({
         !currentPrompt &&
         !gameState.isSuperComboActive &&
         (now - lastPromptTime > promptInterval || lastPromptTime === 0) &&
-        !isPreRound
+        !isPreRound &&
+        !isInCooldown
       ) {
         spawnPrompt();
         setLastPromptTime(now);
       }
 
-      // Update prompt timing based on score
-      const newInterval = Math.max(1000, 1500 - Math.floor(gameState.score / 1000) * 100);
+      // Generate new random prompt interval for current round
+      const newInterval = getRandomPromptInterval(opponentConfig, gameState.currentRound);
       setPromptInterval(newInterval);
 
       // Update game time (commented out to prevent infinite re-renders)
@@ -935,6 +978,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
     promptInterval,
     gameState.score,
     gameState.isSuperComboActive,
+    isInCooldown,
   ]);
 
   // Particle and feedback text cleanup
@@ -960,7 +1004,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
       // Double-tap detected
       if (gameState.powerMeter >= 100 && !gameState.isSuperComboActive) {
         console.log('💥 ACTIVATING SUPER COMBO via double-tap');
+        triggerHaptic('heavy');
         activateSuperCombo();
+      } else {
+        triggerHaptic('warning');
       }
       setTapCount(0);
       setLastTapTime(0);
@@ -969,6 +1016,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
       // Single tap
       setTapCount(1);
       setLastTapTime(now);
+      triggerHaptic('light');
 
       // Process normal tap input (only for super combo now)
       if (gameState.isSuperComboActive) {
@@ -1045,8 +1093,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
               console.log('🏆 PERFECT MULTI-TAP! +' + points + ' points');
               triggerHaptic('heavy');
               playSound(qteSuccessSound);
-              createParticles(screenWidth / 2, screenHeight * 0.4, '#00ff00', 12);
-              createFeedbackText('PERFECT!', screenWidth / 2, screenHeight * 0.5, '#00ff00');
             } else if (avgTimeDiff <= 2000) {
               hitQuality = 'good';
               points = 50 * totalPrompts;
@@ -1055,8 +1101,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
               console.log('👍 GOOD MULTI-TAP! +' + points + ' points');
               triggerHaptic('medium');
               playSound(qteSuccessSound);
-              createParticles(screenWidth / 2, screenHeight * 0.4, '#ffff00', 8);
-              createFeedbackText('GOOD!', screenWidth / 2, screenHeight * 0.5, '#ffff00');
             }
           }
 
@@ -1090,7 +1134,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         } else {
           // Individual tap was successful, but more taps needed
           console.log(`✅ Individual tap successful. ${remainingPrompts.length} more taps needed.`);
-          triggerHaptic('light');
+          triggerHaptic('medium');
         }
       } else {
         console.log('❌ TAP TOO LATE');
@@ -1146,12 +1190,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
     };
   });
 
-  const particleAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: particleScale.value }],
-    };
-  });
-
   // const handleHoldEnd = () => {
   //   if (isHolding && holdDirection) {
   //     const holdDuration = Date.now() - holdStartTime;
@@ -1200,18 +1238,19 @@ const GameScreen: React.FC<GameScreenProps> = ({
         finalScore={gameState.score}
         gameMode={gameMode}
         onRestart={() => {
+          const restartOpponentConfig = getOpponentConfig(selectedLevel);
           setGameState({
             score: 0,
             lives: 3,
-            opponentHP: 1000,
+            opponentHP: restartOpponentConfig.hp,
             currentRound: 1,
-            roundHPGoal: 750,
+            roundHPGoal: getRoundHPGoal(restartOpponentConfig, 1),
             powerMeter: 0,
             isSuperComboActive: false,
             avatarState: 'idle',
             isPaused: false,
             gameTime: 0,
-            level: 1,
+            level: selectedLevel,
           });
           setIsGameOver(false);
           setCurrentPrompt(null);
@@ -1239,7 +1278,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
               </View>
               <View style={styles.hpBar}>
                 <View
-                  style={[styles.hpFill, { width: `${(gameState.opponentHP / 1000) * 100}%` }]}
+                  style={[
+                    styles.hpFill,
+                    { width: `${(gameState.opponentHP / opponentConfig.hp) * 100}%` },
+                  ]}
                 />
               </View>
             </View>
@@ -1314,7 +1356,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         <View style={styles.inputArea}>
           {/* Prompt Area - Inside Input Area */}
           <View style={styles.promptArea}>
-            {currentPrompt && currentPrompt.isActive && (
+            {currentPrompt && currentPrompt.isActive && currentPrompt.type === 'tap' && (
               <LottiePrompt
                 type={currentPrompt.type}
                 direction={currentPrompt.direction}
@@ -1325,14 +1367,20 @@ const GameScreen: React.FC<GameScreenProps> = ({
             {gameState.isSuperComboActive && superComboSequence[superComboIndex] && (
               <View style={styles.superComboContainer}>
                 <Text style={styles.superComboLabel}>SUPER COMBO!</Text>
-                <LottiePrompt
-                  type={superComboSequence[superComboIndex].type}
-                  direction={superComboSequence[superComboIndex].direction}
+                <TestArrow
+                  direction={superComboSequence[superComboIndex].direction!}
                   isActive={superComboSequence[superComboIndex].isActive}
                 />
               </View>
             )}
           </View>
+
+          {/* Test Arrow Area - Outside Input Area for better visibility */}
+          {currentPrompt && currentPrompt.isActive && currentPrompt.type === 'swipe' && (
+            <>
+              <TestArrow direction={currentPrompt.direction!} isActive={currentPrompt.isActive} />
+            </>
+          )}
 
           {/* Tap Grid Area - For 3x3 tap prompts */}
           {activeTapPrompts.length > 0 && (
@@ -1449,7 +1497,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
         {/* Pause Button */}
         <TouchableOpacity
           style={styles.pauseButton}
-          onPress={() => setGameState(prev => ({ ...prev, isPaused: !prev.isPaused }))}
+          onPress={() => {
+            setGameState(prev => ({ ...prev, isPaused: !prev.isPaused }));
+            playSound(boxingBell2Sound);
+          }}
         >
           <Text style={styles.pauseButtonText}>⏸️</Text>
         </TouchableOpacity>
@@ -1466,29 +1517,16 @@ const GameScreen: React.FC<GameScreenProps> = ({
           <Text style={styles.testPreRoundButtonText}>🎬</Text>
         </TouchableOpacity>
 
-        {/* Test QTE Sounds Button */}
-        <TouchableOpacity style={styles.testQTESoundsButton} onPress={testQTESounds}>
-          <Text style={styles.testQTESoundsButtonText}>🔊</Text>
-        </TouchableOpacity>
-
-        {/* Test Audio Loading Button */}
-        <TouchableOpacity
-          style={styles.testAudioLoadingButton}
-          onPress={() => {
-            console.log('🎵 Manual audio loading button pressed');
-            loadAudio();
-          }}
-        >
-          <Text style={styles.testAudioLoadingButtonText}>🎵</Text>
-        </TouchableOpacity>
-
         {/* Pause Overlay */}
         {gameState.isPaused && !isPreRound && (
           <View style={styles.pauseOverlay}>
             <Text style={styles.pauseText}>PAUSED</Text>
             <TouchableOpacity
               style={styles.resumeButton}
-              onPress={() => setGameState(prev => ({ ...prev, isPaused: false }))}
+              onPress={() => {
+                setGameState(prev => ({ ...prev, isPaused: false }));
+                playSound(boxingBell1Sound);
+              }}
             >
               <Text style={styles.resumeButtonText}>RESUME</Text>
             </TouchableOpacity>
@@ -1498,26 +1536,25 @@ const GameScreen: React.FC<GameScreenProps> = ({
           </View>
         )}
 
+        {/* Miss Animation - Big X */}
+        {showMissAnimation && (
+          <View style={styles.missAnimationOverlay}>
+            <Animated.Text style={[styles.missXText, missXStyle]}>✗</Animated.Text>
+          </View>
+        )}
+
+        {/* Cooldown Indicator */}
+        {isInCooldown && !showMissAnimation && (
+          <View style={styles.cooldownOverlay}>
+            <Text style={styles.cooldownText}>...</Text>
+          </View>
+        )}
+
         {/* Pre-round Display */}
         {isPreRound && (
           <View style={styles.preRoundOverlay}>
             {/* Flash effect background */}
             <Animated.View style={[styles.flashBackground, flashAnimatedStyle]} />
-
-            {/* Particle effects */}
-            <Animated.View style={[styles.particleContainer, particleAnimatedStyle]}>
-              {[...Array(8)].map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.preRoundParticle,
-                    {
-                      transform: [{ rotate: `${i * 45}deg` }, { translateY: -100 }],
-                    },
-                  ]}
-                />
-              ))}
-            </Animated.View>
 
             {/* Main text with Skia */}
             <Animated.View style={[styles.preRoundTextContainer, preRoundAnimatedStyle]}>
@@ -1996,33 +2033,21 @@ const styles = StyleSheet.create({
   testPreRoundButtonText: {
     fontSize: 20,
   },
-  testQTESoundsButton: {
+
+  debugArrowFallback: {
     position: 'absolute',
-    top: 120,
-    right: 80,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 12,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    zIndex: 50, // Higher than swipe gesture area
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -50 }, { translateY: -50 }],
+    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+    padding: 20,
+    borderRadius: 10,
+    zIndex: 100,
   },
-  testQTESoundsButtonText: {
-    fontSize: 20,
-  },
-  testAudioLoadingButton: {
-    position: 'absolute',
-    top: 120,
-    right: 140,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 12,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    zIndex: 50, // Higher than swipe gesture area
-  },
-  testAudioLoadingButtonText: {
-    fontSize: 20,
+  debugArrowText: {
+    fontSize: 40,
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
   pauseOverlay: {
     position: 'absolute',
@@ -2173,6 +2198,45 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: 5,
+  },
+  missAnimationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 50,
+  },
+  missXText: {
+    fontSize: 200,
+    fontWeight: 'bold',
+    color: '#ff0000',
+    textAlign: 'center',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 4, height: 4 },
+    textShadowRadius: 8,
+  },
+  cooldownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 40,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  cooldownText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textAlign: 'center',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
 });
 

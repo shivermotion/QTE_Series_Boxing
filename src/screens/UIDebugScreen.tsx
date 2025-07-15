@@ -8,7 +8,11 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useAudio } from '../contexts/AudioContext';
+import LottiePrompt from '../components/LottiePrompt';
+import TapGrid from '../components/TapGrid';
+import TestArrow from '../components/TestArrow';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -41,12 +45,38 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
   const { stopMainTheme } = useAudio();
   const [particles, setParticles] = useState<Particle[]>([]);
   const [feedbackTexts, setFeedbackTexts] = useState<FeedbackText[]>([]);
-  const [avatarState, setAvatarState] = useState<'idle' | 'success' | 'failure'>('idle');
-  const [combo, setCombo] = useState(0);
+  const [avatarState, setAvatarState] = useState<'idle' | 'success' | 'failure' | 'perfect'>(
+    'idle'
+  );
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
-  const [showHitZones, setShowHitZones] = useState(false);
-  const [showTargets, setShowTargets] = useState(false);
+  const [opponentHP, setOpponentHP] = useState(1000);
+  const [currentRound, setCurrentRound] = useState(1);
+  const [level, setLevel] = useState(1);
+  const [powerMeter, setPowerMeter] = useState(0);
+  const [isSuperComboActive, setIsSuperComboActive] = useState(false);
+  const [showPreRound, setShowPreRound] = useState(false);
+  const [preRoundText, setPreRoundText] = useState('ROUND 1');
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentPrompt, setCurrentPrompt] = useState<{
+    type: 'tap' | 'swipe';
+    direction?: 'left' | 'right' | 'up' | 'down';
+    isActive: boolean;
+  } | null>(null);
+  const [testArrowDirection, setTestArrowDirection] = useState<
+    'left' | 'right' | 'up' | 'down' | null
+  >(null);
+  const [activeTapPrompts, setActiveTapPrompts] = useState<
+    {
+      id: string;
+      gridPosition: number;
+      isActive: boolean;
+      startTime: number;
+      duration: number;
+      isCompleted: boolean;
+    }[]
+  >([]);
+  const [showMissAnimation, setShowMissAnimation] = useState(false);
 
   // Stop main theme when component mounts
   useEffect(() => {
@@ -57,9 +87,12 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
   const screenShakeAnim = useRef(new Animated.Value(0)).current;
   const comboScaleAnim = useRef(new Animated.Value(1)).current;
   const avatarScaleAnim = useRef(new Animated.Value(1)).current;
+  const missXScaleAnim = useRef(new Animated.Value(0)).current;
+  const missXOpacityAnim = useRef(new Animated.Value(0)).current;
   const particleIdCounter = useRef(0);
 
   const createParticles = (x: number, y: number, color: string, count: number = 8) => {
+    console.log(`Creating ${count} particles with color ${color} at (${x}, ${y})`);
     const newParticles: Particle[] = [];
     const timestamp = Date.now();
     for (let i = 0; i < count; i++) {
@@ -81,6 +114,7 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
   };
 
   const createFeedbackText = (text: string, x: number, y: number, color: string) => {
+    console.log(`Creating feedback text: "${text}" with color ${color} at (${x}, ${y})`);
     const feedback: FeedbackText = {
       id: `feedback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       text,
@@ -95,19 +129,58 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
 
   const screenShake = () => {
     Animated.sequence([
+      // Initial strong shake to the right
+      Animated.timing(screenShakeAnim, {
+        toValue: 20,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      // Hang at right apex
+      Animated.delay(60),
+      // Spring back to the left
+      Animated.timing(screenShakeAnim, {
+        toValue: -25,
+        duration: 55,
+        useNativeDriver: true,
+      }),
+      // Hang at left apex
+      Animated.delay(50),
+      // Bounce back to the right
+      Animated.timing(screenShakeAnim, {
+        toValue: 18,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      // Hang at right apex
+      Animated.delay(40),
+      // Bounce to the left
+      Animated.timing(screenShakeAnim, {
+        toValue: -15,
+        duration: 45,
+        useNativeDriver: true,
+      }),
+      // Hang at left apex
+      Animated.delay(30),
+      // Bounce to the right
       Animated.timing(screenShakeAnim, {
         toValue: 10,
-        duration: 50,
+        duration: 40,
         useNativeDriver: true,
       }),
+      // Hang at right apex
+      Animated.delay(20),
+      // Bounce to the left
       Animated.timing(screenShakeAnim, {
-        toValue: -10,
-        duration: 50,
+        toValue: -6,
+        duration: 35,
         useNativeDriver: true,
       }),
+      // Hang at left apex
+      Animated.delay(15),
+      // Final settle to center
       Animated.timing(screenShakeAnim, {
         toValue: 0,
-        duration: 50,
+        duration: 30,
         useNativeDriver: true,
       }),
     ]).start();
@@ -143,33 +216,85 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
     ]).start();
   };
 
+  const animateMissX = () => {
+    // Reset animations
+    missXScaleAnim.setValue(0);
+    missXOpacityAnim.setValue(0);
+
+    // Animate X appearing with scale and opacity
+    Animated.parallel([
+      Animated.timing(missXScaleAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(missXOpacityAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const triggerHaptic = (type: 'light' | 'medium' | 'heavy') => {
+    try {
+      switch (type) {
+        case 'light':
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          break;
+        case 'medium':
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          break;
+        case 'heavy':
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          break;
+      }
+    } catch (error) {
+      console.log('Haptic error:', error);
+    }
+  };
+
   const testHit = () => {
     setAvatarState('success');
-    setCombo(prev => prev + 1);
     setScore(prev => prev + 100);
+    setOpponentHP(prev => Math.max(0, prev - 50));
+    setPowerMeter(prev => Math.min(100, prev + 10));
     animateAvatar();
-    if (combo >= 4) animateCombo();
-    createParticles(screenWidth / 2, screenHeight * 0.2, '#00ff00', 8);
-    createFeedbackText('PERFECT!', screenWidth / 2, screenHeight * 0.3, '#00ff00');
+    triggerHaptic('medium');
     setTimeout(() => setAvatarState('idle'), 1000);
   };
 
   const testMiss = () => {
+    console.log('testMiss function called');
+    // Clear any existing particles and feedback texts
+    setParticles([]);
+    setFeedbackTexts([]);
+
     setAvatarState('failure');
-    setCombo(0);
     setLives(prev => Math.max(0, prev - 1));
+    setPowerMeter(prev => Math.max(0, prev - 5));
     screenShake();
-    createParticles(screenWidth / 2, screenHeight * 0.2, '#ff0000', 12);
-    createFeedbackText('MISS!', screenWidth / 2, screenHeight * 0.3, '#ff0000');
+    triggerHaptic('light');
+
+    // Show big X animation
+    setShowMissAnimation(true);
+    animateMissX();
+
+    // Hide X animation after 2 seconds
+    setTimeout(() => {
+      setShowMissAnimation(false);
+    }, 2000);
+
     setTimeout(() => setAvatarState('idle'), 1000);
   };
 
   const testPowerHit = () => {
-    setAvatarState('success');
-    setCombo(prev => prev + 1);
+    setAvatarState('perfect');
     setScore(prev => prev + 300);
+    setOpponentHP(prev => Math.max(0, prev - 150));
+    setPowerMeter(100);
     animateAvatar();
-    if (combo >= 4) animateCombo();
+    triggerHaptic('heavy');
     createParticles(screenWidth / 2, screenHeight * 0.2, '#00ff00', 8);
     createFeedbackText('PERFECT!', screenWidth / 2, screenHeight * 0.3, '#00ff00');
     createParticles(screenWidth / 2, screenHeight * 0.2, '#ff00ff', 16);
@@ -178,9 +303,13 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
   };
 
   const resetGame = () => {
-    setCombo(0);
     setScore(0);
     setLives(3);
+    setOpponentHP(1000);
+    setCurrentRound(1);
+    setLevel(1);
+    setPowerMeter(0);
+    setIsSuperComboActive(false);
     setAvatarState('idle');
     setParticles([]);
     setFeedbackTexts([]);
@@ -191,6 +320,93 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
     setFeedbackTexts([]);
   };
 
+  const testHaptics = (type: 'light' | 'medium' | 'heavy') => {
+    triggerHaptic(type);
+    createFeedbackText(type.toUpperCase(), screenWidth / 2, screenHeight * 0.3, '#ffff00');
+  };
+
+  const testPreRound = () => {
+    setShowPreRound(true);
+    setPreRoundText('ROUND 1');
+    triggerHaptic('heavy');
+    setTimeout(() => {
+      setPreRoundText('GET READY!');
+      triggerHaptic('medium');
+      setTimeout(() => {
+        setPreRoundText('FIGHT!');
+        triggerHaptic('medium');
+        setTimeout(() => {
+          setShowPreRound(false);
+        }, 1000);
+      }, 1500);
+    }, 1500);
+  };
+
+  const testSuperCombo = () => {
+    if (powerMeter >= 100) {
+      setPowerMeter(0);
+      triggerHaptic('heavy');
+      createFeedbackText('SUPER COMBO!', screenWidth / 2, screenHeight * 0.2, '#ff00ff');
+      createParticles(screenWidth / 2, screenHeight * 0.2, '#ff00ff', 20);
+    } else {
+      triggerHaptic('light');
+      createFeedbackText('NOT ENOUGH POWER!', screenWidth / 2, screenHeight * 0.3, '#ff8800');
+    }
+  };
+
+  const testLottieSwipe = (direction: 'left' | 'right' | 'up' | 'down') => {
+    setTestArrowDirection(direction);
+    setCurrentPrompt(null);
+    setActiveTapPrompts([]);
+
+    // No auto-clear - animation will loop until another is triggered
+  };
+
+  const testLottieTap = () => {
+    setCurrentPrompt({
+      type: 'tap',
+      isActive: true,
+    });
+    setActiveTapPrompts([]);
+
+    // No auto-clear - animation will loop until another is triggered
+  };
+
+  const testLottieTapGrid = () => {
+    // Generate 1-3 random tap prompts
+    const numPrompts = Math.floor(Math.random() * 3) + 1;
+    const prompts = [];
+    const usedPositions = new Set<number>();
+
+    for (let i = 0; i < numPrompts; i++) {
+      let position: number;
+      do {
+        position = Math.floor(Math.random() * 9); // 0-8 for 3x3 grid
+      } while (usedPositions.has(position));
+
+      usedPositions.add(position);
+      prompts.push({
+        id: `tap_${Date.now()}_${i}`,
+        gridPosition: position,
+        isActive: true,
+        startTime: Date.now(),
+        duration: 5000,
+        isCompleted: false,
+      });
+    }
+
+    setActiveTapPrompts(prompts);
+    setCurrentPrompt(null);
+
+    // No auto-clear - animation will loop until another is triggered
+  };
+
+  const clearLottieAnimations = () => {
+    setCurrentPrompt(null);
+    setActiveTapPrompts([]);
+    setTestArrowDirection(null);
+  };
+
   const getAvatarColor = (): string => {
     switch (avatarState) {
       case 'success':
@@ -199,19 +415,6 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
         return '#ff0000';
       default:
         return '#ffff00';
-    }
-  };
-
-  const getLaneX = (lane: 'left' | 'center' | 'right'): number => {
-    switch (lane) {
-      case 'left':
-        return screenWidth / 6;
-      case 'center':
-        return screenWidth / 2;
-      case 'right':
-        return (5 * screenWidth) / 6;
-      default:
-        return screenWidth / 2;
     }
   };
 
@@ -233,77 +436,72 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Game UI Display */}
+      {/* Game UI Display - Simulating GameScreen Layout */}
       <View style={styles.gameUIDisplay}>
-        <View style={styles.gameUI}>
-          <Text style={styles.scoreText}>Score: {score.toString().padStart(6, '0')}</Text>
-          <Text style={styles.livesText}>Lives: {lives}</Text>
+        {/* Top HUD - Opponent */}
+        <View style={styles.topHud}>
+          <View style={styles.opponentRow}>
+            <View style={styles.opponentContainer}>
+              <View style={styles.opponentTopRow}>
+                <Text style={styles.opponentLabel}>OPPONENT</Text>
+                <View style={styles.gameInfoInline}>
+                  <Text style={styles.roundTextInline}>ROUND {currentRound}</Text>
+                  <Text style={styles.levelTextInline}>LEVEL {level}</Text>
+                </View>
+              </View>
+              <View style={styles.hpBar}>
+                <View style={[styles.hpFill, { width: `${(opponentHP / 1000) * 100}%` }]} />
+              </View>
+            </View>
+            <View style={styles.avatarContainer}>
+              <Animated.Image
+                source={require('../../assets/avatar/neutral.jpg')}
+                style={[styles.avatar, { transform: [{ scale: avatarScaleAnim }] }]}
+              />
+            </View>
+          </View>
         </View>
 
-        {/* Avatar */}
-        <Animated.View
-          style={[
-            styles.avatar,
-            {
-              backgroundColor: getAvatarColor(),
-              transform: [{ scale: avatarScaleAnim }],
-            },
-          ]}
-        />
-
-        {/* Hit Zone */}
-        {showHitZones && <View style={styles.hitZone} />}
-
-        {/* Combo Display */}
-        <Animated.View
-          style={[
-            styles.comboDisplay,
-            {
-              transform: [{ scale: comboScaleAnim }],
-            },
-          ]}
-        >
-          <Text style={styles.comboText}>Combo: {combo}</Text>
-        </Animated.View>
-
-        {/* Sample Targets */}
-        {showTargets && (
-          <>
-            <View
-              style={[
-                styles.target,
-                {
-                  left: getLaneX('left') - 32,
-                  top: screenHeight * 0.2 - 32,
-                  backgroundColor: '#ff8800',
-                  borderColor: '#ffaa00',
-                },
-              ]}
-            />
-            <View
-              style={[
-                styles.target,
-                {
-                  left: getLaneX('center') - 32,
-                  top: screenHeight * 0.2 - 32,
-                  backgroundColor: '#ff00ff',
-                  borderColor: '#ffffff',
-                },
-              ]}
-            />
-            <View
-              style={[
-                styles.target,
-                {
-                  left: getLaneX('right') - 32,
-                  top: screenHeight * 0.2 - 32,
-                  backgroundColor: '#ff8800',
-                  borderColor: '#ffaa00',
-                },
-              ]}
-            />
-          </>
-        )}
+        {/* Bottom HUD - Player */}
+        <View style={styles.bottomHud}>
+          <View style={styles.playerRow}>
+            <View style={styles.playerAvatarContainer}>
+              <Animated.Image
+                source={require('../../assets/avatar/neutral.jpg')}
+                style={[styles.avatar, { transform: [{ scale: avatarScaleAnim }] }]}
+              />
+            </View>
+            <View style={styles.playerContainer}>
+              <View style={styles.playerTopRow}>
+                <Text style={styles.playerLabel}>PLAYER</Text>
+                <View style={styles.playerStatsInline}>
+                  <Text style={styles.scoreTextInline}>{score}</Text>
+                  <View style={styles.livesBar}>
+                    {[1, 2, 3].map(i => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.lifeSegment,
+                          { backgroundColor: i <= lives ? '#00ff00' : '#333' },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </View>
+              <View style={styles.powerBar}>
+                <View
+                  style={[
+                    styles.powerFill,
+                    {
+                      width: `${powerMeter}%`,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
 
         {/* Particles */}
         {particles.map(particle => (
@@ -338,6 +536,51 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
             {feedback.text}
           </Text>
         ))}
+
+        {/* Lottie Animation Area */}
+        <View style={styles.lottieArea}>
+          {currentPrompt && currentPrompt.isActive && (
+            <LottiePrompt
+              type={currentPrompt.type}
+              direction={currentPrompt.direction}
+              isActive={currentPrompt.isActive}
+            />
+          )}
+        </View>
+
+        {/* Test Arrow Area */}
+        {testArrowDirection && <TestArrow direction={testArrowDirection} isActive={true} />}
+
+        {/* Tap Grid Area */}
+        {activeTapPrompts.length > 0 && (
+          <View style={styles.tapGridArea}>
+            <TapGrid activeTapPrompts={activeTapPrompts} onGridTap={() => {}} />
+          </View>
+        )}
+
+        {/* Miss Animation - Big X */}
+        {showMissAnimation && (
+          <View style={styles.missAnimationOverlay}>
+            <Animated.Text
+              style={[
+                styles.missXText,
+                {
+                  transform: [{ scale: missXScaleAnim }],
+                  opacity: missXOpacityAnim,
+                },
+              ]}
+            >
+              ✗
+            </Animated.Text>
+          </View>
+        )}
+
+        {/* Pre-round Overlay */}
+        {showPreRound && (
+          <View style={styles.preRoundOverlay}>
+            <Text style={styles.preRoundText}>{preRoundText}</Text>
+          </View>
+        )}
       </View>
 
       {/* Control Panel */}
@@ -358,10 +601,6 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
             <Text style={styles.testButtonText}>Test Power Hit</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.testButton} onPress={screenShake}>
-            <Text style={styles.testButtonText}>Test Screen Shake</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity style={[styles.testButton, styles.resetButton]} onPress={resetGame}>
             <Text style={styles.testButtonText}>Reset Game</Text>
           </TouchableOpacity>
@@ -369,28 +608,87 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
           <TouchableOpacity style={[styles.testButton, styles.clearButton]} onPress={clearEffects}>
             <Text style={styles.testButtonText}>Clear Effects</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.testButton} onPress={testSuperCombo}>
+            <Text style={styles.testButtonText}>Test Super Combo</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.testButton} onPress={testPreRound}>
+            <Text style={styles.testButtonText}>Test Pre-Round</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Visual Toggles */}
+        {/* Game Controls */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Visual Elements</Text>
+          <Text style={styles.sectionTitle}>Game Controls</Text>
 
           <TouchableOpacity
-            style={[styles.toggleButton, showHitZones && styles.toggleButtonActive]}
-            onPress={() => setShowHitZones(!showHitZones)}
+            style={[styles.toggleButton, isPaused && styles.toggleButtonActive]}
+            onPress={() => setIsPaused(!isPaused)}
           >
-            <Text style={styles.toggleButtonText}>
-              {showHitZones ? 'Hide Hit Zones' : 'Show Hit Zones'}
-            </Text>
+            <Text style={styles.toggleButtonText}>{isPaused ? 'Resume Game' : 'Pause Game'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toggleButton, showTargets && styles.toggleButtonActive]}
-            onPress={() => setShowTargets(!showTargets)}
+            style={[styles.toggleButton, isSuperComboActive && styles.toggleButtonActive]}
+            onPress={() => setIsSuperComboActive(!isSuperComboActive)}
           >
             <Text style={styles.toggleButtonText}>
-              {showTargets ? 'Hide Targets' : 'Show Targets'}
+              {isSuperComboActive ? 'Deactivate Super Combo' : 'Activate Super Combo'}
             </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Lottie Animation Testing */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Lottie Animations</Text>
+
+          <TouchableOpacity style={styles.lottieButton} onPress={() => testLottieTap()}>
+            <Text style={styles.lottieButtonText}>Test Tap Animation</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.lottieButton} onPress={() => testLottieSwipe('left')}>
+            <Text style={styles.lottieButtonText}>Test Swipe Left</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.lottieButton} onPress={() => testLottieSwipe('right')}>
+            <Text style={styles.lottieButtonText}>Test Swipe Right</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.lottieButton} onPress={() => testLottieSwipe('up')}>
+            <Text style={styles.lottieButtonText}>Test Swipe Up</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.lottieButton} onPress={() => testLottieSwipe('down')}>
+            <Text style={styles.lottieButtonText}>Test Swipe Down</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.lottieButton} onPress={() => testLottieTapGrid()}>
+            <Text style={styles.lottieButtonText}>Test Tap Grid (1-3 taps)</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.lottieButton, styles.clearButton]}
+            onPress={clearLottieAnimations}
+          >
+            <Text style={styles.lottieButtonText}>Stop All Animations</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Haptic Testing */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Haptic Testing</Text>
+
+          <TouchableOpacity style={styles.hapticButton} onPress={() => testHaptics('light')}>
+            <Text style={styles.hapticButtonText}>Light Impact</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.hapticButton} onPress={() => testHaptics('medium')}>
+            <Text style={styles.hapticButtonText}>Medium Impact</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.hapticButton} onPress={() => testHaptics('heavy')}>
+            <Text style={styles.hapticButtonText}>Heavy Impact</Text>
           </TouchableOpacity>
         </View>
 
@@ -402,8 +700,8 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
             <Text style={styles.stateValue}>{avatarState.toUpperCase()}</Text>
           </View>
           <View style={styles.stateRow}>
-            <Text style={styles.stateLabel}>Combo:</Text>
-            <Text style={styles.stateValue}>{combo}</Text>
+            <Text style={styles.stateLabel}>Opponent HP:</Text>
+            <Text style={styles.stateValue}>{opponentHP}</Text>
           </View>
           <View style={styles.stateRow}>
             <Text style={styles.stateLabel}>Score:</Text>
@@ -421,15 +719,62 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
             <Text style={styles.stateLabel}>Feedback Texts:</Text>
             <Text style={styles.stateValue}>{feedbackTexts.length}</Text>
           </View>
+          <View style={styles.stateRow}>
+            <Text style={styles.stateLabel}>Power Meter:</Text>
+            <Text style={styles.stateValue}>{powerMeter}%</Text>
+          </View>
+          <View style={styles.stateRow}>
+            <Text style={styles.stateLabel}>Current Round:</Text>
+            <Text style={styles.stateValue}>{currentRound}</Text>
+          </View>
+          <View style={styles.stateRow}>
+            <Text style={styles.stateLabel}>Level:</Text>
+            <Text style={styles.stateValue}>{level}</Text>
+          </View>
+          <View style={styles.stateRow}>
+            <Text style={styles.stateLabel}>Super Combo Active:</Text>
+            <Text style={styles.stateValue}>{isSuperComboActive ? 'YES' : 'NO'}</Text>
+          </View>
+          <View style={styles.stateRow}>
+            <Text style={styles.stateLabel}>Game Paused:</Text>
+            <Text style={styles.stateValue}>{isPaused ? 'YES' : 'NO'}</Text>
+          </View>
+          <View style={styles.stateRow}>
+            <Text style={styles.stateLabel}>Pre-Round Active:</Text>
+            <Text style={styles.stateValue}>{showPreRound ? 'YES' : 'NO'}</Text>
+          </View>
+          <View style={styles.stateRow}>
+            <Text style={styles.stateLabel}>Current Prompt:</Text>
+            <Text style={styles.stateValue}>
+              {currentPrompt ? `${currentPrompt.type} ${currentPrompt.direction || ''}` : 'NONE'}
+            </Text>
+          </View>
+          <View style={styles.stateRow}>
+            <Text style={styles.stateLabel}>Test Arrow Direction:</Text>
+            <Text style={styles.stateValue}>
+              {testArrowDirection ? testArrowDirection.toUpperCase() : 'NONE'}
+            </Text>
+          </View>
+          <View style={styles.stateRow}>
+            <Text style={styles.stateLabel}>Active Tap Prompts:</Text>
+            <Text style={styles.stateValue}>{activeTapPrompts.length}</Text>
+          </View>
+          <View style={styles.stateRow}>
+            <Text style={styles.stateLabel}>Miss Animation Active:</Text>
+            <Text style={styles.stateValue}>{showMissAnimation ? 'YES' : 'NO'}</Text>
+          </View>
         </View>
 
         {/* Instructions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Instructions</Text>
           <Text style={styles.instructionText}>
-            • Use test buttons to trigger different game events{'\n'}• Toggle visual elements on/off
-            {'\n'}• Watch particles and feedback text animations{'\n'}• Monitor game state changes
-            {'\n'}• Test screen shake and avatar animations{'\n'}• Reset to clear all effects
+            • Test hit/miss actions with haptic feedback{'\n'}• Test all Lottie animations (tap,
+            swipe, grid) - animations loop until stopped
+            {'\n'}• Test haptic feedback types{'\n'}• Test super combo and pre-round sequences
+            {'\n'}• Monitor game state and particle effects{'\n'}• Toggle game controls (pause,
+            super combo)
+            {'\n'}• Use "Stop All Animations" to clear looping animations
           </Text>
         </View>
       </ScrollView>
@@ -447,8 +792,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 20,
+    paddingTop: 60,
+    paddingBottom: 15,
     borderBottomWidth: 2,
     borderBottomColor: '#00ffff',
   },
@@ -472,12 +817,179 @@ const styles = StyleSheet.create({
     width: 60,
   },
   gameUIDisplay: {
-    height: screenHeight * 0.4,
+    height: screenHeight * 0.6,
     position: 'relative',
     borderWidth: 2,
     borderColor: '#333',
     margin: 10,
     borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  topHud: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  opponentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  opponentContainer: {
+    flex: 1,
+  },
+  opponentTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  opponentLabel: {
+    color: '#ff0000',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  gameInfoInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  roundTextInline: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginRight: 10,
+  },
+  levelTextInline: {
+    color: '#ffffff',
+    fontSize: 12,
+  },
+  hpBar: {
+    height: 20,
+    backgroundColor: '#333',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginVertical: 5,
+  },
+  hpFill: {
+    height: '100%',
+    backgroundColor: '#ff0000',
+  },
+  avatarContainer: {
+    width: 64,
+    height: 64,
+    marginLeft: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomHud: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  playerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  playerAvatarContainer: {
+    width: 64,
+    height: 64,
+    marginRight: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playerContainer: {
+    flex: 1,
+  },
+  playerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  playerLabel: {
+    color: '#00ff00',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  playerStatsInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scoreTextInline: {
+    color: '#00ffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginRight: 10,
+  },
+  livesBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 5,
+  },
+  lifeSegment: {
+    width: 20,
+    height: 20,
+    marginHorizontal: 2,
+    borderRadius: 10,
+  },
+  powerBar: {
+    height: 20,
+    backgroundColor: '#333',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginVertical: 5,
+  },
+  powerFill: {
+    height: '100%',
+    backgroundColor: '#ff00ff',
+  },
+  lottieArea: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateX: -150 }, { translateY: -150 }],
+    zIndex: 5,
+    width: 300,
+    height: 300,
+  },
+  tapGridArea: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -150 }, { translateY: -150 }],
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    width: 300,
+    height: 300,
+  },
+  missAnimationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 50,
+  },
+  missXText: {
+    fontSize: 200,
+    fontWeight: 'bold',
+    color: '#ff0000',
+    textAlign: 'center',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 4, height: 4 },
+    textShadowRadius: 8,
   },
   gameUI: {
     flexDirection: 'row',
@@ -496,44 +1008,85 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   avatar: {
-    position: 'absolute',
-    top: 20,
-    left: screenWidth / 2 - 25,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 3,
     borderColor: '#ffffff',
   },
-  hitZone: {
-    position: 'absolute',
-    top: screenHeight * 0.15,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#00ffff',
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: '#ffff00',
-  },
+
   comboDisplay: {
     position: 'absolute',
     top: 80,
     left: screenWidth / 2 - 50,
     alignItems: 'center',
   },
-  comboText: {
-    color: '#ff00ff',
+  gameInfoContainer: {
+    position: 'absolute',
+    top: 100,
+    left: screenWidth / 2 - 50,
+    alignItems: 'center',
+  },
+  roundText: {
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  target: {
-    position: 'absolute',
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 3,
+  levelText: {
+    color: '#ffffff',
+    fontSize: 14,
   },
+  powerMeterContainer: {
+    position: 'absolute',
+    top: 140,
+    left: screenWidth / 2 - 75,
+    alignItems: 'center',
+  },
+  powerMeterLabel: {
+    color: '#ff00ff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  powerMeterBar: {
+    width: 150,
+    height: 15,
+    backgroundColor: '#333',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 5,
+  },
+  powerMeterFill: {
+    height: '100%',
+    backgroundColor: '#ff00ff',
+    borderRadius: 8,
+  },
+  powerMeterText: {
+    color: '#ff00ff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  preRoundOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  preRoundText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textAlign: 'center',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+  },
+
   particle: {
     position: 'absolute',
     width: 8,
@@ -549,6 +1102,7 @@ const styles = StyleSheet.create({
   controlPanel: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   section: {
     marginTop: 20,
@@ -597,6 +1151,36 @@ const styles = StyleSheet.create({
     borderColor: '#ff00ff',
   },
   toggleButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  hapticButton: {
+    backgroundColor: '#00ff00',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#00aa00',
+  },
+  hapticButtonText: {
+    color: 'black',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  lottieButton: {
+    backgroundColor: '#ff8800',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ffaa00',
+  },
+  lottieButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',

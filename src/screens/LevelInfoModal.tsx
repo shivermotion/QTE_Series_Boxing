@@ -11,6 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getOpponentConfig } from '../data/opponents';
 
 interface LevelInfoModalProps {
   visible: boolean;
@@ -166,24 +167,11 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
                   <View style={styles.imageOverlay} />
                 </View>
 
-                {/* Difficulty section */}
+                {/* Difficulty and Opponent section */}
                 <View style={styles.difficultySection}>
-                  <Text style={styles.difficultyLabel}>Difficulty</Text>
-                  <View style={styles.difficultyRow}>
-                    <View style={styles.difficultyMeter}>
-                      <View
-                        style={[
-                          styles.difficultyFill,
-                          {
-                            width: `${(level / 10) * 100}%`,
-                            backgroundColor: getDifficultyColor(level),
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={[styles.difficultyText, { color: getDifficultyColor(level) }]}>
-                      {getDifficultyText(level)}
-                    </Text>
+                  <View style={styles.difficultyHeader}>
+                    <Text style={styles.difficultyLabel}>Difficulty</Text>
+                    <Text style={styles.vsText}>VS {getOpponentConfig(level).name}</Text>
                   </View>
                   <View style={styles.starsContainer}>
                     {Array.from({ length: 5 }, (_, i) => (
@@ -264,7 +252,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   levelNumber: {
     fontSize: 32,
@@ -287,7 +275,7 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: 15,
     overflow: 'hidden',
-    marginBottom: 20,
+    marginBottom: 15,
     position: 'relative',
   },
   levelImage: {
@@ -303,13 +291,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   difficultySection: {
-    marginBottom: 20,
+    marginBottom: 15,
+  },
+  difficultyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   difficultyLabel: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 10,
+  },
+  vsText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ff4444',
   },
   difficultyRow: {
     flexDirection: 'row',
@@ -335,14 +333,17 @@ const styles = StyleSheet.create({
   },
   starsContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingVertical: 5,
   },
   star: {
-    fontSize: 16,
-    marginHorizontal: 2,
+    fontSize: 32,
+    flex: 1,
+    textAlign: 'center',
   },
   storySection: {
-    marginBottom: 30,
+    marginBottom: 15,
   },
   storyLabel: {
     fontSize: 16,
@@ -355,6 +356,51 @@ const styles = StyleSheet.create({
     color: '#cccccc',
     lineHeight: 20,
     textAlign: 'justify',
+  },
+  opponentSection: {
+    marginBottom: 20,
+  },
+  opponentLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 10,
+  },
+  opponentInfo: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    padding: 15,
+  },
+  opponentName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ff4444',
+    marginBottom: 5,
+  },
+  opponentDescription: {
+    fontSize: 14,
+    color: '#cccccc',
+    lineHeight: 18,
+    marginBottom: 15,
+  },
+  opponentStats: {
+    gap: 8,
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#aaaaaa',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontWeight: 'bold',
+    textAlign: 'right',
   },
   readyButton: {
     borderRadius: 15,
