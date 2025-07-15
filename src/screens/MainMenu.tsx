@@ -18,6 +18,8 @@ import {
   Skia,
   Paint,
   useClock,
+  Image,
+  useImage,
 } from '@shopify/react-native-skia';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -137,182 +139,135 @@ const AnimatedStageBeams = ({
   );
 };
 
-// Elegant Title Animation Component
-const ElegantTitle: React.FC = () => {
-  const titleOpacity = useRef(new Animated.Value(0)).current;
-  const titleScale = useRef(new Animated.Value(0.8)).current;
-  const titleTranslateY = useRef(new Animated.Value(50)).current;
-  const titleGlow = useRef(new Animated.Value(0)).current;
+// Skia Title Image Component
+const SkiaTitleImage = ({
+  opacity,
+  scale,
+  translateY,
+}: {
+  opacity: Animated.Value;
+  scale: Animated.Value;
+  translateY: Animated.Value;
+}) => {
+  const image = useImage(require('../../assets/main_menu/pocket_knockout.png'));
+  const [currentOpacity, setCurrentOpacity] = React.useState(1);
+  const [currentScale, setCurrentScale] = React.useState(4.0);
+  const [currentTranslateY, setCurrentTranslateY] = React.useState(-screenHeight * 0.8);
 
-  useEffect(() => {
-    // Elegant entrance animation
-    Animated.sequence([
-      Animated.delay(500),
-      Animated.parallel([
-        Animated.timing(titleOpacity, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(titleScale, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(titleTranslateY, {
-          toValue: 0,
-          duration: 2000,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
+  React.useEffect(() => {
+    const opacityId = opacity.addListener(({ value }) => setCurrentOpacity(value));
+    const scaleId = scale.addListener(({ value }) => setCurrentScale(value));
+    const translateYId = translateY.addListener(({ value }) => setCurrentTranslateY(value));
 
-    // Subtle continuous glow effect - separate from other animations
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(titleGlow, {
-          toValue: 1,
-          duration: 3000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: false,
-        }),
-        Animated.timing(titleGlow, {
-          toValue: 0,
-          duration: 3000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: false,
-        }),
-      ])
-    ).start();
-  }, []);
+    return () => {
+      opacity.removeListener(opacityId);
+      scale.removeListener(scaleId);
+      translateY.removeListener(translateYId);
+    };
+  }, [opacity, scale, translateY]);
+
+  console.log('SkiaTitleImage render:', {
+    imageLoaded: !!image,
+    currentOpacity,
+    currentScale,
+    currentTranslateY,
+    screenWidth,
+    screenHeight,
+  });
+
+  if (!image) {
+    console.log('❌ Image not loaded');
+    return null;
+  }
+
+  const imageWidth = screenWidth * 1.1;
+  const imageHeight = imageWidth * (image.height() / image.width());
+  const x = (screenWidth - imageWidth * currentScale) / 2; // Keep perfectly centered
+  const y = screenHeight * 0.08 + currentTranslateY;
+
+  console.log('Image dimensions:', {
+    imageWidth,
+    imageHeight,
+    x,
+    y,
+    finalWidth: imageWidth * currentScale,
+    finalHeight: imageHeight * currentScale,
+  });
 
   return (
-    <View style={styles.titleWrapper}>
-      {/* Glow effect layer */}
-      <Animated.Text
-        style={[
-          styles.elegantTitle,
-          styles.glowLayer,
-          {
-            textShadowRadius: titleGlow.interpolate({
-              inputRange: [0, 1],
-              outputRange: [8, 20],
-            }),
-          },
-        ]}
-      >
-        QTE Series
-      </Animated.Text>
-
-      {/* Main title layer */}
-      <Animated.Text
-        style={[
-          styles.elegantTitle,
-          {
-            opacity: titleOpacity,
-            transform: [{ scale: titleScale }, { translateY: titleTranslateY }],
-          },
-        ]}
-      >
-        QTE Series
-      </Animated.Text>
-    </View>
+    <>
+      <Image
+        image={image}
+        x={x}
+        y={y}
+        width={imageWidth * currentScale}
+        height={imageHeight * currentScale}
+        opacity={currentOpacity}
+      />
+      <ShimmeringTwinkle
+        x={x + imageWidth * currentScale * 0.9}
+        y={y + imageHeight * currentScale * 0.3}
+        scale={currentScale}
+      />
+    </>
   );
 };
 
-// Brash Boxing Title Animation Component
-const BrashBoxingTitle: React.FC<{ onAnimDone?: () => void }> = ({ onAnimDone }) => {
-  const boxingOpacity = useRef(new Animated.Value(0)).current;
-  const boxingScale = useRef(new Animated.Value(0.3)).current;
-  const boxingTranslateX = useRef(new Animated.Value(-100)).current;
-  const boxingRotation = useRef(new Animated.Value(-15)).current;
-  const boxingShake = useRef(new Animated.Value(0)).current;
+// Shimmering Twinkle Component
+const ShimmeringTwinkle = ({ x, y, scale }: { x: number; y: number; scale: number }) => {
+  const clock = useClock();
+  const [twinkleOpacity, setTwinkleOpacity] = React.useState(0);
+  const [twinkleScale, setTwinkleScale] = React.useState(0.5);
+  const [twinkleRotation, setTwinkleRotation] = React.useState(0);
 
-  useEffect(() => {
-    // Brash entrance animation - delayed after elegant title
-    Animated.sequence([
-      Animated.delay(2500),
-      Animated.parallel([
-        Animated.timing(boxingOpacity, {
-          toValue: 1,
-          duration: 800,
-          easing: Easing.out(Easing.back(1.5)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(boxingScale, {
-          toValue: 1,
-          duration: 800,
-          easing: Easing.out(Easing.back(1.5)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(boxingTranslateX, {
-          toValue: 0,
-          duration: 800,
-          easing: Easing.out(Easing.back(1.5)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(boxingRotation, {
-          toValue: 0,
-          duration: 800,
-          easing: Easing.out(Easing.back(1.5)),
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start(() => {
-      if (onAnimDone) onAnimDone();
-    });
+  React.useEffect(() => {
+    let running = true;
+    function animate() {
+      if (!running) return;
+      const time = clock.value;
+      // Twinkle opacity animation (0 -> 1 -> 0)
+      const opacityCycle = Math.sin(time * 0.003) * 0.5 + 0.5;
+      setTwinkleOpacity(opacityCycle);
+      // Twinkle scale animation (0.5 -> 1.2 -> 0.5)
+      const scaleCycle = Math.sin(time * 0.002) * 0.35 + 0.85;
+      setTwinkleScale(scaleCycle);
+      // Twinkle rotation animation
+      setTwinkleRotation(time * 0.001);
+      requestAnimationFrame(animate);
+    }
+    animate();
+    return () => {
+      running = false;
+    };
+  }, [clock]);
 
-    // Continuous pounding/shake effect
-    Animated.loop(
-      Animated.sequence([
-        Animated.delay(1000),
-        Animated.timing(boxingShake, {
-          toValue: 1,
-          duration: 100,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(boxingShake, {
-          toValue: 0,
-          duration: 100,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.delay(2000),
-      ])
-    ).start();
-  }, [boxingOpacity, boxingScale, boxingTranslateX, boxingRotation, boxingShake]);
+  const twinkleSize = 20 * scale * twinkleScale;
+  const twinklePath = Skia.Path.Make();
+  // Create a star-like twinkle shape
+  for (let i = 0; i < 8; i++) {
+    const angle = (i * Math.PI * 2) / 8;
+    const radius = i % 2 === 0 ? twinkleSize : twinkleSize * 0.5;
+    const px = Math.cos(angle) * radius;
+    const py = Math.sin(angle) * radius;
+    if (i === 0) {
+      twinklePath.moveTo(px, py);
+    } else {
+      twinklePath.lineTo(px, py);
+    }
+  }
+  twinklePath.close();
 
   return (
-    <Animated.Text
-      style={[
-        styles.brashBoxingTitle,
-        {
-          opacity: boxingOpacity,
-          transform: [
-            { scale: boxingScale },
-            { translateX: boxingTranslateX },
-            {
-              rotate: boxingRotation.interpolate({
-                inputRange: [-15, 0],
-                outputRange: ['-15deg', '0deg'],
-              }),
-            },
-            {
-              translateX: boxingShake.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 3],
-              }),
-            },
-          ],
-        },
-      ]}
-    >
-      Boxing
-    </Animated.Text>
+    <Group transform={[{ translateX: x }, { translateY: y }, { rotate: twinkleRotation }]}>
+      <SkiaPath path={twinklePath} style="fill" opacity={twinkleOpacity}>
+        <LinearGradient
+          start={vec(-twinkleSize, -twinkleSize)}
+          end={vec(twinkleSize, twinkleSize)}
+          colors={['rgba(255,255,255,1)', 'rgba(255,255,255,0.8)', 'rgba(255,255,255,0)']}
+          positions={[0, 0.5, 1]}
+        />
+      </SkiaPath>
+    </Group>
   );
 };
 
@@ -614,8 +569,6 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
   // UI visibility toggle for debugging
   const [showUI, setShowUI] = React.useState(true);
-  // Spotlight mode toggle
-  const [revealingSpotlights, setRevealingSpotlights] = React.useState(true);
   // Add state for tap-to-start overlay
   const [showTapToStart, setShowTapToStart] = React.useState(false); // initially false
   // Add state for flash sequence
@@ -630,6 +583,11 @@ const MainMenu: React.FC<MainMenuProps> = ({
   const boxerTranslateX = useRef(new Animated.Value(screenWidth * 0.7)).current; // start off-screen right (mirrored)
   const [boxerVisible, setBoxerVisible] = React.useState(false);
   const [boxerBehindOverlay, setBoxerBehindOverlay] = React.useState(false);
+
+  // Title image animations
+  const titleOpacity = useRef(new Animated.Value(1)).current;
+  const titleScale = useRef(new Animated.Value(4.0)).current;
+  const titleTranslateY = useRef(new Animated.Value(-screenHeight * 0.8)).current;
 
   const insets = useSafeAreaInsets();
 
@@ -739,6 +697,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
   const runFlashSequence = () => {
     setFlashing(true);
     setBoxerVisible(true);
+
     // Animate boxer sliding in during flashes
     Animated.timing(boxerTranslateX, {
       toValue: 0, // snapped to right edge
@@ -762,16 +721,72 @@ const MainMenu: React.FC<MainMenuProps> = ({
     });
   };
 
-  // Track when the boxing animation is done
-  const [boxingAnimDone, setBoxingAnimDone] = React.useState(false);
-
-  // When boxing animation is done, run the flash sequence
-  useEffect(() => {
-    if (boxingAnimDone && fadeInComplete) {
+  // Helper to run the punch-in animation
+  const runPunchInAnimation = () => {
+    // Start title image straight-down drop with powerful impact
+    Animated.sequence([
+      // Fast drop down
+      Animated.parallel([
+        Animated.timing(titleScale, {
+          toValue: 1.0,
+          duration: 600,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(titleTranslateY, {
+          toValue: 0,
+          duration: 600,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
+      // Impact bounce
+      Animated.parallel([
+        Animated.timing(titleScale, {
+          toValue: 1.3,
+          duration: 150,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(titleTranslateY, {
+          toValue: -20,
+          duration: 150,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
+      // Settle back
+      Animated.parallel([
+        Animated.timing(titleScale, {
+          toValue: 1.0,
+          duration: 200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(titleTranslateY, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+      ]),
+    ]).start(() => {
+      // Start flash sequence after impact completes
       runFlashSequence();
+    });
+  };
+
+  // Track when the fade-in is complete to start the punch-in animation
+  useEffect(() => {
+    if (fadeInComplete) {
+      // Add a delay before starting the punch-in animation to match the original timing
+      const timer = setTimeout(() => {
+        runPunchInAnimation();
+      }, 500); // 500ms delay to match original title animation timing
+
+      return () => clearTimeout(timer);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boxingAnimDone, fadeInComplete]);
+  }, [fadeInComplete]);
 
   useEffect(() => {
     // Only start beam animations after fade-in is complete
@@ -862,18 +877,10 @@ const MainMenu: React.FC<MainMenuProps> = ({
         {/* Camera Flashes: above background, below overlay */}
         <CameraFlashes />
 
-        {/* Skia Canvas for stage light beams - show in both modes */}
+        {/* Skia Canvas for stage light beams - revealing mode only */}
         <Canvas style={StyleSheet.absoluteFillObject}>
-          <AnimatedStageBeams
-            corner="left"
-            anims={leftAnims}
-            maxBeams={revealingSpotlights ? 1 : 3}
-          />
-          <AnimatedStageBeams
-            corner="right"
-            anims={rightAnims}
-            maxBeams={revealingSpotlights ? 1 : 3}
-          />
+          <AnimatedStageBeams corner="left" anims={leftAnims} maxBeams={1} />
+          <AnimatedStageBeams corner="right" anims={rightAnims} maxBeams={1} />
         </Canvas>
 
         {/* Boxer image slides in during flashes, then moves behind overlay */}
@@ -893,7 +900,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
         )}
 
         {/* Skia overlay - always present to cover boxer image */}
-        <OverlayWithSpotlights revealingMode={revealingSpotlights} />
+        <OverlayWithSpotlights revealingMode={true} />
 
         {/* Hide UI toggle button (always visible, above overlay) */}
         <TouchableOpacity
@@ -901,16 +908,6 @@ const MainMenu: React.FC<MainMenuProps> = ({
           onPress={() => setShowUI(v => !v)}
         >
           <Text style={styles.hideUIButtonText}>{showUI ? 'Hide UI' : 'Show UI'}</Text>
-        </TouchableOpacity>
-
-        {/* Spotlight mode toggle button */}
-        <TouchableOpacity
-          style={[styles.spotlightToggleButton, { top: insets.top + 12, left: 20, zIndex: 10 }]}
-          onPress={() => setRevealingSpotlights(v => !v)}
-        >
-          <Text style={styles.hideUIButtonText}>
-            {revealingSpotlights ? 'Show Regular Spotlights' : 'Show Revealing Spotlights'}
-          </Text>
         </TouchableOpacity>
 
         {/* White flash overlay */}
@@ -924,11 +921,14 @@ const MainMenu: React.FC<MainMenuProps> = ({
         {/* All other UI is hidden when showUI is false or tap-to-start is active */}
         {showUI && (
           <View style={styles.contentContainer}>
-            {/* Animated Titles */}
-            <View style={styles.titleContainer}>
-              <ElegantTitle />
-              <BrashBoxingTitle onAnimDone={() => setBoxingAnimDone(true)} />
-            </View>
+            {/* Skia Title Image - on top layer */}
+            <Canvas style={[StyleSheet.absoluteFillObject, { zIndex: 5 }]} pointerEvents="none">
+              <SkiaTitleImage
+                opacity={titleOpacity}
+                scale={titleScale}
+                translateY={titleTranslateY}
+              />
+            </Canvas>
 
             {/* Menu area: show Tap to Start or menu buttons */}
             {menuAreaReady && (
@@ -1065,44 +1065,11 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     width: '100%',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingVertical: 60,
     zIndex: 4,
   },
-  titleContainer: {
-    alignItems: 'center',
-    marginTop: 60,
-  },
-  titleWrapper: {
-    position: 'relative',
-    alignItems: 'center',
-  },
-  elegantTitle: {
-    fontSize: 56,
-    fontWeight: '300', // Lighter weight for elegance
-    color: '#ffffff',
-    textAlign: 'center',
-    letterSpacing: 8, // Elegant spacing
-    fontFamily: 'System',
-  },
-  glowLayer: {
-    position: 'absolute',
-    textShadowColor: '#00ffff',
-    textShadowOffset: { width: 0, height: 0 },
-    zIndex: 1,
-  },
-  brashBoxingTitle: {
-    fontSize: 48,
-    fontWeight: '900', // Heavy weight for impact
-    color: '#ff4400',
-    textAlign: 'center',
-    marginTop: 20,
-    letterSpacing: 2,
-    textShadowColor: '#ff0000',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
-    fontFamily: 'System',
-  },
+
   menuContainer: {
     alignItems: 'center',
     gap: 20,
@@ -1177,13 +1144,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
   },
-  spotlightToggleButton: {
-    position: 'absolute',
-    left: 20,
-    backgroundColor: '#00ff00',
-    padding: 10,
-    borderRadius: 8,
-  },
+
   hideUIButtonText: {
     color: 'white',
     fontSize: 16,

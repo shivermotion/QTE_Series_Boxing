@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   lottieAnimation: {
-    width: 500,
-    height: 500,
+    width: 400,
+    height: 400,
   },
   fallbackIcon: {
     fontSize: 48,
