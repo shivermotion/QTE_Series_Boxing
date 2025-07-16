@@ -8,6 +8,7 @@ import {
   Animated,
   Easing,
   Dimensions,
+  Platform,
 } from 'react-native';
 import {
   Canvas,
@@ -557,7 +558,17 @@ const OverlayWithSpotlights = ({ revealingMode = false }: { revealingMode?: bool
   }, [clock]);
 
   return (
-    <Canvas style={[StyleSheet.absoluteFillObject, { zIndex: 3 }]} pointerEvents="none">
+    <Canvas
+      style={[
+        StyleSheet.absoluteFillObject,
+        {
+          zIndex: 2,
+          // Android-specific pointer events
+          ...(Platform.OS === 'android' && { pointerEvents: 'box-none' }),
+        },
+      ]}
+      pointerEvents={Platform.OS === 'android' ? 'box-none' : 'none'}
+    >
       {/* Overlay rectangle */}
       <SkiaPath
         path={makeOverlayRect(0, 0, screenWidth, screenHeight)}
@@ -749,7 +760,9 @@ const MainMenu: React.FC<MainMenuProps> = ({
       Animated.timing(flashAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
     ]).start(() => {
       setFlashing(false);
+      console.log('🎬 Flash sequence complete, setting showTapToStart to true');
       setShowTapToStart(true);
+      console.log('🎬 Setting menuAreaReady to true');
       setMenuAreaReady(true);
       setBoxerBehindOverlay(true);
     });
@@ -890,7 +903,12 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
   // Handler for tap-to-start overlay
   const handleTapToStart = async () => {
+    console.log('🎯 handleTapToStart called!');
+    if (Platform.OS === 'android') {
+      console.log('🤖 Android: Tap-to-start triggered');
+    }
     await playBellSound();
+    console.log('🔔 Bell sound played, setting showTapToStart to false');
     setShowTapToStart(false);
   };
 
@@ -900,6 +918,16 @@ const MainMenu: React.FC<MainMenuProps> = ({
       startMainTheme();
     }
   }, [fadeInComplete, isMainThemePlaying, startMainTheme]);
+
+  // Debug state changes
+  useEffect(() => {
+    console.log(
+      '🔍 State update - showTapToStart:',
+      showTapToStart,
+      'menuAreaReady:',
+      menuAreaReady
+    );
+  }, [showTapToStart, menuAreaReady]);
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
@@ -912,7 +940,17 @@ const MainMenu: React.FC<MainMenuProps> = ({
         <CameraFlashes />
 
         {/* Skia Canvas for stage light beams - revealing mode only */}
-        <Canvas style={StyleSheet.absoluteFillObject}>
+        <Canvas
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              zIndex: 1,
+              // Android-specific pointer events
+              ...(Platform.OS === 'android' && { pointerEvents: 'box-none' }),
+            },
+          ]}
+          pointerEvents={Platform.OS === 'android' ? 'box-none' : 'none'}
+        >
           <AnimatedStageBeams corner="left" anims={leftAnims} maxBeams={1} />
           <AnimatedStageBeams corner="right" anims={rightAnims} maxBeams={1} />
         </Canvas>
@@ -946,16 +984,36 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
         {/* Bright gleam effect */}
         {flashing && (
-          <Canvas style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <Canvas
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                zIndex: 4,
+                // Android-specific pointer events
+                ...(Platform.OS === 'android' && { pointerEvents: 'box-none' }),
+              },
+            ]}
+            pointerEvents={Platform.OS === 'android' ? 'box-none' : 'none'}
+          >
             <BrightGleam flashAnim={flashAnim} />
           </Canvas>
         )}
 
         {/* All other UI is hidden when showUI is false or tap-to-start is active */}
         {showUI && (
-          <View style={styles.contentContainer}>
+          <View style={[styles.contentContainer, { zIndex: 6 }]}>
             {/* Skia Title Image - on top layer */}
-            <Canvas style={[StyleSheet.absoluteFillObject, { zIndex: 5 }]} pointerEvents="none">
+            <Canvas
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  zIndex: 5,
+                  // Android-specific pointer events
+                  ...(Platform.OS === 'android' && { pointerEvents: 'box-none' }),
+                },
+              ]}
+              pointerEvents={Platform.OS === 'android' ? 'box-none' : 'none'}
+            >
               <SkiaTitleImage
                 opacity={titleOpacity}
                 scale={titleScale}
@@ -965,12 +1023,29 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
             {/* Menu area: show Tap to Start or menu buttons */}
             {menuAreaReady && (
-              <View style={styles.menuContainer}>
+              <View style={[styles.menuContainer, { zIndex: 7 }]}>
                 {showTapToStart ? (
                   <TouchableOpacity
-                    style={styles.tapToStartMenuArea}
-                    activeOpacity={1}
+                    style={[
+                      styles.tapToStartMenuArea,
+                      {
+                        zIndex: 8,
+                        // Android-specific improvements
+                        ...(Platform.OS === 'android' && {
+                          minHeight: 400,
+                          paddingVertical: 60,
+                          backgroundColor: 'rgba(0,0,0,0.05)', // Slightly more visible on Android
+                        }),
+                      },
+                    ]}
+                    activeOpacity={0.8}
                     onPress={handleTapToStart}
+                    onPressIn={() => {
+                      console.log('📱 Touch detected on tap-to-start');
+                      if (Platform.OS === 'android') {
+                        console.log('🤖 Android platform detected');
+                      }
+                    }}
                   >
                     <Animated.Text style={[styles.tapToStartText, { opacity: tapToStartOpacity }]}>
                       Tap to Start
@@ -1204,10 +1279,12 @@ const styles = StyleSheet.create({
   },
   tapToStartMenuArea: {
     width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 220,
+    minHeight: 300,
     paddingVertical: 40,
+    backgroundColor: 'rgba(0,0,0,0.1)', // Slight background for debugging
   },
 
   boxerImage: {
