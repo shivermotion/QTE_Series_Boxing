@@ -232,6 +232,10 @@ export const opponents: OpponentConfig[] = [
       2: { min: 1200, max: 1600 }, // Round 2 is faster
       3: { min: 1100, max: 1500 }, // Round 3 is fastest
     },
+    roundFeints: {
+      2: { enabled: true, probability: 0.4, maxFeints: 3 }, // Round 2: More feints
+      3: { enabled: true, probability: 0.5, maxFeints: 3 }, // Round 3: Most feints
+    },
   },
 
   // Level 7 - Dark Arena
@@ -265,6 +269,10 @@ export const opponents: OpponentConfig[] = [
     roundPromptIntervals: {
       2: { min: 1100, max: 1500 }, // Round 2 is faster
       3: { min: 1000, max: 1400 }, // Round 3 is fastest
+    },
+    roundFeints: {
+      2: { enabled: true, probability: 0.45, maxFeints: 3 }, // Round 2: More feints
+      3: { enabled: true, probability: 0.6, maxFeints: 3 }, // Round 3: Most feints
     },
   },
 

@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { useAudio } from '../contexts/AudioContext';
 import LevelInfoModal from './LevelInfoModal';
+import { getOpponentConfig } from '../data/opponents';
 
 interface ChooseLevelScreenProps {
   onSelectLevel: (level: number) => void;
@@ -210,26 +211,38 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
   };
 
   const getLevelDifficulty = (level: number) => {
-    if (level <= 3) return 'Easy';
-    if (level <= 6) return 'Medium';
-    if (level <= 8) return 'Hard';
-    return 'Expert';
+    try {
+      const opponent = getOpponentConfig(level);
+      return opponent.difficulty.charAt(0).toUpperCase() + opponent.difficulty.slice(1);
+    } catch (error) {
+      // Fallback to hardcoded values if opponent not found
+      if (level <= 3) return 'Easy';
+      if (level <= 6) return 'Medium';
+      if (level <= 8) return 'Hard';
+      return 'Expert';
+    }
   };
 
   const getChapterTitle = (level: number) => {
-    const titles = [
-      'The Beginning',
-      'Rising Star',
-      'Local Champion',
-      'City Contender',
-      'Regional Power',
-      'State Champion',
-      'National Glory',
-      'World Stage',
-      'Legend Status',
-      'Ultimate Champion',
-    ];
-    return titles[(level - 1) % titles.length];
+    try {
+      const opponent = getOpponentConfig(level);
+      return opponent.name;
+    } catch (error) {
+      // Fallback to hardcoded values if opponent not found
+      const titles = [
+        'The Beginning',
+        'Rising Star',
+        'Local Champion',
+        'City Contender',
+        'Regional Power',
+        'State Champion',
+        'National Glory',
+        'World Stage',
+        'Legend Status',
+        'Ultimate Champion',
+      ];
+      return titles[(level - 1) % titles.length];
+    }
   };
 
   const [currentGlow, setCurrentGlow] = React.useState(0);
