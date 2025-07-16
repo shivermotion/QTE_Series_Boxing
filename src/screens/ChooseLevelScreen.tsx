@@ -41,6 +41,7 @@ interface AnimatedLevelButtonProps {
   isSelected: boolean;
   onSelect: (level: number) => void;
   backgroundImage: any;
+  isScrolling: boolean;
 }
 
 const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
@@ -51,6 +52,7 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
   isSelected,
   onSelect,
   backgroundImage,
+  isScrolling,
 }) => {
   const buttonScale = useRef(new Animated.Value(0)).current;
   const buttonOpacity = useRef(new Animated.Value(0)).current;
@@ -150,7 +152,21 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
   }, [isSelected, buttonSelectionScale, buttonSelectionRotation]);
 
   const handlePressIn = () => {
+    if (isScrolling) {
+      console.log('🚫 Button press blocked during scroll');
+      return;
+    }
+    console.log('✅ Button press started - level', level);
     onPressIn();
+    // Don't immediately select - wait for press out
+  };
+
+  const handlePressOut = () => {
+    if (isScrolling) {
+      console.log('🚫 Button press out blocked during scroll');
+      return;
+    }
+    console.log('✅ Button press completed - selecting level', level);
     onSelect(level);
     Animated.sequence([
       Animated.timing(buttonScale, {
@@ -166,6 +182,15 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
         useNativeDriver: true,
       }),
     ]).start();
+  };
+
+  const handleLongPress = () => {
+    if (isScrolling) {
+      console.log('🚫 Long press blocked during scroll');
+      return;
+    }
+    console.log('✅ Long press detected - selecting level', level);
+    onSelect(level);
   };
 
   const getLevelColor = (level: number) => {
@@ -189,6 +214,22 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
     if (level <= 6) return 'Medium';
     if (level <= 8) return 'Hard';
     return 'Expert';
+  };
+
+  const getChapterTitle = (level: number) => {
+    const titles = [
+      'The Beginning',
+      'Rising Star',
+      'Local Champion',
+      'City Contender',
+      'Regional Power',
+      'State Champion',
+      'National Glory',
+      'World Stage',
+      'Legend Status',
+      'Ultimate Champion',
+    ];
+    return titles[(level - 1) % titles.length];
   };
 
   const [currentGlow, setCurrentGlow] = React.useState(0);
@@ -227,6 +268,9 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
         style={styles.levelButtonContainer}
         onPress={() => onPress(level)}
         onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onLongPress={handleLongPress}
+        delayLongPress={300}
         activeOpacity={1}
       >
         <ImageBackground
@@ -235,7 +279,8 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
           resizeMode="cover"
         >
           <View style={styles.levelButtonOverlay}>
-            <Text style={styles.levelNumber}>Level {level}</Text>
+            <Text style={styles.levelNumber}>Chapter {level}</Text>
+            <Text style={styles.chapterTitle}>{getChapterTitle(level)}</Text>
             <Text style={styles.levelDifficulty}>{getLevelDifficulty(level)}</Text>
             <View style={styles.levelStars}>
               {[...Array(Math.min(level, 5))].map((_, i) => (
@@ -375,6 +420,8 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
   // Selection state
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [scrollLocked, setScrollLocked] = useState(false);
 
   // Audio references
   const buttonSoundRef = useRef<Audio.Sound | null>(null);
@@ -445,6 +492,11 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
 
   // Replace handleLevelSelect with just selection logic
   const handleLevelSelect = (level: number) => {
+    if (isScrolling) {
+      console.log('🚫 Button press blocked - scrolling in progress');
+      return;
+    }
+    console.log('✅ Button press allowed - selecting level', level);
     setSelectedLevel(level);
   };
 
@@ -520,7 +572,23 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
           <ScrollView
             style={styles.scrollContainer}
             contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
+            scrollEnabled={!scrollLocked}
+            nestedScrollEnabled={true}
+            keyboardShouldPersistTaps="never"
+            onTouchStart={() => {
+              console.log('📱 Touch started on ScrollView');
+              setIsScrolling(false);
+            }}
+            onTouchMove={() => {
+              console.log('📱 Touch moving - scrolling detected');
+              setIsScrolling(true);
+            }}
+            onTouchEnd={() => {
+              console.log('📱 Touch ended on ScrollView');
+              // Small delay to prevent immediate button presses after scroll
+              setTimeout(() => setIsScrolling(false), 200);
+            }}
           >
             <View style={styles.levelGrid}>
               {Array.from({ length: 10 }, (_, i) => (
@@ -533,6 +601,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
                   isSelected={selectedLevel === i + 1}
                   onSelect={setSelectedLevel}
                   backgroundImage={getLevelBackgroundImage(i + 1)}
+                  isScrolling={isScrolling}
                 />
               ))}
             </View>
@@ -612,15 +681,14 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   levelGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     justifyContent: 'center',
     gap: 15,
     paddingHorizontal: 10,
   },
   levelButtonContainer: {
-    width: screenWidth * 0.35,
-    aspectRatio: 1,
+    width: '100%',
+    height: 140,
     borderRadius: 15,
     borderWidth: 3,
     borderColor: '#ffffff',
@@ -641,30 +709,47 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 25,
   },
   levelNumber: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
     textShadowColor: '#000000',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
-    marginBottom: 5,
+    marginBottom: 10,
+    letterSpacing: 1,
+  },
+  chapterTitle: {
+    fontSize: 16,
+    color: '#00ffff',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    marginBottom: 10,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   levelDifficulty: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#ffffff',
     textShadowColor: '#000000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
-    marginBottom: 8,
+    marginBottom: 12,
+    fontWeight: '600',
+    opacity: 0.9,
   },
   levelStars: {
     flexDirection: 'row',
-    gap: 2,
+    gap: 4,
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   star: {
-    fontSize: 12,
+    fontSize: 14,
   },
 });
 

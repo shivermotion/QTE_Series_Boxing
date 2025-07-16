@@ -4,7 +4,12 @@ import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-g
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { useAudio } from '../contexts/AudioContext';
-import { getOpponentConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/opponents';
+import {
+  getOpponentConfig,
+  getRoundHPGoal,
+  getRandomPromptInterval,
+  getFeintConfig,
+} from '../data/opponents';
 import GameOverScreen from './GameOverScreen';
 import LottiePrompt from '../components/LottiePrompt';
 import TapGrid from '../components/TapGrid';
@@ -67,6 +72,7 @@ interface TapPrompt {
   duration: number;
   isActive: boolean;
   isCompleted: boolean;
+  isFeint: boolean; // New property for fakeout prompts
 }
 
 interface GameState {
@@ -511,6 +517,48 @@ const GameScreen: React.FC<GameScreenProps> = ({
     const prompts: TapPrompt[] = [];
     const usedPositions = new Set<number>();
 
+    // Get feint configuration from opponent config
+    const feintConfig = getFeintConfig(opponentConfig, gameState.currentRound);
+
+    // Only generate feints if they're enabled for this opponent/round
+    if (!feintConfig.enabled) {
+      // Generate normal prompts without feints
+      for (let i = 0; i < numPrompts; i++) {
+        let position: number;
+        do {
+          position = Math.floor(Math.random() * 9); // 0-8 for 3x3 grid
+        } while (usedPositions.has(position));
+
+        usedPositions.add(position);
+
+        prompts.push({
+          id: `tap_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+          gridPosition: position,
+          startTime: Date.now(),
+          duration: 3000, // 3 second window
+          isActive: true,
+          isCompleted: false,
+          isFeint: false,
+        });
+      }
+      return prompts;
+    }
+
+    // Calculate how many feints to include based on opponent config
+    const maxFeints = Math.min(feintConfig.maxFeints, numPrompts);
+    const numFeints =
+      Math.random() < feintConfig.probability ? Math.floor(Math.random() * maxFeints) + 1 : 0;
+    const feintPositions = new Set<number>();
+
+    // Randomly assign feint positions
+    for (let i = 0; i < numFeints; i++) {
+      let position: number;
+      do {
+        position = Math.floor(Math.random() * numPrompts);
+      } while (feintPositions.has(position));
+      feintPositions.add(position);
+    }
+
     for (let i = 0; i < numPrompts; i++) {
       let position: number;
       do {
@@ -519,6 +567,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
       usedPositions.add(position);
 
+      const isFeint = feintPositions.has(i);
+
       prompts.push({
         id: `tap_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
         gridPosition: position,
@@ -526,6 +576,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         duration: 3000, // 3 second window
         isActive: true,
         isCompleted: false,
+        isFeint: isFeint,
       });
     }
 
@@ -544,7 +595,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
       const tapPrompts = generateTapPrompts();
       console.log(`🎯 SPAWNING TAP PROMPTS:`, tapPrompts);
       setActiveTapPrompts(tapPrompts);
-      setCurrentPrompt(null); // Clear current prompt for tap mode
+      setCurrentPrompt(prompt); // Keep the parent tap prompt for auto-miss timer
     } else {
       // Handle swipe prompts as before
       setCurrentPrompt(prompt);
@@ -602,23 +653,35 @@ const GameScreen: React.FC<GameScreenProps> = ({
       }
 
       if (hitQuality !== 'miss') {
-        setGameState(prev => ({
-          ...prev,
-          score: prev.score + points,
-          opponentHP: Math.max(0, prev.opponentHP - damage),
-          powerMeter: Math.min(100, prev.powerMeter + powerGain),
-          avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
-        }));
+        console.log(
+          `📊 BEFORE STATE UPDATE - Score: ${gameState.score}, HP: ${gameState.opponentHP}, Power: ${gameState.powerMeter}`
+        );
+
+        setGameState(prev => {
+          const newState: GameState = {
+            ...prev,
+            score: prev.score + points,
+            opponentHP: Math.max(0, prev.opponentHP - damage),
+            powerMeter: Math.min(100, prev.powerMeter + powerGain),
+            avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
+          };
+          console.log(
+            `📊 AFTER STATE UPDATE - Score: ${newState.score}, HP: ${newState.opponentHP}, Power: ${newState.powerMeter}`
+          );
+          return newState;
+        });
 
         animateAvatar();
 
         // Check if round is complete
         if (gameState.opponentHP - damage <= gameState.roundHPGoal) {
+          console.log('🎯 ROUND COMPLETE CHECK TRIGGERED');
           completeRound();
         }
 
         // Check if level is complete
         if (gameState.opponentHP - damage <= 0) {
+          console.log('🏆 LEVEL COMPLETE CHECK TRIGGERED');
           completeLevel();
         }
       }
@@ -628,9 +691,18 @@ const GameScreen: React.FC<GameScreenProps> = ({
       handleMiss();
     }
 
-    // Clear current prompt
-    console.log('🗑️ Clearing current prompt');
-    setCurrentPrompt(null);
+    // Mark prompt as completed and clear it
+    console.log('🗑️ Marking prompt as completed and clearing');
+    setCurrentPrompt(prev => {
+      if (prev) {
+        console.log('✅ Prompt marked as completed');
+        const updatedPrompt = { ...prev, isCompleted: true };
+        console.log('🗑️ Setting currentPrompt to null to clear it');
+        return null; // Clear the prompt immediately
+      }
+      console.log('❌ No prompt to mark as completed');
+      return null;
+    });
   };
 
   const handleMiss = () => {
@@ -940,8 +1012,25 @@ const GameScreen: React.FC<GameScreenProps> = ({
         !isPreRound &&
         !isInCooldown
       ) {
+        console.log('🎯 GAME LOOP: Spawning new prompt');
         spawnPrompt();
         setLastPromptTime(now);
+      } else {
+        if (currentPrompt) {
+          console.log('🎯 GAME LOOP: Current prompt exists, not spawning');
+        } else if (gameState.isSuperComboActive) {
+          console.log('🎯 GAME LOOP: Super combo active, not spawning');
+        } else if (now - lastPromptTime <= promptInterval) {
+          console.log(
+            `🎯 GAME LOOP: Too soon for new prompt (${
+              now - lastPromptTime
+            }ms < ${promptInterval}ms)`
+          );
+        } else if (isPreRound) {
+          console.log('🎯 GAME LOOP: Pre-round active, not spawning');
+        } else if (isInCooldown) {
+          console.log('🎯 GAME LOOP: In cooldown, not spawning');
+        }
       }
 
       // Generate new random prompt interval for current round
@@ -978,6 +1067,92 @@ const GameScreen: React.FC<GameScreenProps> = ({
     promptInterval,
     gameState.score,
     gameState.isSuperComboActive,
+    isInCooldown,
+  ]);
+
+  // Auto-miss timer for expired prompts
+  useEffect(() => {
+    if (gameState.isPaused || isGameOver || isPreRound || isInCooldown) return;
+
+    const checkExpiredPrompts = () => {
+      const now = Date.now();
+
+      // Check current prompt expiration (but skip if it's a tap prompt with active tap prompts)
+      if (currentPrompt && currentPrompt.isActive && !currentPrompt.isCompleted) {
+        // Skip checking currentPrompt expiration if it's a tap prompt and we have active tap prompts
+        // The tap prompts will be checked separately below
+        if (currentPrompt.type === 'tap' && activeTapPrompts.length > 0) {
+          // Do nothing - let the tap prompt check handle it
+        } else {
+          const timeElapsed = now - currentPrompt.startTime;
+          if (timeElapsed > currentPrompt.duration) {
+            console.log('⏰ PROMPT EXPIRED - Auto-triggering miss');
+            handleMiss();
+            setCurrentPrompt(null);
+            return;
+          }
+        }
+      }
+
+      // Check tap prompts expiration
+      if (activeTapPrompts.length > 0) {
+        const now = Date.now();
+        // Check if the overall tap prompt sequence has expired (all taps share the same start time)
+        const promptStartTime = activeTapPrompts[0].startTime;
+        const overallTimeElapsed = now - promptStartTime;
+        const hasRealPrompts = activeTapPrompts.some(
+          p => !p.isFeint && p.isActive && !p.isCompleted
+        );
+
+        if (hasRealPrompts && overallTimeElapsed > activeTapPrompts[0].duration) {
+          console.log('⏰ TAP PROMPT SEQUENCE EXPIRED - Auto-triggering miss');
+          console.log(
+            `⏰ Overall time elapsed: ${overallTimeElapsed}ms (limit: ${activeTapPrompts[0].duration}ms)`
+          );
+          console.log(
+            `⏰ Real prompts remaining: ${
+              activeTapPrompts.filter(p => !p.isFeint && p.isActive && !p.isCompleted).length
+            }`
+          );
+          handleMiss();
+          setActiveTapPrompts([]);
+          setCurrentPrompt(null);
+          return;
+        }
+      }
+
+      // Check super combo prompt expiration
+      if (gameState.isSuperComboActive && superComboSequence[superComboIndex]) {
+        const currentSuperPrompt = superComboSequence[superComboIndex];
+        if (currentSuperPrompt.isActive && !currentSuperPrompt.isCompleted) {
+          const timeElapsed = now - currentSuperPrompt.startTime;
+          if (timeElapsed > currentSuperPrompt.duration) {
+            console.log('⏰ SUPER COMBO PROMPT EXPIRED - Auto-triggering miss');
+            handleMiss();
+            setGameState(prev => ({ ...prev, isSuperComboActive: false }));
+            setSuperComboSequence([]);
+            setSuperComboIndex(0);
+            return;
+          }
+        }
+      }
+    };
+
+    // Check for expired prompts every 100ms
+    const expiredPromptTimer = setInterval(checkExpiredPrompts, 100);
+
+    return () => {
+      clearInterval(expiredPromptTimer);
+    };
+  }, [
+    currentPrompt,
+    activeTapPrompts,
+    superComboSequence,
+    superComboIndex,
+    gameState.isSuperComboActive,
+    gameState.isPaused,
+    isGameOver,
+    isPreRound,
     isInCooldown,
   ]);
 
@@ -1039,6 +1214,16 @@ const GameScreen: React.FC<GameScreenProps> = ({
     if (tapPrompt) {
       console.log(`✅ TAP PROMPT FOUND:`, tapPrompt);
 
+      // Check if this is a feint prompt
+      if (tapPrompt.isFeint) {
+        console.log('❌ FEINT PROMPT PRESSED - This counts as a miss!');
+        handleMiss();
+        // Clear all tap prompts on feint failure
+        setActiveTapPrompts([]);
+        setCurrentPrompt(null);
+        return;
+      }
+
       const now = Date.now();
       const timeDiff = now - tapPrompt.startTime;
 
@@ -1064,43 +1249,47 @@ const GameScreen: React.FC<GameScreenProps> = ({
         if (remainingPrompts.length === 0) {
           console.log('🎯 ALL TAP PROMPTS COMPLETED - PROCESSING FINAL SUCCESS');
 
-          // Calculate overall success based on all completed taps
+          // Calculate overall success based on all completed taps (excluding feints)
           const completedPrompts = updatedPrompts.filter(p => p.isCompleted);
-          const totalPrompts = activeTapPrompts.length;
+          const realPrompts = activeTapPrompts.filter(p => !p.isFeint); // Only count real prompts
+          const totalRealPrompts = realPrompts.length;
           const successfulTaps = completedPrompts.length;
 
-          console.log(`📊 Final stats: ${successfulTaps}/${totalPrompts} taps completed`);
+          console.log(`📊 Final stats: ${successfulTaps}/${totalRealPrompts} real taps completed`);
 
-          // Determine overall hit quality based on completion
+          // Determine overall hit quality based on completion of real prompts only
+          // Use the overall prompt duration (3000ms) for timing, not individual tap times
           let hitQuality: 'perfect' | 'good' | 'miss' = 'miss';
           let points = 0;
           let damage = 0;
           let powerGain = 0;
 
-          if (successfulTaps === totalPrompts) {
-            // All taps completed successfully
-            const avgTimeDiff =
-              completedPrompts.reduce((sum, p) => {
-                const timeDiff = now - p.startTime;
-                return sum + timeDiff;
-              }, 0) / successfulTaps;
+          if (successfulTaps === totalRealPrompts) {
+            // All real taps completed successfully - check overall time from prompt start
+            const overallTimeElapsed = now - activeTapPrompts[0].startTime; // Use first prompt's start time as overall start
 
-            if (avgTimeDiff <= 1000) {
+            console.log(
+              `⏱️ Overall time elapsed: ${overallTimeElapsed}ms for ${totalRealPrompts} real taps`
+            );
+
+            if (overallTimeElapsed <= opponentConfig.reactionTime.perfect) {
               hitQuality = 'perfect';
-              points = 100 * totalPrompts; // Bonus for multiple taps
-              damage = 50 * totalPrompts;
-              powerGain = 10 * totalPrompts;
+              points = 100 * totalRealPrompts; // Bonus for multiple taps
+              damage = 50 * totalRealPrompts;
+              powerGain = 10 * totalRealPrompts;
               console.log('🏆 PERFECT MULTI-TAP! +' + points + ' points');
               triggerHaptic('heavy');
               playSound(qteSuccessSound);
-            } else if (avgTimeDiff <= 2000) {
+            } else if (overallTimeElapsed <= opponentConfig.reactionTime.good) {
               hitQuality = 'good';
-              points = 50 * totalPrompts;
-              damage = 25 * totalPrompts;
-              powerGain = 5 * totalPrompts;
+              points = 50 * totalRealPrompts;
+              damage = 25 * totalRealPrompts;
+              powerGain = 5 * totalRealPrompts;
               console.log('👍 GOOD MULTI-TAP! +' + points + ' points');
               triggerHaptic('medium');
               playSound(qteSuccessSound);
+            } else {
+              console.log('❌ MULTI-TAP TOO SLOW - Overall time exceeded good threshold');
             }
           }
 
@@ -1129,8 +1318,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
             handleMiss();
           }
 
-          // Clear all tap prompts
+          // Clear all tap prompts and the current prompt
           setActiveTapPrompts([]);
+          setCurrentPrompt(null);
         } else {
           // Individual tap was successful, but more taps needed
           console.log(`✅ Individual tap successful. ${remainingPrompts.length} more taps needed.`);
@@ -1141,6 +1331,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
         handleMiss();
         // Clear all tap prompts on failure
         setActiveTapPrompts([]);
+        setCurrentPrompt(null);
+        setCurrentPrompt(null);
       }
     } else {
       console.log('❌ NO TAP PROMPT AT THIS POSITION');
@@ -1356,14 +1548,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
         <View style={styles.inputArea}>
           {/* Prompt Area - Inside Input Area */}
           <View style={styles.promptArea}>
-            {currentPrompt && currentPrompt.isActive && currentPrompt.type === 'tap' && (
-              <LottiePrompt
-                type={currentPrompt.type}
-                direction={currentPrompt.direction}
-                isActive={currentPrompt.isActive}
-              />
-            )}
-
             {gameState.isSuperComboActive && superComboSequence[superComboIndex] && (
               <View style={styles.superComboContainer}>
                 <Text style={styles.superComboLabel}>SUPER COMBO!</Text>
@@ -1389,75 +1573,71 @@ const GameScreen: React.FC<GameScreenProps> = ({
             </View>
           )}
 
-          {/* Swipe gesture handler - only active when there's a swipe prompt and no tap prompts */}
-          {currentPrompt && currentPrompt.type === 'swipe' && activeTapPrompts.length === 0 && (
-            <PanGestureHandler
-              onGestureEvent={event => {
-                const { translationX, translationY, state } = event.nativeEvent;
+          {/* Swipe gesture handler - only active when there's an active swipe prompt and no tap prompts */}
+          {currentPrompt &&
+            currentPrompt.type === 'swipe' &&
+            currentPrompt.isActive &&
+            activeTapPrompts.length === 0 && (
+              <PanGestureHandler
+                onGestureEvent={event => {
+                  const { state, translationX, translationY } = event.nativeEvent;
 
-                if (state === State.BEGAN) {
-                  console.log('👆 Gesture began');
-                } else if (state === State.END) {
-                  console.log('👋 Gesture ended');
-                }
-              }}
-              onBegan={() => {
-                console.log('🎯 PAN GESTURE BEGAN - Touch detected!');
-              }}
-              onFailed={() => {
-                console.log('❌ PAN GESTURE FAILED - Touch not recognized as pan');
-              }}
-              onHandlerStateChange={event => {
-                const { state, translationX, translationY } = event.nativeEvent;
+                  // Log all gesture events for debugging
+                  if (state === State.BEGAN) {
+                    console.log('🎯 GESTURE BEGAN - Touch detected');
+                  } else if (state === State.ACTIVE) {
+                    console.log(`🔄 GESTURE ACTIVE - X: ${translationX}, Y: ${translationY}`);
+                  } else if (state === State.END) {
+                    console.log('👋 GESTURE ENDED - Processing swipe');
+                  }
+                }}
+                onHandlerStateChange={event => {
+                  const { state, translationX, translationY } = event.nativeEvent;
 
-                if (state === State.END) {
-                  // Determine swipe direction based on translation
-                  const minSwipeDistance = 50; // Minimum distance for a swipe
-                  const absX = Math.abs(translationX);
-                  const absY = Math.abs(translationY);
+                  if (state === State.END) {
+                    // Determine swipe direction based on translation
+                    const minSwipeDistance = 50; // Minimum distance for a swipe
+                    const absX = Math.abs(translationX);
+                    const absY = Math.abs(translationY);
 
-                  if (absX > absY && absX > minSwipeDistance) {
-                    // Horizontal swipe
-                    if (translationX > 0) {
-                      console.log('🔄 SWIPE GESTURE DETECTED: RIGHT');
-                      handleSwipe('right');
+                    console.log(
+                      `🔄 SWIPE ANALYSIS: X=${translationX}, Y=${translationY}, absX=${absX}, absY=${absY}, minDistance=${minSwipeDistance}`
+                    );
+
+                    if (absX > absY && absX > minSwipeDistance) {
+                      // Horizontal swipe
+                      if (translationX > 0) {
+                        console.log('🔄 SWIPE GESTURE DETECTED: RIGHT');
+                        handleSwipe('right');
+                      } else {
+                        console.log('🔄 SWIPE GESTURE DETECTED: LEFT');
+                        handleSwipe('left');
+                      }
+                    } else if (absY > absX && absY > minSwipeDistance) {
+                      // Vertical swipe
+                      if (translationY > 0) {
+                        console.log('🔄 SWIPE GESTURE DETECTED: DOWN');
+                        handleSwipe('down');
+                      } else {
+                        console.log('🔄 SWIPE GESTURE DETECTED: UP');
+                        handleSwipe('up');
+                      }
                     } else {
-                      console.log('🔄 SWIPE GESTURE DETECTED: LEFT');
-                      handleSwipe('left');
-                    }
-                  } else if (absY > absX && absY > minSwipeDistance) {
-                    // Vertical swipe
-                    if (translationY > 0) {
-                      console.log('🔄 SWIPE GESTURE DETECTED: DOWN');
-                      handleSwipe('down');
-                    } else {
-                      console.log('🔄 SWIPE GESTURE DETECTED: UP');
-                      handleSwipe('up');
+                      console.log('❌ SWIPE TOO SHORT - Not enough distance');
                     }
                   }
-                }
-              }}
-              activeOffsetX={[-10, 10]}
-              activeOffsetY={[-10, 10]}
-            >
-              <View style={styles.inputAreaGestureHandler}>
-                {/* Visual indicator of gesture handler area */}
-                <View style={styles.gestureAreaIndicator}>
-                  <Text style={styles.gestureAreaText}>GESTURE AREA</Text>
+                }}
+                minDist={10}
+                minVelocity={100}
+              >
+                <View style={styles.inputAreaGestureHandler}>
+                  {/* Visual indicator of gesture handler area */}
+                  <View style={styles.gestureAreaIndicator}>
+                    <Text style={styles.gestureAreaText}>SWIPE HERE</Text>
+                  </View>
                 </View>
-
-                {/* This invisible view covers the entire input area for swipe detection */}
-                <TouchableOpacity
-                  style={styles.touchTestButton}
-                  onPress={() => {
-                    console.log('👆 TOUCH TEST BUTTON PRESSED - Area is touchable!');
-                  }}
-                >
-                  <Text style={styles.touchTestText}>TEST</Text>
-                </TouchableOpacity>
-              </View>
-            </PanGestureHandler>
-          )}
+              </PanGestureHandler>
+            )}
         </View>
 
         {/* Particles */}
@@ -1887,7 +2067,10 @@ const styles = StyleSheet.create({
     width: 400,
     height: 400,
     zIndex: 40, // Higher than other elements to receive touch events
-    // Invisible - just for gesture detection
+    backgroundColor: 'rgba(255, 0, 255, 0.1)', // Slight purple tint for debugging
+    borderWidth: 2,
+    borderColor: 'rgba(255, 0, 255, 0.3)',
+    borderRadius: 200,
   },
   touchTestButton: {
     position: 'absolute',
@@ -1905,17 +2088,21 @@ const styles = StyleSheet.create({
   },
   gestureAreaIndicator: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(0, 255, 255, 0.8)',
-    padding: 5,
-    borderRadius: 5,
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -50 }, { translateY: -50 }],
+    backgroundColor: 'rgba(0, 255, 255, 0.9)',
+    padding: 10,
+    borderRadius: 10,
     zIndex: 50,
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   gestureAreaText: {
     color: '#000000',
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   superComboButton: {
     backgroundColor: '#ff00ff',

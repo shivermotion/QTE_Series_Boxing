@@ -16,6 +16,11 @@ export interface OpponentConfig {
     min: number; // Minimum time between prompts (ms)
     max: number; // Maximum time between prompts (ms)
   };
+  feints: {
+    enabled: boolean; // Whether feints are enabled for this opponent
+    probability: number; // Probability of feints appearing (0.0 to 1.0)
+    maxFeints: number; // Maximum number of feints per prompt set (1-3)
+  };
   difficulty: 'easy' | 'medium' | 'hard' | 'expert';
   description: string;
   rounds: number; // Number of rounds in this level
@@ -26,6 +31,13 @@ export interface OpponentConfig {
       max: number;
     };
   }; // Optional per-round prompt intervals (overrides default)
+  roundFeints?: {
+    [roundNumber: number]: {
+      enabled: boolean;
+      probability: number;
+      maxFeints: number;
+    };
+  }; // Optional per-round feint settings (overrides default)
 }
 
 export const opponents: OpponentConfig[] = [
@@ -47,6 +59,11 @@ export const opponents: OpponentConfig[] = [
     promptInterval: {
       min: 1800, // 1.8 seconds minimum
       max: 2200, // 2.2 seconds maximum
+    },
+    feints: {
+      enabled: true,
+      probability: 0.1,
+      maxFeints: 2,
     },
     difficulty: 'easy',
     description: 'A local street fighter with basic skills. Good for beginners.',
@@ -73,6 +90,11 @@ export const opponents: OpponentConfig[] = [
       min: 1700, // 1.7 seconds minimum
       max: 2100, // 2.1 seconds maximum
     },
+    feints: {
+      enabled: true,
+      probability: 0.2,
+      maxFeints: 3,
+    },
     difficulty: 'easy',
     description: 'A fitness enthusiast who hits harder than expected.',
     rounds: 1,
@@ -97,6 +119,11 @@ export const opponents: OpponentConfig[] = [
     promptInterval: {
       min: 1600, // 1.6 seconds minimum
       max: 2000, // 2.0 seconds maximum
+    },
+    feints: {
+      enabled: true,
+      probability: 0.15,
+      maxFeints: 2,
     },
     difficulty: 'easy',
     description: 'A trained amateur with proper technique.',
@@ -126,6 +153,11 @@ export const opponents: OpponentConfig[] = [
       min: 1500, // 1.5 seconds minimum
       max: 1900, // 1.9 seconds maximum
     },
+    feints: {
+      enabled: true,
+      probability: 0.2,
+      maxFeints: 3,
+    },
     difficulty: 'medium',
     description: 'A local boxing club champion with experience.',
     rounds: 2,
@@ -154,6 +186,11 @@ export const opponents: OpponentConfig[] = [
       min: 1400, // 1.4 seconds minimum
       max: 1800, // 1.8 seconds maximum
     },
+    feints: {
+      enabled: true,
+      probability: 0.25,
+      maxFeints: 3,
+    },
     difficulty: 'medium',
     description: 'A dangerous underground fighter with no rules.',
     rounds: 2,
@@ -181,6 +218,11 @@ export const opponents: OpponentConfig[] = [
     promptInterval: {
       min: 1300, // 1.3 seconds minimum
       max: 1700, // 1.7 seconds maximum
+    },
+    feints: {
+      enabled: true,
+      probability: 0.3,
+      maxFeints: 3,
     },
     difficulty: 'medium',
     description: 'A regional champion with a solid record.',
@@ -211,6 +253,11 @@ export const opponents: OpponentConfig[] = [
       min: 1200, // 1.2 seconds minimum
       max: 1600, // 1.6 seconds maximum
     },
+    feints: {
+      enabled: true,
+      probability: 0.35,
+      maxFeints: 3,
+    },
     difficulty: 'hard',
     description: 'A mysterious fighter with unpredictable moves.',
     rounds: 3,
@@ -239,6 +286,11 @@ export const opponents: OpponentConfig[] = [
     promptInterval: {
       min: 1100, // 1.1 seconds minimum
       max: 1500, // 1.5 seconds maximum
+    },
+    feints: {
+      enabled: true,
+      probability: 0.4,
+      maxFeints: 3,
     },
     difficulty: 'hard',
     description: 'An elite fighter with championship aspirations.',
@@ -269,6 +321,11 @@ export const opponents: OpponentConfig[] = [
       min: 1000, // 1.0 seconds minimum
       max: 1400, // 1.4 seconds maximum
     },
+    feints: {
+      enabled: true,
+      probability: 0.45,
+      maxFeints: 3,
+    },
     difficulty: 'expert',
     description: 'A legendary fighter with decades of experience.',
     rounds: 4,
@@ -298,6 +355,11 @@ export const opponents: OpponentConfig[] = [
     promptInterval: {
       min: 900, // 0.9 seconds minimum
       max: 1300, // 1.3 seconds maximum
+    },
+    feints: {
+      enabled: true,
+      probability: 0.5,
+      maxFeints: 3,
     },
     difficulty: 'expert',
     description: 'The ultimate challenge - an undefeated champion.',
@@ -344,6 +406,21 @@ export const getPromptIntervalRange = (opponentConfig: OpponentConfig, roundNumb
 export const getRandomPromptInterval = (opponentConfig: OpponentConfig, roundNumber: number): number => {
   const range = getPromptIntervalRange(opponentConfig, roundNumber);
   return Math.random() * (range.max - range.min) + range.min;
+};
+
+// Helper function to get feint configuration for a specific round
+export const getFeintConfig = (opponentConfig: OpponentConfig, roundNumber: number): {
+  enabled: boolean;
+  probability: number;
+  maxFeints: number;
+} => {
+  // Check if there's a specific feint config for this round
+  if (opponentConfig.roundFeints && opponentConfig.roundFeints[roundNumber]) {
+    return opponentConfig.roundFeints[roundNumber];
+  }
+  
+  // Fall back to default feint config
+  return opponentConfig.feints;
 };
 
 // Helper function to get all opponents
