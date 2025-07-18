@@ -21,6 +21,18 @@ export interface OpponentConfig {
     probability: number; // Probability of feints appearing (0.0 to 1.0)
     maxFeints: number; // Maximum number of feints per prompt set (1-3)
   };
+  timingPrompts: {
+    enabled: boolean; // Whether timing prompts are enabled for this opponent
+    probability: number; // Probability of timing prompts appearing (0.0 to 1.0)
+    maxPrompts: number; // Maximum number of timing prompts per set (1-3)
+    duration: {
+      min: number; // Minimum duration for timing prompts (ms) - how long the ring takes to shrink
+      max: number; // Maximum duration for timing prompts (ms)
+    };
+    perfectWindowDuration: number; // Duration of perfect timing window (ms) - when ring aligns with circle
+    goodWindowDuration: number; // Duration of good timing window on each side (ms) - acceptable early/late range
+    staggerDelay: number; // Delay between timing prompts spawning (ms) - for multi-prompt sets
+  };
   difficulty: 'easy' | 'medium' | 'hard' | 'expert';
   description: string;
   rounds: number; // Number of rounds in this level
@@ -38,9 +50,24 @@ export interface OpponentConfig {
       maxFeints: number;
     };
   }; // Optional per-round feint settings (overrides default)
+  roundTimingPrompts?: {
+    [roundNumber: number]: {
+      enabled: boolean;
+      probability: number;
+      maxPrompts: number;
+      duration: {
+        min: number;
+        max: number;
+      };
+      perfectWindowDuration: number;
+      goodWindowDuration: number;
+      staggerDelay: number;
+    };
+  }; // Optional per-round timing prompt settings (overrides default)
 }
 
 export const opponents: OpponentConfig[] = [
+
   // Level 1 - The Beginning
   {
     id: 'opponent_1',
@@ -64,6 +91,18 @@ export const opponents: OpponentConfig[] = [
       enabled: true,
       probability: 0.1,
       maxFeints: 2,
+    },
+    timingPrompts: {
+      enabled: true,
+      probability: 0.1,
+      maxPrompts: 2,
+      duration: {
+        min: 2500,
+        max: 3500,
+      },
+      perfectWindowDuration: 400, // Longer perfect window
+      goodWindowDuration: 600, // More lenient good window
+      staggerDelay: 6000, // Very long stagger for better gameplay
     },
     difficulty: 'easy',
     description: 'A local street fighter with basic skills. Good for beginners.',
@@ -95,6 +134,18 @@ export const opponents: OpponentConfig[] = [
       probability: 0.2,
       maxFeints: 3,
     },
+    timingPrompts: {
+      enabled: true,
+      probability: 0.2,
+      maxPrompts: 3,
+      duration: {
+        min: 1500,
+        max: 2000,
+      },
+      perfectWindowDuration: 1300,
+      goodWindowDuration: 1100,
+      staggerDelay: 5000, // Very long stagger for better gameplay
+    },
     difficulty: 'easy',
     description: 'A fitness enthusiast who hits harder than expected.',
     rounds: 1,
@@ -124,6 +175,18 @@ export const opponents: OpponentConfig[] = [
       enabled: true,
       probability: 0.15,
       maxFeints: 2,
+    },
+    timingPrompts: {
+      enabled: true,
+      probability: 0.15,
+      maxPrompts: 2,
+      duration: {
+        min: 1200,
+        max: 1700,
+      },
+      perfectWindowDuration: 1100,
+      goodWindowDuration: 900,
+      staggerDelay: 1200,
     },
     difficulty: 'easy',
     description: 'A trained amateur with proper technique.',
@@ -158,6 +221,18 @@ export const opponents: OpponentConfig[] = [
       probability: 0.2,
       maxFeints: 3,
     },
+    timingPrompts: {
+      enabled: true,
+      probability: 0.2,
+      maxPrompts: 3,
+      duration: {
+        min: 1400,
+        max: 1900,
+      },
+      perfectWindowDuration: 1000,
+      goodWindowDuration: 400, // More lenient good window
+      staggerDelay: 1400,
+    },
     difficulty: 'medium',
     description: 'A local boxing club champion with experience.',
     rounds: 2,
@@ -190,6 +265,18 @@ export const opponents: OpponentConfig[] = [
       enabled: true,
       probability: 0.25,
       maxFeints: 3,
+    },
+    timingPrompts: {
+      enabled: true,
+      probability: 0.25,
+      maxPrompts: 3,
+      duration: {
+        min: 1300,
+        max: 1800,
+      },
+      perfectWindowDuration: 900,
+      goodWindowDuration: 400, // More lenient good window
+      staggerDelay: 1600,
     },
     difficulty: 'medium',
     description: 'A dangerous underground fighter with no rules.',
@@ -224,6 +311,18 @@ export const opponents: OpponentConfig[] = [
       probability: 0.3,
       maxFeints: 3,
     },
+    timingPrompts: {
+      enabled: true,
+      probability: 0.3,
+      maxPrompts: 3,
+      duration: {
+        min: 1200,
+        max: 1700,
+      },
+      perfectWindowDuration: 800,
+      goodWindowDuration: 400, // More lenient good window
+      staggerDelay: 1800,
+    },
     difficulty: 'medium',
     description: 'A regional champion with a solid record.',
     rounds: 3,
@@ -235,6 +334,26 @@ export const opponents: OpponentConfig[] = [
     roundFeints: {
       2: { enabled: true, probability: 0.4, maxFeints: 3 }, // Round 2: More feints
       3: { enabled: true, probability: 0.5, maxFeints: 3 }, // Round 3: Most feints
+    },
+    roundTimingPrompts: {
+      2: { 
+        enabled: true, 
+        probability: 0.4, 
+        maxPrompts: 3,
+        duration: { min: 1100, max: 1600 },
+        perfectWindowDuration: 700,
+        goodWindowDuration: 500,
+        staggerDelay: 2000,
+      }, // Round 2: More timing prompts
+      3: { 
+        enabled: true, 
+        probability: 0.5, 
+        maxPrompts: 3,
+        duration: { min: 1000, max: 1500 },
+        perfectWindowDuration: 600,
+        goodWindowDuration: 400,
+        staggerDelay: 2200,
+      }, // Round 3: Most timing prompts
     },
   },
 
@@ -262,6 +381,18 @@ export const opponents: OpponentConfig[] = [
       probability: 0.35,
       maxFeints: 3,
     },
+    timingPrompts: {
+      enabled: true,
+      probability: 0.35,
+      maxPrompts: 3,
+      duration: {
+        min: 1100,
+        max: 1600,
+      },
+      perfectWindowDuration: 700,
+      goodWindowDuration: 500,
+      staggerDelay: 2400,
+    },
     difficulty: 'hard',
     description: 'A mysterious fighter with unpredictable moves.',
     rounds: 3,
@@ -273,6 +404,26 @@ export const opponents: OpponentConfig[] = [
     roundFeints: {
       2: { enabled: true, probability: 0.45, maxFeints: 3 }, // Round 2: More feints
       3: { enabled: true, probability: 0.6, maxFeints: 3 }, // Round 3: Most feints
+    },
+    roundTimingPrompts: {
+      2: { 
+        enabled: true, 
+        probability: 0.5, 
+        maxPrompts: 3,
+        duration: { min: 1000, max: 1500 },
+        perfectWindowDuration: 600,
+        goodWindowDuration: 400,
+        staggerDelay: 2600,
+      }, // Round 2: More timing prompts
+      3: { 
+        enabled: true, 
+        probability: 0.65, 
+        maxPrompts: 3,
+        duration: { min: 900, max: 1400 },
+        perfectWindowDuration: 500,
+        goodWindowDuration: 300,
+        staggerDelay: 2800,
+      }, // Round 3: Most timing prompts
     },
   },
 
@@ -300,6 +451,18 @@ export const opponents: OpponentConfig[] = [
       probability: 0.4,
       maxFeints: 3,
     },
+    timingPrompts: {
+      enabled: true,
+      probability: 0.4,
+      maxPrompts: 3,
+      duration: {
+        min: 1000,
+        max: 1500,
+      },
+      perfectWindowDuration: 600,
+      goodWindowDuration: 400,
+      staggerDelay: 3000,
+    },
     difficulty: 'hard',
     description: 'An elite fighter with championship aspirations.',
     rounds: 3,
@@ -307,6 +470,26 @@ export const opponents: OpponentConfig[] = [
     roundPromptIntervals: {
       2: { min: 1000, max: 1400 }, // Round 2 is faster
       3: { min: 900, max: 1300 }, // Round 3 is fastest
+    },
+    roundTimingPrompts: {
+      2: { 
+        enabled: true, 
+        probability: 0.55, 
+        maxPrompts: 3,
+        duration: { min: 900, max: 1400 },
+        perfectWindowDuration: 500,
+        goodWindowDuration: 300,
+        staggerDelay: 3200,
+      }, // Round 2: More timing prompts
+      3: { 
+        enabled: true, 
+        probability: 0.7, 
+        maxPrompts: 3,
+        duration: { min: 800, max: 1300 },
+        perfectWindowDuration: 400,
+        goodWindowDuration: 200,
+        staggerDelay: 3400,
+      }, // Round 3: Most timing prompts
     },
   },
 
@@ -334,6 +517,18 @@ export const opponents: OpponentConfig[] = [
       probability: 0.45,
       maxFeints: 3,
     },
+    timingPrompts: {
+      enabled: true,
+      probability: 0.45,
+      maxPrompts: 3,
+      duration: {
+        min: 900,
+        max: 1400,
+      },
+      perfectWindowDuration: 500,
+      goodWindowDuration: 300,
+      staggerDelay: 3600,
+    },
     difficulty: 'expert',
     description: 'A legendary fighter with decades of experience.',
     rounds: 4,
@@ -342,6 +537,35 @@ export const opponents: OpponentConfig[] = [
       2: { min: 900, max: 1300 }, // Round 2 is faster
       3: { min: 800, max: 1200 }, // Round 3 is faster
       4: { min: 700, max: 1100 }, // Round 4 is fastest
+    },
+    roundTimingPrompts: {
+      2: { 
+        enabled: true, 
+        probability: 0.6, 
+        maxPrompts: 3,
+        duration: { min: 800, max: 1300 },
+        perfectWindowDuration: 400,
+        goodWindowDuration: 200,
+        staggerDelay: 3800,
+      }, // Round 2: More timing prompts
+      3: { 
+        enabled: true, 
+        probability: 0.75, 
+        maxPrompts: 3,
+        duration: { min: 700, max: 1200 },
+        perfectWindowDuration: 300,
+        goodWindowDuration: 150,
+        staggerDelay: 4000,
+      }, // Round 3: More timing prompts
+      4: { 
+        enabled: true, 
+        probability: 0.9, 
+        maxPrompts: 3,
+        duration: { min: 600, max: 1100 },
+        perfectWindowDuration: 250,
+        goodWindowDuration: 100,
+        staggerDelay: 4200,
+      }, // Round 4: Most timing prompts
     },
   },
 
@@ -369,6 +593,18 @@ export const opponents: OpponentConfig[] = [
       probability: 0.5,
       maxFeints: 3,
     },
+    timingPrompts: {
+      enabled: true,
+      probability: 0.5,
+      maxPrompts: 3,
+      duration: {
+        min: 800,
+        max: 1300,
+      },
+      perfectWindowDuration: 400,
+      goodWindowDuration: 200,
+      staggerDelay: 4400,
+    },
     difficulty: 'expert',
     description: 'The ultimate challenge - an undefeated champion.',
     rounds: 4,
@@ -377,6 +613,35 @@ export const opponents: OpponentConfig[] = [
       2: { min: 800, max: 1200 }, // Round 2 is faster
       3: { min: 700, max: 1100 }, // Round 3 is faster
       4: { min: 600, max: 1000 }, // Round 4 is fastest
+    },
+    roundTimingPrompts: {
+      2: { 
+        enabled: true, 
+        probability: 0.65, 
+        maxPrompts: 3,
+        duration: { min: 700, max: 1200 },
+        perfectWindowDuration: 300,
+        goodWindowDuration: 150,
+        staggerDelay: 4600,
+      }, // Round 2: More timing prompts
+      3: { 
+        enabled: true, 
+        probability: 0.8, 
+        maxPrompts: 3,
+        duration: { min: 600, max: 1100 },
+        perfectWindowDuration: 200,
+        goodWindowDuration: 100,
+        staggerDelay: 4800,
+      }, // Round 3: More timing prompts
+      4: { 
+        enabled: true, 
+        probability: 0.95, 
+        maxPrompts: 3,
+        duration: { min: 500, max: 1000 },
+        perfectWindowDuration: 150,
+        goodWindowDuration: 75,
+        staggerDelay: 5000,
+      }, // Round 4: Most timing prompts
     },
   },
 ];
@@ -429,6 +694,28 @@ export const getFeintConfig = (opponentConfig: OpponentConfig, roundNumber: numb
   
   // Fall back to default feint config
   return opponentConfig.feints;
+};
+
+// Helper function to get timing prompt configuration for a specific round
+export const getTimingPromptConfig = (opponentConfig: OpponentConfig, roundNumber: number): {
+  enabled: boolean;
+  probability: number;
+  maxPrompts: number;
+  duration: {
+    min: number;
+    max: number;
+  };
+  perfectWindowDuration: number;
+  goodWindowDuration: number;
+  staggerDelay: number;
+} => {
+  // Check if there's a specific timing prompt config for this round
+  if (opponentConfig.roundTimingPrompts && opponentConfig.roundTimingPrompts[roundNumber]) {
+    return opponentConfig.roundTimingPrompts[roundNumber];
+  }
+  
+  // Fall back to default timing prompt config
+  return opponentConfig.timingPrompts;
 };
 
 // Helper function to get all opponents

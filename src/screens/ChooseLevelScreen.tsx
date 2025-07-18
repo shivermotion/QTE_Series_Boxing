@@ -245,6 +245,14 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
     }
   };
 
+  const getLevelNumber = (level: number) => {
+    return `Chapter ${level}`;
+  };
+
+  const getLevelDescription = (level: number) => {
+    return getChapterTitle(level);
+  };
+
   const [currentGlow, setCurrentGlow] = React.useState(0);
 
   React.useEffect(() => {
@@ -292,8 +300,8 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
           resizeMode="cover"
         >
           <View style={styles.levelButtonOverlay}>
-            <Text style={styles.levelNumber}>Chapter {level}</Text>
-            <Text style={styles.chapterTitle}>{getChapterTitle(level)}</Text>
+            <Text style={styles.levelNumber}>{getLevelNumber(level)}</Text>
+            <Text style={styles.chapterTitle}>{getLevelDescription(level)}</Text>
             <Text style={styles.levelDifficulty}>{getLevelDifficulty(level)}</Text>
             <View style={styles.levelStars}>
               {[...Array(Math.min(level, 5))].map((_, i) => (
@@ -603,20 +611,25 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
               setTimeout(() => setIsScrolling(false), 200);
             }}
           >
-            <View style={styles.levelGrid}>
-              {Array.from({ length: 10 }, (_, i) => (
-                <AnimatedLevelButton
-                  key={i + 1}
-                  level={i + 1}
-                  onPress={handleLevelSelect}
-                  delay={500 + i * 400}
-                  onPressIn={playButtonSound}
-                  isSelected={selectedLevel === i + 1}
-                  onSelect={setSelectedLevel}
-                  backgroundImage={getLevelBackgroundImage(i + 1)}
-                  isScrolling={isScrolling}
-                />
-              ))}
+            {/* Main Campaign Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>🥊 Championship Campaign</Text>
+              <Text style={styles.sectionSubtitle}>Face the ultimate challenges</Text>
+              <View style={styles.levelGrid}>
+                {Array.from({ length: 10 }, (_, i) => (
+                  <AnimatedLevelButton
+                    key={i + 1}
+                    level={i + 1}
+                    onPress={handleLevelSelect}
+                    delay={500 + i * 400}
+                    onPressIn={playButtonSound}
+                    isSelected={selectedLevel === i + 1}
+                    onSelect={setSelectedLevel}
+                    backgroundImage={getLevelBackgroundImage(i + 1)}
+                    isScrolling={isScrolling}
+                  />
+                ))}
+              </View>
             </View>
           </ScrollView>
         </View>
@@ -763,6 +776,29 @@ const styles = StyleSheet.create({
   },
   star: {
     fontSize: 14,
+  },
+  sectionContainer: {
+    marginBottom: 30,
+    paddingHorizontal: 10,
+  },
+  sectionTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textAlign: 'center',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+    marginBottom: 10,
+  },
+  sectionSubtitle: {
+    fontSize: 16,
+    color: '#cccccc',
+    textAlign: 'center',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    marginBottom: 20,
   },
 });
 

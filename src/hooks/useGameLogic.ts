@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { GameState, Prompt, TapPrompt, HitQuality } from '../types/game';
+import { GameState, Prompt, TapPrompt, TimingPrompt, HitQuality } from '../types/game';
 import { getOpponentConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/opponents';
-import { generatePrompt, generateTapPrompts, generateSuperComboSequence } from '../utils/promptUtils';
+import { generatePrompt, generateTapPrompts, generateTimingPrompts, generateSuperComboSequence } from '../utils/promptUtils';
 import { triggerHaptic } from '../utils/hapticUtils';
 import { createParticles, createFeedbackText } from '../utils/visualEffects';
 
@@ -30,6 +30,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   // Prompt state
   const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
   const [activeTapPrompts, setActiveTapPrompts] = useState<TapPrompt[]>([]);
+  const [activeTimingPrompts, setActiveTimingPrompts] = useState<TimingPrompt[]>([]);
   const [superComboSequence, setSuperComboSequence] = useState<Prompt[]>([]);
   const [superComboIndex, setSuperComboIndex] = useState(0);
   const [lastPromptTime, setLastPromptTime] = useState(0);
@@ -45,7 +46,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
 
   // Pre-round state
   const [isPreRound, setIsPreRound] = useState(true);
-  const [preRoundText, setPreRoundText] = useState('');
+  const [preRoundText, setPreRoundText] = useState(`ROUND 1`);
 
   // Input state
   const [lastTapTime, setLastTapTime] = useState(0);
@@ -63,15 +64,35 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   const spawnPrompt = () => {
     if (gameState.isSuperComboActive) return;
 
-    const prompt = generatePrompt();
+    // Check if any prompts are currently active
+    const hasActivePrompts = 
+      currentPrompt?.isActive || 
+      activeTapPrompts.some(p => p.isActive && !p.isCompleted) ||
+      activeTimingPrompts.some(p => p.isActive && !p.isCompleted);
+
+    if (hasActivePrompts) {
+      console.log('🎯 Skipping prompt spawn - active prompts exist');
+      return;
+    }
+
+    const prompt = generatePrompt(opponentConfig);
+    console.log('🎯 Spawning prompt type:', prompt.type);
 
     if (prompt.type === 'tap') {
       const tapPrompts = generateTapPrompts(opponentConfig, gameState.currentRound);
       setActiveTapPrompts(tapPrompts);
       setCurrentPrompt(prompt);
+      setActiveTimingPrompts([]);
+    } else if (prompt.type === 'timing') {
+      const timingPrompts = generateTimingPrompts(opponentConfig, gameState.currentRound);
+      console.log('🎯 Generated timing prompts:', timingPrompts.length, timingPrompts);
+      setActiveTimingPrompts(timingPrompts);
+      setCurrentPrompt(null);
+      setActiveTapPrompts([]);
     } else {
       setCurrentPrompt(prompt);
       setActiveTapPrompts([]);
+      setActiveTimingPrompts([]);
     }
   };
 
@@ -184,6 +205,13 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   };
 
   const handleTapPromptCompletion = (completedPrompts: TapPrompt[], completionTime: number) => {
+    // Safety check: ensure we have valid prompts
+    if (!completedPrompts || completedPrompts.length === 0) {
+      console.log('🎯 ERROR: No completed prompts provided to handleTapPromptCompletion');
+      handleMiss();
+      return;
+    }
+
     const realPrompts = completedPrompts.filter(p => !p.isFeint);
     const totalRealPrompts = realPrompts.length;
     const completedRealPrompts = completedPrompts.filter(p => p.isCompleted && !p.isFeint);
@@ -198,7 +226,15 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
 
     if (successfulTaps === totalRealPrompts) {
       console.log('🎯 SUCCESS! All real prompts completed');
-      const overallTimeElapsed = completionTime - completedPrompts[0].startTime;
+      
+      // Safety check: ensure we have valid prompts with startTime
+      let overallTimeElapsed: number;
+      if (completedPrompts.length === 0 || !completedPrompts[0]?.startTime) {
+        console.log('🎯 ERROR: Invalid completedPrompts array, defaulting to good timing');
+        overallTimeElapsed = 1000; // Default to good timing
+      } else {
+        overallTimeElapsed = completionTime - completedPrompts[0].startTime;
+      }
 
       let hitQuality: HitQuality = 'miss';
       let points = 0;
@@ -251,7 +287,94 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
 
   const clearAllPrompts = () => {
     setActiveTapPrompts([]);
+    setActiveTimingPrompts([]);
     setCurrentPrompt(null);
+  };
+
+  // ============================================================================
+  // TIMING PROMPT HANDLING
+  // ============================================================================
+
+  const processTimingPrompt = (gridPosition: number, hitQuality: 'perfect' | 'good') => {
+    console.log('🎯 Processing timing prompt:', { gridPosition, hitQuality });
+    
+    const timingPrompt = activeTimingPrompts.find(
+      prompt => prompt.gridPosition === gridPosition && prompt.isActive && !prompt.isCompleted
+    );
+
+    if (!timingPrompt) {
+      console.log('🎯 No active timing prompt found for position:', gridPosition);
+      handleMiss();
+      return;
+    }
+
+    // Mark this prompt as completed
+    const updatedPrompts = activeTimingPrompts.map(prompt =>
+      prompt.id === timingPrompt.id ? { ...prompt, isCompleted: true } : prompt
+    );
+    setActiveTimingPrompts(updatedPrompts);
+
+    // Check if all timing prompts are completed (including inactive ones)
+    const remainingPrompts = updatedPrompts.filter(p => !p.isCompleted);
+    
+    if (remainingPrompts.length === 0) {
+      handleTimingPromptCompletion(updatedPrompts, Date.now(), hitQuality);
+    }
+  };
+
+  const handleTimingPromptCompletion = (completedPrompts: TimingPrompt[], completionTime: number, lastHitQuality: 'perfect' | 'good') => {
+    const totalPrompts = completedPrompts.length;
+    const completedPromptsCount = completedPrompts.filter(p => p.isCompleted).length;
+
+    console.log('🎯 Timing Prompt Completion:', {
+      completedPrompts: completedPromptsCount,
+      lastHitQuality,
+      totalPrompts,
+    });
+
+    if (completedPromptsCount === totalPrompts) {
+      console.log('🎯 SUCCESS! All timing prompts completed');
+
+      let points = 0;
+      let damage = 0;
+      let powerGain = 0;
+
+      // Use the last hit quality for overall scoring (timing prompts have their own multi-tier timing)
+      if (lastHitQuality === 'perfect') {
+        points = 100 * totalPrompts;
+        damage = opponentConfig.damage.perfect * totalPrompts;
+        powerGain = 10 * totalPrompts;
+      } else if (lastHitQuality === 'good') {
+        points = 50 * totalPrompts;
+        damage = opponentConfig.damage.good * totalPrompts;
+        powerGain = 5 * totalPrompts;
+      }
+
+      setGameState(prev => ({
+        ...prev,
+        score: prev.score + points,
+        opponentHP: Math.max(0, prev.opponentHP - damage),
+        powerMeter: Math.min(100, prev.powerMeter + powerGain),
+        avatarState: lastHitQuality === 'perfect' ? 'perfect' : 'success',
+      }));
+
+      if (gameState.opponentHP - damage <= gameState.roundHPGoal) {
+        completeRound();
+      }
+
+      if (gameState.opponentHP - damage <= 0) {
+        completeLevel();
+      }
+
+      triggerHaptic('success');
+      if (onSuccess) onSuccess();
+    } else {
+      console.log('🎯 MISS! Not all timing prompts completed');
+      handleMiss();
+    }
+
+    console.log('🎯 Clearing timing prompts after completion');
+    clearAllPrompts();
   };
 
   // ============================================================================
@@ -450,6 +573,38 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
         }
       }
 
+      // Check timing prompts
+      if (activeTimingPrompts.length > 0) {
+        const now = Date.now();
+        
+        // Activate timing prompts when they reach their appearance time
+        const updatedPrompts = activeTimingPrompts.map(prompt => {
+          if (!prompt.isActive && now >= prompt.startTime) {
+            console.log('🎯 Timing prompt appearing:', prompt.gridPosition, 'at time:', now);
+            return { ...prompt, isActive: true };
+          }
+          return prompt;
+        });
+        
+        if (JSON.stringify(updatedPrompts) !== JSON.stringify(activeTimingPrompts)) {
+          console.log('🎯 Updating timing prompts:', updatedPrompts.map(p => ({ active: p.isActive, completed: p.isCompleted, pos: p.gridPosition })));
+          setActiveTimingPrompts(updatedPrompts);
+        }
+
+        // Check for expired timing prompts - check all active prompts
+        const activePrompts = updatedPrompts.filter(p => p.isActive && !p.isCompleted);
+        for (const activePrompt of activePrompts) {
+          const timeElapsed = now - activePrompt.startTime;
+          if (timeElapsed > activePrompt.duration) {
+            console.log('🎯 Auto-miss: Timing prompt expired');
+            if (!isInCooldown) {
+              handleMiss();
+            }
+            return;
+          }
+        }
+      }
+
       // Check super combo prompts
       if (
         gameState.isSuperComboActive &&
@@ -487,6 +642,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     isGameOver,
     isPreRound,
     isInCooldown,
+    activeTimingPrompts,
   ]);
 
   // Power meter decay
@@ -524,14 +680,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     }
   }, [gameState.avatarState]);
 
-  // Set initial pre-round text
-  useEffect(() => {
-    if (isPreRound && !preRoundText) {
-      const roundText = `ROUND ${gameState.currentRound}`;
-      console.log('🎬 GameLogic: Setting initial pre-round text:', roundText);
-      setPreRoundText(roundText);
-    }
-  }, [isPreRound, preRoundText, gameState.currentRound]);
+
 
   return {
     // State
@@ -569,6 +718,8 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     setLastTapTime,
     tapCount,
     setTapCount,
+    activeTimingPrompts,
+    setActiveTimingPrompts,
 
     // Refs
     particleIdCounter,
@@ -579,6 +730,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     spawnPrompt,
     processInput,
     processTapPrompt,
+    processTimingPrompt,
     handleMiss,
     completeRound,
     completeLevel,

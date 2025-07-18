@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
-import { Prompt, TapPrompt } from '../types/game';
+import { Prompt, TapPrompt, TimingPrompt } from '../types/game';
 import TestArrow from './TestArrow';
 import TapGrid from './TapGrid';
+import TimingPromptComponent from './TimingPrompt';
 
 // ============================================================================
 // GAME INPUT AREA COMPONENT
@@ -12,21 +13,27 @@ import TapGrid from './TapGrid';
 interface GameInputAreaProps {
   currentPrompt: Prompt | null;
   activeTapPrompts: TapPrompt[];
+  activeTimingPrompts: TimingPrompt[];
   superComboSequence: Prompt[];
   superComboIndex: number;
   gameState: any;
   onSwipe: (direction: 'left' | 'right' | 'up' | 'down') => void;
   onGridTap: (gridPosition: number) => void;
+  onTimingSuccess: (gridPosition: number, hitQuality: 'perfect' | 'good') => void;
+  onTimingMiss: () => void;
 }
 
 const GameInputArea: React.FC<GameInputAreaProps> = ({
   currentPrompt,
-  activeTapPrompts,
-  superComboSequence,
-  superComboIndex,
+  activeTapPrompts = [],
+  activeTimingPrompts = [],
+  superComboSequence = [],
+  superComboIndex = 0,
   gameState,
   onSwipe,
   onGridTap,
+  onTimingSuccess,
+  onTimingMiss,
 }) => {
   return (
     <View style={styles.inputArea}>
@@ -48,8 +55,31 @@ const GameInputArea: React.FC<GameInputAreaProps> = ({
         <TestArrow direction={currentPrompt.direction!} isActive={currentPrompt.isActive} />
       )}
 
+      {/* Debug: Show timing prompts count */}
+      {activeTimingPrompts && activeTimingPrompts.length > 0 && (
+        <View style={styles.debugTimingIndicator}>
+          <Text style={styles.debugText}>Timing: {activeTimingPrompts.length}</Text>
+        </View>
+      )}
+
+      {/* Timing Prompt Area */}
+      {activeTimingPrompts && activeTimingPrompts.length > 0 && (
+        <View style={styles.timingPromptArea}>
+          {activeTimingPrompts
+            .filter(prompt => prompt.isActive) // Only render active (visible) prompts
+            .map((prompt, index) => (
+              <TimingPromptComponent
+                key={prompt.id}
+                prompt={prompt}
+                onMiss={onTimingMiss}
+                onSuccess={hitQuality => onTimingSuccess(prompt.gridPosition, hitQuality)}
+              />
+            ))}
+        </View>
+      )}
+
       {/* Tap Grid Area - For 3x3 tap prompts */}
-      {activeTapPrompts.length > 0 && (
+      {activeTapPrompts && activeTapPrompts.length > 0 && (
         <View style={styles.tapGridArea}>
           <TapGrid activeTapPrompts={activeTapPrompts} onGridTap={onGridTap} />
         </View>
@@ -59,7 +89,7 @@ const GameInputArea: React.FC<GameInputAreaProps> = ({
       {currentPrompt &&
         currentPrompt.type === 'swipe' &&
         currentPrompt.isActive &&
-        activeTapPrompts.length === 0 && (
+        (!activeTapPrompts || activeTapPrompts.length === 0) && (
           <PanGestureHandler
             onGestureEvent={event => {
               // Gesture event handling for debugging if needed
@@ -123,6 +153,14 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -200 }, { translateY: -200 }],
     zIndex: 5,
   },
+  timingPromptArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 400,
+    height: 400,
+    zIndex: 25,
+  },
   tapGridArea: {
     position: 'absolute',
     top: '50%',
@@ -152,6 +190,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 10,
+  },
+  debugText: {
+    color: '#ffff00',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  debugTimingIndicator: {
+    position: 'absolute',
+    top: -30,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 30,
   },
 });
 

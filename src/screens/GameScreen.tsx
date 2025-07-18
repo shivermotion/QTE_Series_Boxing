@@ -183,14 +183,19 @@ const GameScreen: React.FC<GameScreenProps> = ({
       const now = Date.now();
 
       // Only spawn new prompts when no prompts are active and not in cooldown
+      const hasActivePrompts =
+        gameLogic.currentPrompt?.isActive ||
+        gameLogic.activeTapPrompts.some(p => p.isActive && !p.isCompleted) ||
+        gameLogic.activeTimingPrompts.some(p => p.isActive && !p.isCompleted);
+
       if (
-        !gameLogic.currentPrompt &&
-        gameLogic.activeTapPrompts.length === 0 &&
+        !hasActivePrompts &&
         !gameLogic.gameState.isSuperComboActive &&
         (now - gameLogic.lastPromptTime > gameLogic.promptInterval ||
           gameLogic.lastPromptTime === 0) &&
         !gameLogic.isPreRound &&
-        !gameLogic.isInCooldown
+        !gameLogic.isInCooldown &&
+        gameLogic.activeTimingPrompts.length === 0 // Also check timing prompts
       ) {
         gameLogic.spawnPrompt();
         gameLogic.setLastPromptTime(now);
@@ -312,11 +317,16 @@ const GameScreen: React.FC<GameScreenProps> = ({
         <GameInputArea
           currentPrompt={gameLogic.currentPrompt}
           activeTapPrompts={gameLogic.activeTapPrompts}
+          activeTimingPrompts={gameLogic.activeTimingPrompts}
           superComboSequence={gameLogic.superComboSequence}
           superComboIndex={gameLogic.superComboIndex}
           gameState={gameLogic.gameState}
           onSwipe={handleSwipe}
           onGridTap={handleGridTap}
+          onTimingSuccess={(gridPosition, hitQuality) =>
+            gameLogic.processTimingPrompt(gridPosition, hitQuality)
+          }
+          onTimingMiss={() => gameLogic.handleMiss()}
         />
 
         {/* Particles */}

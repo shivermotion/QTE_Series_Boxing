@@ -1,18 +1,28 @@
-import { Prompt, TapPrompt } from '../types/game';
-import { getFeintConfig } from '../data/opponents';
+import { Prompt, TapPrompt, TimingPrompt } from '../types/game';
+import { getFeintConfig, getTimingPromptConfig } from '../data/opponents';
 
 // ============================================================================
 // PROMPT UTILITIES
 // ============================================================================
 
-export const generatePrompt = (): Prompt => {
-  const promptTypes: ('swipe' | 'tap')[] = ['swipe', 'tap'];
+export const generatePrompt = (opponentConfig?: any): Prompt => {
+  // Regular level generation (mixed prompt types)
+  const promptTypes: ('swipe' | 'tap' | 'timing')[] = ['swipe', 'tap', 'timing'];
   const type = promptTypes[Math.floor(Math.random() * promptTypes.length)];
 
   if (type === 'tap') {
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'tap',
+      startTime: Date.now(),
+      duration: 3000,
+      isActive: true,
+      isCompleted: false,
+    };
+  } else if (type === 'timing') {
+    return {
+      id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'timing',
       startTime: Date.now(),
       duration: 3000,
       isActive: true,
@@ -32,6 +42,78 @@ export const generatePrompt = (): Prompt => {
       isCompleted: false,
     };
   }
+};
+
+export const generateTimingPrompts = (opponentConfig: any, currentRound: number): TimingPrompt[] => {
+  // Get timing prompt config for this round
+  const timingConfig = getTimingPromptConfig(opponentConfig, currentRound);
+  
+  console.log('🎯 Timing Config:', {
+    enabled: timingConfig.enabled,
+    probability: timingConfig.probability,
+    maxPrompts: timingConfig.maxPrompts,
+    round: currentRound,
+    opponent: opponentConfig.name
+  });
+  
+  if (!timingConfig.enabled) {
+    console.log('🎯 Timing prompts disabled');
+    return [];
+  }
+
+  const numPrompts = Math.floor(Math.random() * timingConfig.maxPrompts) + 1; // 1 to maxPrompts
+  console.log('🎯 Generating timing prompts:', numPrompts);
+  const prompts: TimingPrompt[] = [];
+  const usedPositions = new Set<number>();
+
+  for (let i = 0; i < numPrompts; i++) {
+    let position: number;
+    do {
+      position = Math.floor(Math.random() * 9); // 0-8 for 3x3 grid
+    } while (usedPositions.has(position));
+
+    usedPositions.add(position);
+
+    // Use opponent's timing configuration
+    const duration = timingConfig.duration.min + Math.random() * (timingConfig.duration.max - timingConfig.duration.min);
+    const perfectWindowDuration = timingConfig.perfectWindowDuration;
+    const goodWindowDuration = timingConfig.goodWindowDuration;
+    const staggerDelay = timingConfig.staggerDelay;
+    
+    // Calculate the visual appearance time for this prompt
+    const appearanceTime = Date.now() + (i * staggerDelay);
+    
+    // Calculate timing windows relative to the appearance time (in milliseconds from appearance)
+    // Make timing windows more player-friendly
+    const perfectWindowStart = duration * 0.6; // Start at 60% of duration instead of 87%
+    const perfectWindowEnd = perfectWindowStart + perfectWindowDuration;
+    
+    const goodEarlyStart = perfectWindowStart - goodWindowDuration;
+    const goodEarlyEnd = perfectWindowStart;
+    
+    const goodLateStart = perfectWindowEnd;
+    const goodLateEnd = perfectWindowEnd + goodWindowDuration;
+
+    prompts.push({
+      id: `timing_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+      gridPosition: position,
+      startTime: appearanceTime, // When this prompt should appear visually
+      duration,
+      isActive: false, // Will be activated when it appears visually
+      isCompleted: false,
+      perfectWindowStart,
+      perfectWindowEnd,
+      goodEarlyStart,
+      goodEarlyEnd,
+      goodLateStart,
+      goodLateEnd,
+      isFeint: false, // Timing prompts don't have feints for now
+    });
+  }
+
+  console.log('🎯 Final timing prompts:', prompts.length);
+  console.log('🎯 Generated timing prompts:', prompts.length, prompts);
+  return prompts;
 };
 
 export const generateTapPrompts = (opponentConfig: any, currentRound: number): TapPrompt[] => {
