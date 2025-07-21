@@ -152,23 +152,58 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
     }
   }, [isSelected, buttonSelectionScale, buttonSelectionRotation]);
 
+  const [pressStartTime, setPressStartTime] = React.useState<number | null>(null);
+  const [wasScrollingDuringPress, setWasScrollingDuringPress] = React.useState(false);
+
   const handlePressIn = () => {
     if (isScrolling) {
       console.log('🚫 Button press blocked during scroll');
       return;
     }
     console.log('✅ Button press started - level', level);
+    setPressStartTime(Date.now());
+    setWasScrollingDuringPress(false);
     onPressIn();
-    // Don't immediately select - wait for press out
   };
 
+  // Monitor scrolling during press
+  React.useEffect(() => {
+    if (pressStartTime && isScrolling) {
+      setWasScrollingDuringPress(true);
+    }
+  }, [isScrolling, pressStartTime]);
+
   const handlePressOut = () => {
-    if (isScrolling) {
-      console.log('🚫 Button press out blocked during scroll');
+    if (!pressStartTime) {
+      console.log('🚫 No press start time - ignoring press out');
       return;
     }
-    console.log('✅ Button press completed - selecting level', level);
+
+    const pressDuration = Date.now() - pressStartTime;
+
+    if (isScrolling || wasScrollingDuringPress) {
+      console.log('🚫 Button press out blocked - scrolling detected during press');
+      setPressStartTime(null);
+      return;
+    }
+
+    // Only trigger if press was deliberate (not too short, not too long)
+    if (pressDuration < 50 || pressDuration > 1000) {
+      console.log('🚫 Press duration invalid:', pressDuration, 'ms');
+      setPressStartTime(null);
+      return;
+    }
+
+    console.log(
+      '✅ Button press completed - selecting level',
+      level,
+      'duration:',
+      pressDuration,
+      'ms'
+    );
     onSelect(level);
+    setPressStartTime(null);
+
     Animated.sequence([
       Animated.timing(buttonScale, {
         toValue: 0.95,
@@ -604,17 +639,19 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
             onTouchMove={() => {
               console.log('📱 Touch moving - scrolling detected');
               setIsScrolling(true);
+              // Mark that scrolling occurred during any active button press
+              if (selectedLevel !== null) {
+                setSelectedLevel(null);
+              }
             }}
             onTouchEnd={() => {
               console.log('📱 Touch ended on ScrollView');
-              // Small delay to prevent immediate button presses after scroll
-              setTimeout(() => setIsScrolling(false), 200);
+              // Longer delay to prevent accidental button presses after scroll
+              setTimeout(() => setIsScrolling(false), 500);
             }}
           >
             {/* Main Campaign Section */}
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>🥊 Championship Campaign</Text>
-              <Text style={styles.sectionSubtitle}>Face the ultimate challenges</Text>
               <View style={styles.levelGrid}>
                 {Array.from({ length: 10 }, (_, i) => (
                   <AnimatedLevelButton

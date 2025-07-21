@@ -113,7 +113,7 @@ const AnimatedStageBeams = ({
   const baseAngles =
     corner === 'left'
       ? [Math.PI / 3, Math.PI / 4, Math.PI / 6] // Downward and inward
-      : [Math.PI - Math.PI / 3, Math.PI - Math.PI / 4, Math.PI - Math.PI / 6];
+      : [(125 * Math.PI) / 180, (125 * Math.PI) / 180, (125 * Math.PI) / 180]; // 125 degrees for right beams
 
   return (
     <>
@@ -872,13 +872,13 @@ const MainMenu: React.FC<MainMenuProps> = ({
         Animated.sequence([
           Animated.timing(anim, {
             toValue: 1,
-            duration: 3000 + i * 600,
+            duration: 2800 + i * 800,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: false,
           }),
           Animated.timing(anim, {
             toValue: 0,
-            duration: 3000 + i * 600,
+            duration: 2800 + i * 800,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: false,
           }),
@@ -890,13 +890,13 @@ const MainMenu: React.FC<MainMenuProps> = ({
         Animated.sequence([
           Animated.timing(anim, {
             toValue: 1,
-            duration: 3200 + i * 600,
+            duration: 3600 + i * 400,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: false,
           }),
           Animated.timing(anim, {
             toValue: 0,
-            duration: 3200 + i * 600,
+            duration: 3600 + i * 400,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: false,
           }),
@@ -952,12 +952,12 @@ const MainMenu: React.FC<MainMenuProps> = ({
         {/* Camera Flashes: above background, below overlay */}
         <CameraFlashes />
 
-        {/* Skia Canvas for stage light beams - revealing mode only */}
+        {/* Skia Canvas for stage light beams - behind silhouette */}
         <Canvas
           style={[
             StyleSheet.absoluteFillObject,
             {
-              zIndex: 1,
+              zIndex: 0, // same layer as silhouette, but rendered first
               // Android-specific pointer events
               ...(Platform.OS === 'android' && { pointerEvents: 'box-none' }),
             },

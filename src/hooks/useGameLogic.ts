@@ -27,6 +27,10 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     level: selectedLevel,
   });
 
+  // Gem system
+  const [gems, setGems] = useState(3); // Default 3 gems
+  const [savedGameState, setSavedGameState] = useState<GameState | null>(null);
+
   // Prompt state
   const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
   const [activeTapPrompts, setActiveTapPrompts] = useState<TapPrompt[]>([]);
@@ -38,6 +42,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
 
   // UI state
   const [isGameOver, setIsGameOver] = useState(false);
+  const [isPostLevel, setIsPostLevel] = useState(false);
   const [particles, setParticles] = useState<any[]>([]);
   const [feedbackTexts, setFeedbackTexts] = useState<any[]>([]);
   const [isBlinking, setIsBlinking] = useState(false);
@@ -47,6 +52,11 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   // Pre-round state
   const [isPreRound, setIsPreRound] = useState(true);
   const [preRoundText, setPreRoundText] = useState(`ROUND 1`);
+  
+  // Cooldown state
+  const [isCooldown, setIsCooldown] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(5);
+  const [cooldownText, setCooldownText] = useState('COOL DOWN');
 
   // Input state
   const [lastTapTime, setLastTapTime] = useState(0);
@@ -405,6 +415,8 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     }, 2500);
 
     if (gameState.lives <= 1) {
+      // Save the current game state for potential gem continue
+      saveGameState();
       setTimeout(() => setIsGameOver(true), 1000);
     }
   };
@@ -422,13 +434,40 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     const newInterval = getRandomPromptInterval(opponentConfig, nextRound);
     setPromptInterval(newInterval);
 
-    setPreRoundText(`ROUND ${nextRound}`);
-    setIsPreRound(true);
+    // Start cooldown instead of immediately showing pre-round
+    setIsCooldown(true);
+    setCooldownTime(5);
+    setCooldownText('COOL DOWN');
+    setIsPreRound(false);
 
     triggerHaptic('success');
   };
 
+  const startCooldown = () => {
+    setIsCooldown(true);
+    setCooldownTime(5);
+    setCooldownText('COOL DOWN');
+    setIsPreRound(false);
+  };
+
+  const endCooldown = () => {
+    setIsCooldown(false);
+    setPreRoundText(`ROUND ${gameState.currentRound}`);
+    setIsPreRound(true);
+  };
+
   const completeLevel = () => {
+    // Enter post-level state instead of immediately advancing
+    setIsPostLevel(true);
+    setGameState(prev => ({
+      ...prev,
+      isPaused: true, // Pause the game during post-level
+    }));
+    
+    triggerHaptic('heavy');
+  };
+
+  const advanceToNextLevel = () => {
     const nextLevel = gameState.level + 1;
     const nextOpponentConfig = getOpponentConfig(nextLevel);
 
@@ -439,9 +478,41 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       currentRound: 1,
       roundHPGoal: getRoundHPGoal(nextOpponentConfig, 1),
       powerMeter: 0,
+      isPaused: false, // Resume the game
     }));
 
+    setIsPostLevel(false);
     triggerHaptic('heavy');
+  };
+
+  const returnToMenu = () => {
+    setIsPostLevel(false);
+    // Additional cleanup if needed
+  };
+
+  const continueWithGem = () => {
+    if (gems <= 0 || !savedGameState) return false;
+    
+    // Use a gem
+    setGems(prev => prev - 1);
+    
+    // Restore the saved game state
+    setGameState(savedGameState);
+    setIsGameOver(false);
+    setCurrentPrompt(null);
+    setActiveTapPrompts([]);
+    setActiveTimingPrompts([]);
+    setSuperComboSequence([]);
+    setSuperComboIndex(0);
+    
+    // Start cooldown before resuming
+    startCooldown();
+    
+    return true;
+  };
+
+  const saveGameState = () => {
+    setSavedGameState(gameState);
   };
 
   // ============================================================================
@@ -532,6 +603,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       gameState.isPaused ||
       isGameOver ||
       isPreRound ||
+      isCooldown ||
       isInCooldown
     )
       return;
@@ -680,6 +752,20 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     }
   }, [gameState.avatarState]);
 
+  // Cooldown countdown effect
+  useEffect(() => {
+    if (isCooldown && cooldownTime > 0) {
+      const countdownTimer = setTimeout(() => {
+        setCooldownTime(prev => prev - 1);
+      }, 1000);
+
+      return () => clearTimeout(countdownTimer);
+    } else if (isCooldown && cooldownTime === 0) {
+      // Cooldown finished, start pre-round
+      endCooldown();
+    }
+  }, [isCooldown, cooldownTime]);
+
 
 
   return {
@@ -700,6 +786,8 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     setPromptInterval,
     isGameOver,
     setIsGameOver,
+    isPostLevel,
+    setIsPostLevel,
     particles,
     setParticles,
     feedbackTexts,
@@ -714,12 +802,21 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     setIsPreRound,
     preRoundText,
     setPreRoundText,
+    isCooldown,
+    setIsCooldown,
+    cooldownTime,
+    setCooldownTime,
+    cooldownText,
+    setCooldownText,
     lastTapTime,
     setLastTapTime,
     tapCount,
     setTapCount,
     activeTimingPrompts,
     setActiveTimingPrompts,
+    gems,
+    setGems,
+    savedGameState,
 
     // Refs
     particleIdCounter,
@@ -733,7 +830,13 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     processTimingPrompt,
     handleMiss,
     completeRound,
+    startCooldown,
+    endCooldown,
     completeLevel,
+    advanceToNextLevel,
+    returnToMenu,
+    continueWithGem,
+    saveGameState,
     activateSuperCombo,
     processSuperComboInput,
     clearAllPrompts,

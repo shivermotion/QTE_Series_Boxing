@@ -18,9 +18,11 @@ import { useGameLogic } from '../hooks/useGameLogic';
 
 // Components
 import GameOverScreen from './GameOverScreen';
+import PostLevelScreen from './PostLevelScreen';
 import GameHUD from '../components/GameHUD';
 import GameInputArea from '../components/GameInputArea';
 import PreRoundDisplay from '../components/PreRoundDisplay';
+import CooldownDisplay from '../components/CooldownDisplay';
 
 // Data
 import { getOpponentConfig, getRoundHPGoal } from '../data/opponents';
@@ -281,6 +283,33 @@ const GameScreen: React.FC<GameScreenProps> = ({
           gameLogic.setSuperComboIndex(0);
         }}
         onBackToMenu={onBackToMenu}
+        onContinueWithGem={() => {
+          const success = gameLogic.continueWithGem();
+          if (success) {
+            // The game logic will handle the cooldown and state restoration
+            console.log('Continued with gem successfully');
+          } else {
+            console.log('Failed to continue with gem - no gems or no saved state');
+          }
+        }}
+        gemsAvailable={gameLogic.gems}
+        audioRefs={audioRefs}
+      />
+    );
+  }
+
+  if (gameLogic.isPostLevel) {
+    return (
+      <PostLevelScreen
+        level={gameLogic.gameState.level}
+        score={gameLogic.gameState.score}
+        onAdvanceToNextLevel={() => {
+          gameLogic.advanceToNextLevel();
+        }}
+        onReturnToMenu={() => {
+          gameLogic.returnToMenu();
+          onBackToMenu();
+        }}
       />
     );
   }
@@ -412,7 +441,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         </TouchableOpacity>
 
         {/* Pause Overlay */}
-        {gameLogic.gameState.isPaused && !gameLogic.isPreRound && (
+        {gameLogic.gameState.isPaused && !gameLogic.isPreRound && !gameLogic.isCooldown && (
           <View style={styles.pauseOverlay}>
             <Text style={styles.pauseText}>PAUSED</Text>
             <TouchableOpacity
@@ -443,6 +472,13 @@ const GameScreen: React.FC<GameScreenProps> = ({
             <Text style={styles.cooldownText}>...</Text>
           </View>
         )}
+
+        {/* Cooldown Display */}
+        <CooldownDisplay
+          isCooldown={gameLogic.isCooldown}
+          cooldownTime={gameLogic.cooldownTime}
+          cooldownText={gameLogic.cooldownText}
+        />
 
         {/* Pre-round Display */}
         <PreRoundDisplay

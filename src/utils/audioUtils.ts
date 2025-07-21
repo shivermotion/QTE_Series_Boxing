@@ -26,6 +26,17 @@ export const loadAudio = async (audioRefs: {
   qteFailureSound: React.MutableRefObject<Audio.Sound | null>;
   boxingBell2Sound: React.MutableRefObject<Audio.Sound | null>;
   boxingBell1Sound: React.MutableRefObject<Audio.Sound | null>;
+  countdownTenSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownNineSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownEightSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownSevenSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownSixSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownFiveSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownFourSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownThreeSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownTwoSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownOneSound: React.MutableRefObject<Audio.Sound | null>;
+  knockoutSound: React.MutableRefObject<Audio.Sound | null>;
 }) => {
   try {
     const audioFiles: Record<string, any> = {
@@ -34,6 +45,17 @@ export const loadAudio = async (audioRefs: {
       qte_failure: require('../../assets/audio/qte_failure.mp3'),
       boxing_bell_2: require('../../assets/audio/boxing_bell_2.mp3'),
       boxing_bell_1: require('../../assets/audio/boxing_bell_1.mp3'),
+      ten: require('../../assets/audio/ten.mp3'),
+      nine: require('../../assets/audio/nine.mp3'),
+      eight: require('../../assets/audio/eight.mp3'),
+      seven: require('../../assets/audio/seven.mp3'),
+      six: require('../../assets/audio/six.mp3'),
+      five: require('../../assets/audio/five.mp3'),
+      four: require('../../assets/audio/four.mp3'),
+      three: require('../../assets/audio/three.mp3'),
+      two: require('../../assets/audio/two.mp3'),
+      one: require('../../assets/audio/one.mp3'),
+      knockout: require('../../assets/audio/knockout.mp3'),
     };
 
     const tryLoad = async (label: string, ref: React.MutableRefObject<Audio.Sound | null>) => {
@@ -57,6 +79,19 @@ export const loadAudio = async (audioRefs: {
     await tryLoad('qte_failure', audioRefs.qteFailureSound);
     await tryLoad('boxing_bell_2', audioRefs.boxingBell2Sound);
     await tryLoad('boxing_bell_1', audioRefs.boxingBell1Sound);
+    
+    // Load countdown sounds
+    await tryLoad('ten', audioRefs.countdownTenSound);
+    await tryLoad('nine', audioRefs.countdownNineSound);
+    await tryLoad('eight', audioRefs.countdownEightSound);
+    await tryLoad('seven', audioRefs.countdownSevenSound);
+    await tryLoad('six', audioRefs.countdownSixSound);
+    await tryLoad('five', audioRefs.countdownFiveSound);
+    await tryLoad('four', audioRefs.countdownFourSound);
+    await tryLoad('three', audioRefs.countdownThreeSound);
+    await tryLoad('two', audioRefs.countdownTwoSound);
+    await tryLoad('one', audioRefs.countdownOneSound);
+    await tryLoad('knockout', audioRefs.knockoutSound);
   } catch (error) {
     console.log('Audio loading error:', error);
   }
@@ -71,6 +106,17 @@ export const unloadAudio = async (audioRefs: {
   qteFailureSound: React.MutableRefObject<Audio.Sound | null>;
   boxingBell2Sound: React.MutableRefObject<Audio.Sound | null>;
   boxingBell1Sound: React.MutableRefObject<Audio.Sound | null>;
+  countdownTenSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownNineSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownEightSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownSevenSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownSixSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownFiveSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownFourSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownThreeSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownTwoSound: React.MutableRefObject<Audio.Sound | null>;
+  countdownOneSound: React.MutableRefObject<Audio.Sound | null>;
+  knockoutSound: React.MutableRefObject<Audio.Sound | null>;
 }) => {
   if (audioRefs.hitSound.current) await audioRefs.hitSound.current.unloadAsync();
   if (audioRefs.missSound.current) await audioRefs.missSound.current.unloadAsync();
@@ -80,6 +126,17 @@ export const unloadAudio = async (audioRefs: {
   if (audioRefs.qteFailureSound.current) await audioRefs.qteFailureSound.current.unloadAsync();
   if (audioRefs.boxingBell2Sound.current) await audioRefs.boxingBell2Sound.current.unloadAsync();
   if (audioRefs.boxingBell1Sound.current) await audioRefs.boxingBell1Sound.current.unloadAsync();
+  if (audioRefs.countdownTenSound.current) await audioRefs.countdownTenSound.current.unloadAsync();
+  if (audioRefs.countdownNineSound.current) await audioRefs.countdownNineSound.current.unloadAsync();
+  if (audioRefs.countdownEightSound.current) await audioRefs.countdownEightSound.current.unloadAsync();
+  if (audioRefs.countdownSevenSound.current) await audioRefs.countdownSevenSound.current.unloadAsync();
+  if (audioRefs.countdownSixSound.current) await audioRefs.countdownSixSound.current.unloadAsync();
+  if (audioRefs.countdownFiveSound.current) await audioRefs.countdownFiveSound.current.unloadAsync();
+  if (audioRefs.countdownFourSound.current) await audioRefs.countdownFourSound.current.unloadAsync();
+  if (audioRefs.countdownThreeSound.current) await audioRefs.countdownThreeSound.current.unloadAsync();
+  if (audioRefs.countdownTwoSound.current) await audioRefs.countdownTwoSound.current.unloadAsync();
+  if (audioRefs.countdownOneSound.current) await audioRefs.countdownOneSound.current.unloadAsync();
+  if (audioRefs.knockoutSound.current) await audioRefs.knockoutSound.current.unloadAsync();
 };
 
 export const playSound = async (
