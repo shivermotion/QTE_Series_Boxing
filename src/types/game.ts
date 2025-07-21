@@ -6,6 +6,7 @@ export interface GameScreenProps {
   gameMode: 'arcade' | 'endless';
   selectedLevel?: number;
   onBackToMenu: () => void;
+  onChooseLevel?: () => void;
   debugMode: boolean;
 }
 

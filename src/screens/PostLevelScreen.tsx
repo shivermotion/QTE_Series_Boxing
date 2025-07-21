@@ -12,7 +12,7 @@ import {
 interface PostLevelScreenProps {
   level: number;
   score: number;
-  onAdvanceToNextLevel: () => void;
+  onChooseLevel: () => void;
   onReturnToMenu: () => void;
 }
 
@@ -21,7 +21,7 @@ interface PostLevelScreenProps {
 const PostLevelScreen: React.FC<PostLevelScreenProps> = ({
   level,
   score,
-  onAdvanceToNextLevel,
+  onChooseLevel,
   onReturnToMenu,
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -93,10 +93,10 @@ const PostLevelScreen: React.FC<PostLevelScreenProps> = ({
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.button, styles.nextLevelButton]}
-            onPress={onAdvanceToNextLevel}
+            onPress={onChooseLevel}
             activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Next Level</Text>
+            <Text style={styles.buttonText}>Choose Level</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

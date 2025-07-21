@@ -25,7 +25,7 @@ import PreRoundDisplay from '../components/PreRoundDisplay';
 import CooldownDisplay from '../components/CooldownDisplay';
 
 // Data
-import { getOpponentConfig, getRoundHPGoal } from '../data/opponents';
+import { getOpponentConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/opponents';
 
 // Asset imports
 import neutralImg from '../../assets/avatar/neutral.jpg';
@@ -42,6 +42,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
   gameMode,
   selectedLevel = 1,
   onBackToMenu,
+  onChooseLevel,
   debugMode,
 }) => {
   const opponentConfig = getOpponentConfig(selectedLevel);
@@ -273,7 +274,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
             powerMeter: 0,
             isSuperComboActive: false,
             avatarState: 'idle',
-            isPaused: false,
+            isPaused: true, // Start paused for pre-round
             gameTime: 0,
             level: selectedLevel,
           });
@@ -281,6 +282,21 @@ const GameScreen: React.FC<GameScreenProps> = ({
           gameLogic.setCurrentPrompt(null);
           gameLogic.setSuperComboSequence([]);
           gameLogic.setSuperComboIndex(0);
+          gameLogic.setActiveTapPrompts([]);
+          gameLogic.setActiveTimingPrompts([]);
+          gameLogic.setLastPromptTime(0);
+          gameLogic.setPromptInterval(getRandomPromptInterval(restartOpponentConfig, 1));
+
+          // Reset UI states
+          gameLogic.setIsPreRound(true);
+          gameLogic.setPreRoundText('ROUND 1');
+          gameLogic.setIsCooldown(false);
+          gameLogic.setCooldownTime(5);
+          gameLogic.setCooldownText('COOL DOWN');
+          gameLogic.setIsInCooldown(false);
+          gameLogic.setShowMissAnimation(false);
+          gameLogic.setParticles([]);
+          gameLogic.setFeedbackTexts([]);
         }}
         onBackToMenu={onBackToMenu}
         onContinueWithGem={() => {
@@ -303,8 +319,11 @@ const GameScreen: React.FC<GameScreenProps> = ({
       <PostLevelScreen
         level={gameLogic.gameState.level}
         score={gameLogic.gameState.score}
-        onAdvanceToNextLevel={() => {
-          gameLogic.advanceToNextLevel();
+        onChooseLevel={() => {
+          gameLogic.returnToMenu();
+          if (onChooseLevel) {
+            onChooseLevel();
+          }
         }}
         onReturnToMenu={() => {
           gameLogic.returnToMenu();

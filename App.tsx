@@ -142,6 +142,7 @@ function AppContent() {
             gameMode={gameMode}
             selectedLevel={selectedLevel}
             onBackToMenu={handleBackToMenu}
+            onChooseLevel={() => setCurrentScreen('chooseLevel')}
             debugMode={debugMode}
           />
         ) : currentScreen === 'settings' ? (
