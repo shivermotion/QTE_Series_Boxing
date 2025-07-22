@@ -569,7 +569,12 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       
       // Check if opponent is defeated
       if (gameState.opponentHP - superMove.damage <= 0) {
-        completeRound();
+        // Check if this is the final round of the level
+        if (gameState.currentRound >= opponentConfig.rounds) {
+          completeLevel();
+        } else {
+          completeRound();
+        }
       }
     } else {
       console.log('❌ Invalid super combo - no damage dealt');
