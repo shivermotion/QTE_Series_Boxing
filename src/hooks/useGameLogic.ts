@@ -4,6 +4,7 @@ import { getOpponentConfig, getRoundHPGoal, getRandomPromptInterval } from '../d
 import { generatePrompt, generateTapPrompts, generateTimingPrompts, generateSuperComboSequence } from '../utils/promptUtils';
 import { triggerHaptic } from '../utils/hapticUtils';
 import { createParticles, createFeedbackText } from '../utils/visualEffects';
+import { findSuperMoveByCombo, SuperMove } from '../data/superMoves';
 
 // ============================================================================
 // GAME LOGIC HOOK
@@ -58,6 +59,10 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   const [isCooldown, setIsCooldown] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(5);
   const [cooldownText, setCooldownText] = useState('COOL DOWN');
+
+  // Super combo state
+  const [currentSuperCombo, setCurrentSuperCombo] = useState<('up' | 'down' | 'left' | 'right')[]>([]);
+  const [superComboDisplay, setSuperComboDisplay] = useState<string[]>([]);
 
   // Input state
   const [lastTapTime, setLastTapTime] = useState(0);
@@ -533,6 +538,50 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
         isSuperModeActive: false,
       };
     });
+    
+    // Reset super combo state
+    setCurrentSuperCombo([]);
+    setSuperComboDisplay([]);
+  };
+
+  const handleSuperComboProgress = (comboDisplay: string[]) => {
+    setSuperComboDisplay(comboDisplay);
+  };
+
+  const handleSuperComboComplete = (superMove: SuperMove | null) => {
+    if (superMove) {
+      console.log('🥊 SUPER COMBO EXECUTED:', superMove.name, 'Damage:', superMove.damage);
+      
+      // Deal massive damage to opponent
+      setGameState(prev => ({
+        ...prev,
+        opponentHP: Math.max(0, prev.opponentHP - superMove.damage),
+      }));
+
+      // Create visual feedback
+      const feedbackText = createFeedbackText(superMove.name, 400, 300, '#ffff00');
+      setFeedbackTexts(prev => [...prev, feedbackText]);
+      const newParticles = createParticles(400, 300, '#ffff00', 15, particleIdCounter);
+      setParticles(prev => [...prev, ...newParticles]);
+      
+      // Trigger haptic feedback
+      triggerHaptic('heavy');
+      
+      // Check if opponent is defeated
+      if (gameState.opponentHP - superMove.damage <= 0) {
+        completeRound();
+      }
+    } else {
+      console.log('❌ Invalid super combo - no damage dealt');
+      const feedbackText = createFeedbackText('MISS!', 400, 300, '#ff0000');
+      setFeedbackTexts(prev => [...prev, feedbackText]);
+      triggerHaptic('medium');
+    }
+    
+    // End super mode after combo
+    setTimeout(() => {
+      endSuperMode();
+    }, 1000);
   };
 
   const activateSuperCombo = () => {
@@ -832,6 +881,8 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     endSuperMode,
     activateSuperCombo,
     processSuperComboInput,
+    handleSuperComboProgress,
+    handleSuperComboComplete,
     clearAllPrompts,
   };
 }; 

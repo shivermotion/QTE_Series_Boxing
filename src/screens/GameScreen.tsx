@@ -24,6 +24,7 @@ import GameInputArea from '../components/GameInputArea';
 import PreRoundDisplay from '../components/PreRoundDisplay';
 import CooldownDisplay from '../components/CooldownDisplay';
 import SuperModeOverlay from '../components/SuperModeOverlay';
+import SuperComboInput from '../components/SuperComboInput';
 
 // Data
 import { getOpponentConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/opponents';
@@ -511,6 +512,13 @@ const GameScreen: React.FC<GameScreenProps> = ({
         <SuperModeOverlay
           isActive={gameLogic.gameState.isSuperModeActive}
           onVideoEnd={handleSuperModeVideoEnd}
+        />
+
+        {/* Super Combo Input */}
+        <SuperComboInput
+          isActive={gameLogic.gameState.isSuperModeActive}
+          onComboComplete={gameLogic.handleSuperComboComplete}
+          onComboProgress={gameLogic.handleSuperComboProgress}
         />
       </Animated.View>
     </GestureHandlerRootView>

@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import Animated from 'react-native-reanimated';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { GameState } from '../types/game';
 
 // ============================================================================
@@ -22,6 +22,29 @@ const GameHUD: React.FC<GameHUDProps> = ({
   getAvatarImage,
   onSuperButtonPress,
 }) => {
+  // Animation for breathing glow effect
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  // Breathing glow animation
+  useEffect(() => {
+    const breatheAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+      ])
+    );
+    breatheAnimation.start();
+    return () => breatheAnimation.stop();
+  }, []);
+
   return (
     <>
       {/* Top HUD - Opponent */}
@@ -36,10 +59,25 @@ const GameHUD: React.FC<GameHUDProps> = ({
               </View>
             </View>
             <View style={styles.hpBar}>
-              <View
+              <LinearGradient
+                colors={['#ef4444', '#dc2626']} // Light red to dark red gradient
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
                 style={[
                   styles.hpFill,
-                  { width: `${(gameState.opponentHP / opponentConfig.hp) * 100}%` },
+                  {
+                    width: `${(gameState.opponentHP / opponentConfig.hp) * 100}%`,
+                    alignSelf: 'flex-end', // Anchor to right side
+                  },
+                ]}
+              />
+              <View
+                style={[
+                  styles.hpBorder,
+                  {
+                    width: `${(gameState.opponentHP / opponentConfig.hp) * 100}%`,
+                    alignSelf: 'flex-end', // Anchor to right side
+                  },
                 ]}
               />
             </View>
@@ -56,12 +94,24 @@ const GameHUD: React.FC<GameHUDProps> = ({
       {/* Bottom HUD - Player */}
       <View style={styles.bottomHud}>
         <View style={styles.playerRow}>
-          <View style={styles.playerAvatarContainer}>
+          <TouchableOpacity
+            style={styles.playerAvatarContainer}
+            onPress={gameState.superMeter >= 100 ? onSuperButtonPress : undefined}
+            activeOpacity={gameState.superMeter >= 100 ? 0.8 : 1}
+          >
             <Animated.Image
               source={getAvatarImage(gameState.avatarState)}
-              style={[styles.avatar, avatarScaleStyle]}
+              style={[
+                styles.avatar,
+                avatarScaleStyle,
+                {
+                  borderWidth: 3,
+                  borderColor: gameState.superMeter >= 100 ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+                  borderRadius: 32,
+                },
+              ]}
             />
-          </View>
+          </TouchableOpacity>
           <View style={styles.playerContainer}>
             <View style={styles.playerTopRow}>
               <Text style={styles.playerLabel}>PLAYER</Text>
@@ -83,19 +133,49 @@ const GameHUD: React.FC<GameHUDProps> = ({
 
             {/* Super Meter */}
             <View style={styles.superMeterContainer}>
-              <Text style={styles.superMeterLabel}>SUPER METER</Text>
               <View style={styles.superMeterBar}>
-                <View style={[styles.superMeterFill, { width: `${gameState.superMeter}%` }]} />
+                {/* Glow effect underneath the meter - only left, top, bottom edges animate */}
+                <Animated.View
+                  style={[
+                    styles.superMeterGlow,
+                    {
+                      width: `${Math.max(gameState.superMeter, 5)}%`,
+                      opacity: glowAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.3, 0.8],
+                      }),
+                      transform: [
+                        {
+                          scaleX: glowAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [1.0, 1.05],
+                          }),
+                        },
+                        {
+                          scaleY: glowAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [1.0, 1.1],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                />
+                <LinearGradient
+                  colors={['#1e3a8a', '#3b82f6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.superMeterFill, { width: `${gameState.superMeter}%` }]}
+                />
+                <Animated.View
+                  style={[
+                    styles.superMeterBorder,
+                    {
+                      width: `${Math.max(gameState.superMeter, 5)}%`,
+                    },
+                  ]}
+                />
               </View>
-              {gameState.superMeter >= 100 && onSuperButtonPress && (
-                <TouchableOpacity
-                  style={styles.superButton}
-                  onPress={onSuperButtonPress}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.superButtonText}>SUPER!</Text>
-                </TouchableOpacity>
-              )}
             </View>
           </View>
         </View>
@@ -167,7 +247,6 @@ const styles = StyleSheet.create({
   avatar: {
     width: 64,
     height: 64,
-    borderRadius: 32,
   },
   opponentContainer: {
     flex: 1,
@@ -201,13 +280,22 @@ const styles = StyleSheet.create({
   hpBar: {
     height: 20,
     backgroundColor: '#333',
-    borderRadius: 10,
+    borderRadius: 3,
     overflow: 'hidden',
     marginVertical: 5,
+    transform: [{ skewX: '20deg' }],
   },
   hpFill: {
     height: '100%',
-    backgroundColor: '#ff0000',
+  },
+  hpBorder: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    height: '100%',
+    borderWidth: 3,
+    borderColor: '#ffffff',
+    borderRadius: 3,
   },
   livesBar: {
     flexDirection: 'row',
@@ -222,7 +310,7 @@ const styles = StyleSheet.create({
   },
 
   superMeterContainer: {
-    marginTop: 10,
+    marginTop: 0,
   },
   superMeterLabel: {
     color: '#ffff00',
@@ -232,29 +320,33 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   superMeterBar: {
-    height: 15,
+    height: 20,
     backgroundColor: '#333',
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginBottom: 5,
+    borderRadius: 3,
+    overflow: 'visible',
+    marginVertical: 5,
+    transform: [{ skewX: '20deg' }],
   },
   superMeterFill: {
     height: '100%',
-    backgroundColor: '#ffff00',
   },
-  superButton: {
-    backgroundColor: '#ffff00',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 15,
-    borderWidth: 2,
+  superMeterGlow: {
+    position: 'absolute',
+    top: -3,
+    left: -3,
+    height: 26, // Increased to account for glow expansion
+    backgroundColor: '#ffffff',
+    borderRadius: 6,
+    opacity: 0.6,
+  },
+  superMeterBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: '100%',
+    borderWidth: 3,
     borderColor: '#ffffff',
-    alignItems: 'center',
-  },
-  superButtonText: {
-    color: '#000000',
-    fontSize: 12,
-    fontWeight: 'bold',
+    borderRadius: 3,
   },
 });
 

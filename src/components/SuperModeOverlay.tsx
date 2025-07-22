@@ -1,8 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+import { View, StyleSheet, Text } from 'react-native';
 
 interface SuperModeOverlayProps {
   isActive: boolean;
@@ -10,7 +7,6 @@ interface SuperModeOverlayProps {
 }
 
 const SuperModeOverlay: React.FC<SuperModeOverlayProps> = ({ isActive, onVideoEnd }) => {
-  const videoRef = useRef<Video>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const hasStartedRef = useRef<boolean>(false);
 
@@ -19,11 +15,6 @@ const SuperModeOverlay: React.FC<SuperModeOverlayProps> = ({ isActive, onVideoEn
     if (isActive && !hasStartedRef.current) {
       console.log('🎬 Super mode starting - setting up 5-second timer');
       hasStartedRef.current = true;
-
-      // Start video
-      if (videoRef.current) {
-        videoRef.current.playAsync();
-      }
 
       // Set 5-second timer
       timerRef.current = setTimeout(() => {
@@ -41,11 +32,6 @@ const SuperModeOverlay: React.FC<SuperModeOverlayProps> = ({ isActive, onVideoEn
     if (!isActive && hasStartedRef.current) {
       console.log('🎬 Super mode ending - cleaning up');
       hasStartedRef.current = false;
-
-      // Stop video
-      if (videoRef.current) {
-        videoRef.current.stopAsync();
-      }
 
       // Clear timer
       if (timerRef.current) {
@@ -71,20 +57,7 @@ const SuperModeOverlay: React.FC<SuperModeOverlayProps> = ({ isActive, onVideoEn
 
   return (
     <View style={styles.overlay}>
-      <Video
-        ref={videoRef}
-        source={require('../../assets/video/speedlines.mp4')}
-        style={styles.video}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay={true}
-        isLooping={true}
-        isMuted={false}
-        onPlaybackStatusUpdate={status => {
-          if (status.isLoaded && status.didJustFinish) {
-            console.log('🎬 Speed lines video looped');
-          }
-        }}
-      />
+      <Text style={styles.headerText}>SUPER COMBO MODE</Text>
     </View>
   );
 };
@@ -97,11 +70,18 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 1000,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  video: {
-    width: screenWidth,
-    height: screenHeight,
+  headerText: {
+    color: '#ffff00',
+    fontSize: 48,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
 });
 
