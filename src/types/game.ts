@@ -53,7 +53,9 @@ export interface GameState {
   currentRound: number;
   roundHPGoal: number;
   powerMeter: number;
+  superMeter: number; // New: Super meter that fills up instead of dealing damage
   isSuperComboActive: boolean;
+  isSuperModeActive: boolean; // New: When speed lines are playing
   avatarState: 'idle' | 'success' | 'failure' | 'perfect';
   isPaused: boolean;
   gameTime: number;

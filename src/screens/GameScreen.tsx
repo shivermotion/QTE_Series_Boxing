@@ -23,6 +23,7 @@ import GameHUD from '../components/GameHUD';
 import GameInputArea from '../components/GameInputArea';
 import PreRoundDisplay from '../components/PreRoundDisplay';
 import CooldownDisplay from '../components/CooldownDisplay';
+import SuperModeOverlay from '../components/SuperModeOverlay';
 
 // Data
 import { getOpponentConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/opponents';
@@ -254,6 +255,13 @@ const GameScreen: React.FC<GameScreenProps> = ({
     gameLogic.setGameState(prev => ({ ...prev, isPaused: false }));
   };
 
+  const handleSuperModeVideoEnd = () => {
+    console.log('🎬 Super mode video ended, ending super mode');
+    console.log('🎬 Current super mode state:', gameLogic.gameState.isSuperModeActive);
+    gameLogic.endSuperMode();
+    console.log('🎬 Called endSuperMode, new state should be false');
+  };
+
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -272,7 +280,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
             currentRound: 1,
             roundHPGoal: getRoundHPGoal(restartOpponentConfig, 1),
             powerMeter: 0,
+            superMeter: 0,
             isSuperComboActive: false,
+            isSuperModeActive: false,
             avatarState: 'idle',
             isPaused: true, // Start paused for pre-round
             gameTime: 0,
@@ -343,6 +353,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
           avatarScaleStyle={avatarScaleStyle}
           powerMeterStyle={powerMeterStyle}
           getAvatarImage={getAvatarImage}
+          onSuperButtonPress={gameLogic.activateSuperMode}
         />
 
         {/* Opponent 3D Model Area */}
@@ -504,6 +515,12 @@ const GameScreen: React.FC<GameScreenProps> = ({
           isPreRound={gameLogic.isPreRound}
           preRoundText={gameLogic.preRoundText}
           onPreRoundComplete={handlePreRoundComplete}
+        />
+
+        {/* Super Mode Overlay */}
+        <SuperModeOverlay
+          isActive={gameLogic.gameState.isSuperModeActive}
+          onVideoEnd={handleSuperModeVideoEnd}
         />
       </Animated.View>
     </GestureHandlerRootView>

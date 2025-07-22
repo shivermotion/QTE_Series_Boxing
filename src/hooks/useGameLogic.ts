@@ -20,7 +20,9 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     currentRound: 1,
     roundHPGoal: getRoundHPGoal(opponentConfig, 1),
     powerMeter: 0,
+    superMeter: 0, // Initialize super meter
     isSuperComboActive: false,
+    isSuperModeActive: false, // Initialize super mode
     avatarState: 'idle',
     isPaused: false,
     gameTime: 0,
@@ -72,7 +74,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   // ============================================================================
 
   const spawnPrompt = () => {
-    if (gameState.isSuperComboActive) return;
+    if (gameState.isSuperComboActive || gameState.isSuperModeActive) return;
 
     // Check if any prompts are currently active
     const hasActivePrompts = 
@@ -146,21 +148,17 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       }
 
       if (hitQuality !== 'miss') {
+        // Calculate super meter gain based on hit quality
+        const superMeterGain = hitQuality === 'perfect' ? 15 : 10;
+        
         setGameState(prev => ({
           ...prev,
           score: prev.score + points,
-          opponentHP: Math.max(0, prev.opponentHP - damage),
+          // Don't deal damage to opponent - fill super meter instead
+          superMeter: Math.min(100, prev.superMeter + superMeterGain),
           powerMeter: Math.min(100, prev.powerMeter + powerGain),
           avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
         }));
-
-        if (gameState.opponentHP - damage <= gameState.roundHPGoal) {
-          completeRound();
-        }
-
-        if (gameState.opponentHP - damage <= 0) {
-          completeLevel();
-        }
       }
     } else {
       handleMiss();
@@ -264,24 +262,20 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       }
 
       if (hitQuality !== 'miss') {
+        // Calculate super meter gain based on hit quality and number of prompts
+        const superMeterGain = hitQuality === 'perfect' ? 15 * totalRealPrompts : 10 * totalRealPrompts;
+        
         setGameState(prev => ({
           ...prev,
           score: prev.score + points,
-          opponentHP: Math.max(0, prev.opponentHP - damage),
+          // Don't deal damage to opponent - fill super meter instead
+          superMeter: Math.min(100, prev.superMeter + superMeterGain),
           powerMeter: Math.min(100, prev.powerMeter + powerGain),
           avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
         }));
 
         triggerHaptic('success');
         if (onSuccess) onSuccess();
-
-        if (gameState.opponentHP - damage <= gameState.roundHPGoal) {
-          completeRound();
-        }
-
-        if (gameState.opponentHP - damage <= 0) {
-          completeLevel();
-        }
       } else {
         console.log('🎯 MISS! Not all real prompts completed');
         handleMiss();
@@ -360,21 +354,17 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
         powerGain = 5 * totalPrompts;
       }
 
+      // Calculate super meter gain based on hit quality and number of prompts
+      const superMeterGain = lastHitQuality === 'perfect' ? 15 * totalPrompts : 10 * totalPrompts;
+      
       setGameState(prev => ({
         ...prev,
         score: prev.score + points,
-        opponentHP: Math.max(0, prev.opponentHP - damage),
+        // Don't deal damage to opponent - fill super meter instead
+        superMeter: Math.min(100, prev.superMeter + superMeterGain),
         powerMeter: Math.min(100, prev.powerMeter + powerGain),
         avatarState: lastHitQuality === 'perfect' ? 'perfect' : 'success',
       }));
-
-      if (gameState.opponentHP - damage <= gameState.roundHPGoal) {
-        completeRound();
-      }
-
-      if (gameState.opponentHP - damage <= 0) {
-        completeLevel();
-      }
 
       triggerHaptic('success');
       if (onSuccess) onSuccess();
@@ -518,6 +508,37 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   // ============================================================================
   // SUPER COMBO HANDLING
   // ============================================================================
+
+  const activateSuperMode = () => {
+    if (gameState.superMeter < 100) return;
+
+    console.log('🚀 ACTIVATING SUPER MODE!');
+    
+    setGameState(prev => ({
+      ...prev,
+      isSuperModeActive: true,
+      superMeter: 0, // Reset super meter
+    }));
+
+    triggerHaptic('heavy');
+    
+    // Stop normal prompt spawning during super mode
+    clearAllPrompts();
+    
+    // Super mode duration is now controlled by the video length
+    // The video component will call onVideoEnd when it finishes
+  };
+
+  const endSuperMode = () => {
+    console.log('🚀 SUPER MODE ENDING - setting isSuperModeActive to false');
+    setGameState(prev => {
+      console.log('🚀 Previous state isSuperModeActive:', prev.isSuperModeActive);
+      return {
+        ...prev,
+        isSuperModeActive: false,
+      };
+    });
+  };
 
   const activateSuperCombo = () => {
     if (gameState.powerMeter < 100) return;
@@ -837,6 +858,8 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     returnToMenu,
     continueWithGem,
     saveGameState,
+    activateSuperMode,
+    endSuperMode,
     activateSuperCombo,
     processSuperComboInput,
     clearAllPrompts,

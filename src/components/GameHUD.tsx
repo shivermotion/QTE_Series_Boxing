@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { GameState } from '../types/game';
 
@@ -13,6 +13,7 @@ interface GameHUDProps {
   avatarScaleStyle: any;
   powerMeterStyle: any;
   getAvatarImage: (state: 'idle' | 'success' | 'failure' | 'perfect') => any;
+  onSuperButtonPress?: () => void;
 }
 
 const GameHUD: React.FC<GameHUDProps> = ({
@@ -21,6 +22,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
   avatarScaleStyle,
   powerMeterStyle,
   getAvatarImage,
+  onSuperButtonPress,
 }) => {
   return (
     <>
@@ -90,6 +92,23 @@ const GameHUD: React.FC<GameHUDProps> = ({
                   powerMeterStyle,
                 ]}
               />
+            </View>
+
+            {/* Super Meter */}
+            <View style={styles.superMeterContainer}>
+              <Text style={styles.superMeterLabel}>SUPER METER</Text>
+              <View style={styles.superMeterBar}>
+                <View style={[styles.superMeterFill, { width: `${gameState.superMeter}%` }]} />
+              </View>
+              {gameState.superMeter >= 100 && onSuperButtonPress && (
+                <TouchableOpacity
+                  style={styles.superButton}
+                  onPress={onSuperButtonPress}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.superButtonText}>SUPER!</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -224,6 +243,41 @@ const styles = StyleSheet.create({
   powerFill: {
     height: '100%',
     backgroundColor: '#ff00ff',
+  },
+  superMeterContainer: {
+    marginTop: 10,
+  },
+  superMeterLabel: {
+    color: '#ffff00',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  superMeterBar: {
+    height: 15,
+    backgroundColor: '#333',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 5,
+  },
+  superMeterFill: {
+    height: '100%',
+    backgroundColor: '#ffff00',
+  },
+  superButton: {
+    backgroundColor: '#ffff00',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+  },
+  superButtonText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 
