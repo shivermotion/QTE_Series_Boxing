@@ -11,7 +11,6 @@ interface GameHUDProps {
   gameState: GameState;
   opponentConfig: any;
   avatarScaleStyle: any;
-  powerMeterStyle: any;
   getAvatarImage: (state: 'idle' | 'success' | 'failure' | 'perfect') => any;
   onSuperButtonPress?: () => void;
 }
@@ -20,7 +19,6 @@ const GameHUD: React.FC<GameHUDProps> = ({
   gameState,
   opponentConfig,
   avatarScaleStyle,
-  powerMeterStyle,
   getAvatarImage,
   onSuperButtonPress,
 }) => {
@@ -81,17 +79,6 @@ const GameHUD: React.FC<GameHUDProps> = ({
                   ))}
                 </View>
               </View>
-            </View>
-            <View style={styles.powerBar}>
-              <Animated.View
-                style={[
-                  styles.powerFill,
-                  {
-                    width: `${gameState.powerMeter}%`,
-                  },
-                  powerMeterStyle,
-                ]}
-              />
             </View>
 
             {/* Super Meter */}
@@ -233,17 +220,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
     borderRadius: 10,
   },
-  powerBar: {
-    height: 20,
-    backgroundColor: '#333',
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginVertical: 5,
-  },
-  powerFill: {
-    height: '100%',
-    backgroundColor: '#ff00ff',
-  },
+
   superMeterContainer: {
     marginTop: 10,
   },

@@ -19,7 +19,6 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     opponentHP: opponentConfig.hp,
     currentRound: 1,
     roundHPGoal: getRoundHPGoal(opponentConfig, 1),
-    powerMeter: 0,
     superMeter: 0, // Initialize super meter
     isSuperComboActive: false,
     isSuperModeActive: false, // Initialize super mode
@@ -67,7 +66,6 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   // Refs
   const particleIdCounter = useRef(0);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
-  const powerDecayRef = useRef<NodeJS.Timeout | null>(null);
 
   // ============================================================================
   // PROMPT SPAWNING
@@ -156,7 +154,6 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
           score: prev.score + points,
           // Don't deal damage to opponent - fill super meter instead
           superMeter: Math.min(100, prev.superMeter + superMeterGain),
-          powerMeter: Math.min(100, prev.powerMeter + powerGain),
           avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
         }));
       }
@@ -270,7 +267,6 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
           score: prev.score + points,
           // Don't deal damage to opponent - fill super meter instead
           superMeter: Math.min(100, prev.superMeter + superMeterGain),
-          powerMeter: Math.min(100, prev.powerMeter + powerGain),
           avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
         }));
 
@@ -362,7 +358,6 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
         score: prev.score + points,
         // Don't deal damage to opponent - fill super meter instead
         superMeter: Math.min(100, prev.superMeter + superMeterGain),
-        powerMeter: Math.min(100, prev.powerMeter + powerGain),
         avatarState: lastHitQuality === 'perfect' ? 'perfect' : 'success',
       }));
 
@@ -541,15 +536,12 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   };
 
   const activateSuperCombo = () => {
-    if (gameState.powerMeter < 100) return;
-
     const sequence = generateSuperComboSequence();
     setSuperComboSequence(sequence);
     setSuperComboIndex(0);
     setGameState(prev => ({
       ...prev,
       isSuperComboActive: true,
-      powerMeter: 0,
     }));
 
     triggerHaptic('heavy');
@@ -605,7 +597,6 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       setGameState(prev => ({
         ...prev,
         isSuperComboActive: false,
-        powerMeter: Math.max(0, prev.powerMeter - 50),
       }));
 
       setSuperComboSequence([]);
@@ -738,27 +729,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     activeTimingPrompts,
   ]);
 
-  // Power meter decay
-  useEffect(() => {
-    if (gameState.powerMeter > 0 && !gameState.isSuperComboActive) {
-      powerDecayRef.current = setInterval(() => {
-        setGameState(prev => ({
-          ...prev,
-          powerMeter: Math.max(0, prev.powerMeter - 1),
-        }));
-      }, 1000);
-    } else {
-      if (powerDecayRef.current) {
-        clearInterval(powerDecayRef.current);
-      }
-    }
 
-    return () => {
-      if (powerDecayRef.current) {
-        clearInterval(powerDecayRef.current);
-      }
-    };
-  }, [gameState.powerMeter, gameState.isSuperComboActive]);
 
   // Avatar blinking effect
   useEffect(() => {
@@ -842,7 +813,6 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     // Refs
     particleIdCounter,
     gameLoopRef,
-    powerDecayRef,
 
     // Functions
     spawnPrompt,

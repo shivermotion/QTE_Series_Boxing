@@ -72,7 +72,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
   // ============================================================================
 
   const screenShakeAnim = useSharedValue(0);
-  const powerMeterAnim = useSharedValue(0);
   const avatarScaleAnim = useSharedValue(1);
   const missXScaleAnim = useSharedValue(0);
   const missXOpacityAnim = useSharedValue(0);
@@ -87,10 +86,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
   const avatarScaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: avatarScaleAnim.value }],
-  }));
-
-  const powerMeterStyle = useAnimatedStyle(() => ({
-    width: `${powerMeterAnim.value}%`,
   }));
 
   const missXStyle = useAnimatedStyle(() => ({
@@ -148,9 +143,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
     const timeSinceLastTap = now - gameLogic.lastTapTime;
 
     if (timeSinceLastTap < 300) {
-      if (gameLogic.gameState.powerMeter >= 100 && !gameLogic.gameState.isSuperComboActive) {
-        gameLogic.activateSuperCombo();
-      }
       gameLogic.setTapCount(0);
       gameLogic.setLastTapTime(0);
     } else {
@@ -279,7 +271,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
             opponentHP: restartOpponentConfig.hp,
             currentRound: 1,
             roundHPGoal: getRoundHPGoal(restartOpponentConfig, 1),
-            powerMeter: 0,
             superMeter: 0,
             isSuperComboActive: false,
             isSuperModeActive: false,
@@ -351,7 +342,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
           gameState={gameLogic.gameState}
           opponentConfig={opponentConfig}
           avatarScaleStyle={avatarScaleStyle}
-          powerMeterStyle={powerMeterStyle}
           getAvatarImage={getAvatarImage}
           onSuperButtonPress={gameLogic.activateSuperMode}
         />

@@ -102,7 +102,7 @@ export const opponents: OpponentConfig[] = [
       },
       perfectWindowDuration: 400, // Longer perfect window
       goodWindowDuration: 600, // More lenient good window
-      staggerDelay: 6000, // Very long stagger for better gameplay
+      staggerDelay: 1000, // Very long stagger for better gameplay
     },
     difficulty: 'easy',
     description: 'A local street fighter with basic skills. Good for beginners.',
