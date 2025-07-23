@@ -27,7 +27,7 @@ import SuperModeOverlay from '../components/SuperModeOverlay';
 import SuperComboInput from '../components/SuperComboInput';
 
 // Data
-import { getOpponentConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/opponents';
+import { getLevelConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/gameConfig';
 
 // Asset imports
 import neutralImg from '../../assets/avatar/neutral.jpg';
@@ -47,7 +47,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
   onChooseLevel,
   debugMode,
 }) => {
-  const opponentConfig = getOpponentConfig(selectedLevel);
+  const levelConfig = getLevelConfig(selectedLevel);
 
   // ============================================================================
   // HOOKS
@@ -57,9 +57,11 @@ const GameScreen: React.FC<GameScreenProps> = ({
   const gameLogic = useGameLogic(
     selectedLevel,
     () => {
+      console.log('🎵 Playing QTE failure sound');
       playGameSound(audioRefs.qteFailureSound);
     },
     () => {
+      console.log('🎵 Playing QTE success sound');
       playGameSound(audioRefs.qteSuccessSound);
     },
     () => {
@@ -265,13 +267,13 @@ const GameScreen: React.FC<GameScreenProps> = ({
         finalScore={gameLogic.gameState.score}
         gameMode={gameMode}
         onRestart={() => {
-          const restartOpponentConfig = getOpponentConfig(selectedLevel);
+          const restartLevelConfig = getLevelConfig(selectedLevel);
           gameLogic.setGameState({
             score: 0,
             lives: 3,
-            opponentHP: restartOpponentConfig.hp,
+            opponentHP: restartLevelConfig.hp,
             currentRound: 1,
-            roundHPGoal: getRoundHPGoal(restartOpponentConfig, 1),
+            roundHPGoal: getRoundHPGoal(restartLevelConfig, 1),
             superMeter: 0,
             isSuperComboActive: false,
             isSuperModeActive: false,
@@ -287,7 +289,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
           gameLogic.setActiveTapPrompts([]);
           gameLogic.setActiveTimingPrompts([]);
           gameLogic.setLastPromptTime(0);
-          gameLogic.setPromptInterval(getRandomPromptInterval(restartOpponentConfig, 1));
+          gameLogic.setPromptInterval(getRandomPromptInterval(restartLevelConfig, 1));
 
           // Reset UI states
           gameLogic.setIsPreRound(true);
@@ -341,7 +343,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         {/* Game HUD */}
         <GameHUD
           gameState={gameLogic.gameState}
-          opponentConfig={opponentConfig}
+          levelConfig={levelConfig}
           avatarScaleStyle={avatarScaleStyle}
           getAvatarImage={getAvatarImage}
           onSuperButtonPress={gameLogic.activateSuperMode}
@@ -377,6 +379,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
             gameLogic.processTimingPrompt(gridPosition, hitQuality)
           }
           onTimingMiss={() => gameLogic.handleMiss()}
+          getCurrentPausedDuration={gameLogic.getCurrentPausedDuration}
         />
 
         {/* Particles */}

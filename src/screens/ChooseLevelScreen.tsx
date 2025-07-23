@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { useAudio } from '../contexts/AudioContext';
 import LevelInfoModal from './LevelInfoModal';
-import { getOpponentConfig } from '../data/opponents';
+import { getLevelConfig } from '../data/gameConfig';
 
 interface ChooseLevelScreenProps {
   onSelectLevel: (level: number) => void;
@@ -219,10 +219,10 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
 
   const getLevelDifficulty = (level: number) => {
     try {
-      const opponent = getOpponentConfig(level);
-      return opponent.difficulty.charAt(0).toUpperCase() + opponent.difficulty.slice(1);
+      const levelConfig = getLevelConfig(level);
+      return levelConfig.difficulty.charAt(0).toUpperCase() + levelConfig.difficulty.slice(1);
     } catch (error) {
-      // Fallback to hardcoded values if opponent not found
+      // Fallback to hardcoded values if levelConfig not found
       if (level <= 3) return 'Easy';
       if (level <= 6) return 'Medium';
       if (level <= 8) return 'Hard';
@@ -232,10 +232,10 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
 
   const getChapterTitle = (level: number) => {
     try {
-      const opponent = getOpponentConfig(level);
-      return opponent.name;
+      const levelConfig = getLevelConfig(level);
+      return levelConfig.name;
     } catch (error) {
-      // Fallback to hardcoded values if opponent not found
+      // Fallback to hardcoded values if levelConfig not found
       const titles = [
         'The Beginning',
         'Rising Star',

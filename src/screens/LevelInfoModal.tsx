@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getOpponentConfig } from '../data/opponents';
+import { getLevelConfig } from '../data/gameConfig';
 
 interface LevelInfoModalProps {
   visible: boolean;
@@ -77,8 +77,8 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
 
   const getChapterName = (level: number) => {
     try {
-      const opponent = getOpponentConfig(level);
-      return opponent.name;
+      const levelConfig = getLevelConfig(level);
+      return levelConfig.name;
     } catch (error) {
       // Fallback to hardcoded values if opponent not found
       const chapters = [
@@ -99,8 +99,8 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
 
   const getDifficultyColor = (level: number) => {
     try {
-      const opponent = getOpponentConfig(level);
-      switch (opponent.difficulty) {
+      const levelConfig = getLevelConfig(level);
+      switch (levelConfig.difficulty) {
         case 'easy':
           return '#00ff00'; // Green
         case 'medium':
@@ -123,8 +123,8 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
 
   const getDifficultyText = (level: number) => {
     try {
-      const opponent = getOpponentConfig(level);
-      return opponent.difficulty.charAt(0).toUpperCase() + opponent.difficulty.slice(1);
+      const levelConfig = getLevelConfig(level);
+      return levelConfig.difficulty.charAt(0).toUpperCase() + levelConfig.difficulty.slice(1);
     } catch (error) {
       // Fallback to hardcoded values if opponent not found
       if (level <= 3) return 'Easy';
@@ -136,8 +136,8 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
 
   const getDifficultyStars = (level: number) => {
     try {
-      const opponent = getOpponentConfig(level);
-      switch (opponent.difficulty) {
+      const levelConfig = getLevelConfig(level);
+      switch (levelConfig.difficulty) {
         case 'easy':
           return 1;
         case 'medium':
@@ -217,7 +217,7 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
                 <View style={styles.difficultySection}>
                   <View style={styles.difficultyHeader}>
                     <Text style={styles.difficultyLabel}>Difficulty</Text>
-                    <Text style={styles.vsText}>VS {getOpponentConfig(level).name}</Text>
+                    <Text style={styles.vsText}>VS {getLevelConfig(level).name}</Text>
                   </View>
                   <View style={styles.starsContainer}>
                     {Array.from({ length: 5 }, (_, i) => (
@@ -237,8 +237,8 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
                   <Text style={styles.storyText}>
                     {(() => {
                       try {
-                        const opponent = getOpponentConfig(level);
-                        return opponent.description;
+                        const levelConfig = getLevelConfig(level);
+                        return levelConfig.description;
                       } catch (error) {
                         return `Chapter ${level} of your boxing journey awaits. Face new challenges, discover hidden techniques, and prove your worth in the ring. The story continues...`;
                       }

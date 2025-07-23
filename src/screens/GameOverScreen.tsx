@@ -299,7 +299,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
         }
         return prev - 1;
       });
-    }, 3000); // Slowed down from 1000ms to 3000ms (3 seconds per number)
+    }, 1500); // Set to 1500ms (1.5 seconds per number)
 
     return () => clearInterval(timer);
   }, [isCountingDown, selectedOption, onBackToMenu]);

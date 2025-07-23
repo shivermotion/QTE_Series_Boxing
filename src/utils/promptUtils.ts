@@ -1,59 +1,87 @@
 import { Prompt, TapPrompt, TimingPrompt } from '../types/game';
-import { getFeintConfig, getTimingPromptConfig } from '../data/opponents';
+import { 
+  getFeintConfig, 
+  getTimingPromptConfig, 
+  getPromptConfig, 
+  getRandomPromptDuration,
+  LevelConfig 
+} from '../data/gameConfig';
 
 // ============================================================================
 // PROMPT UTILITIES
 // ============================================================================
 
-export const generatePrompt = (opponentConfig?: any): Prompt => {
-  // Regular level generation (mixed prompt types)
-  const promptTypes: ('swipe' | 'tap' | 'timing')[] = ['swipe', 'tap', 'timing'];
-  const type = promptTypes[Math.floor(Math.random() * promptTypes.length)];
+export const generatePrompt = (levelConfig: LevelConfig, currentRound: number = 1): Prompt => {
+  // Get level configuration for this round
+  const feintConfig = getFeintConfig(levelConfig, currentRound);
+  const timingConfig = getTimingPromptConfig(levelConfig, currentRound);
+  
+  // Build available prompt types based on level configuration
+  const availablePromptTypes: ('swipe' | 'tap' | 'timing')[] = ['swipe']; // Swipe is always available
+  
+  // Add tap prompts if feints are enabled (even if no feints, tap prompts are still available)
+  if (feintConfig.enabled || levelConfig.feints.enabled) {
+    availablePromptTypes.push('tap');
+  }
+  
+  // Add timing prompts if they are enabled
+  if (timingConfig.enabled) {
+    availablePromptTypes.push('timing');
+  }
+  
+  console.log('🎯 Available prompt types for level:', availablePromptTypes);
+  
+  // Select random prompt type from available types
+  const type = availablePromptTypes[Math.floor(Math.random() * availablePromptTypes.length)];
 
   if (type === 'tap') {
+    const duration = getRandomPromptDuration(levelConfig, 'tap', currentRound);
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'tap',
       startTime: Date.now(),
-      duration: 3000,
+      duration,
       isActive: true,
       isCompleted: false,
     };
   } else if (type === 'timing') {
+    const duration = getRandomPromptDuration(levelConfig, 'timing', currentRound);
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'timing',
       startTime: Date.now(),
-      duration: 3000,
+      duration,
       isActive: true,
       isCompleted: false,
     };
   } else {
     const directions: ('left' | 'right' | 'up' | 'down')[] = ['left', 'right', 'up', 'down'];
     const direction = directions[Math.floor(Math.random() * directions.length)];
+    const duration = getRandomPromptDuration(levelConfig, 'swipe', currentRound);
 
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'swipe',
       direction,
       startTime: Date.now(),
-      duration: 3000,
+      duration,
       isActive: true,
       isCompleted: false,
     };
   }
 };
 
-export const generateTimingPrompts = (opponentConfig: any, currentRound: number): TimingPrompt[] => {
+export const generateTimingPrompts = (levelConfig: LevelConfig, currentRound: number): TimingPrompt[] => {
   // Get timing prompt config for this round
-  const timingConfig = getTimingPromptConfig(opponentConfig, currentRound);
+  const timingConfig = getTimingPromptConfig(levelConfig, currentRound);
+  const promptConfig = getPromptConfig(levelConfig, 'timing', currentRound);
   
   console.log('🎯 Timing Config:', {
     enabled: timingConfig.enabled,
     probability: timingConfig.probability,
     maxPrompts: timingConfig.maxPrompts,
     round: currentRound,
-    opponent: opponentConfig.name
+    opponent: levelConfig.name
   });
   
   if (!timingConfig.enabled) {
@@ -74,10 +102,10 @@ export const generateTimingPrompts = (opponentConfig: any, currentRound: number)
 
     usedPositions.add(position);
 
-    // Use opponent's timing configuration
-    const duration = timingConfig.duration.min + Math.random() * (timingConfig.duration.max - timingConfig.duration.min);
-    const perfectWindowDuration = timingConfig.perfectWindowDuration;
-    const goodWindowDuration = timingConfig.goodWindowDuration;
+    // Use hero's timing configuration
+    const duration = getRandomPromptDuration(levelConfig, 'timing', currentRound);
+    const perfectWindowDuration = promptConfig.timingWindows.perfect;
+    const goodWindowDuration = promptConfig.timingWindows.good;
     const staggerDelay = timingConfig.staggerDelay;
     
     // Calculate the visual appearance time for this prompt
@@ -116,27 +144,25 @@ export const generateTimingPrompts = (opponentConfig: any, currentRound: number)
   return prompts;
 };
 
-export const generateTapPrompts = (opponentConfig: any, currentRound: number): TapPrompt[] => {
-  const numPrompts = Math.floor(Math.random() * 3) + 1; // 1-3 prompts
-  const prompts: TapPrompt[] = [];
-  const usedPositions = new Set<number>();
-
-  const feintConfig = getFeintConfig(opponentConfig, currentRound);
-  
-  // Ensure we always have at least 1 real prompt
-  const minRealPrompts = 1;
-  const maxFeintsAllowed = Math.max(0, numPrompts - minRealPrompts);
+export const generateTapPrompts = (levelConfig: LevelConfig, currentRound: number): TapPrompt[] => {
+  const feintConfig = getFeintConfig(levelConfig, currentRound);
   
   console.log('🎯 Feint Config:', {
     enabled: feintConfig.enabled,
     probability: feintConfig.probability,
     maxFeints: feintConfig.maxFeints,
+    tapPromptConfig: feintConfig.tapPromptConfig,
     round: currentRound,
-    opponent: opponentConfig.name
+    opponent: levelConfig.name
   });
 
   if (!feintConfig.enabled) {
     console.log('🎯 Feints disabled - generating normal prompts');
+    // Generate 1-3 normal taps when feints are disabled
+    const numPrompts = Math.floor(Math.random() * 3) + 1;
+    const prompts: TapPrompt[] = [];
+    const usedPositions = new Set<number>();
+
     for (let i = 0; i < numPrompts; i++) {
       let position: number;
       do {
@@ -145,11 +171,12 @@ export const generateTapPrompts = (opponentConfig: any, currentRound: number): T
 
       usedPositions.add(position);
 
+      const duration = getRandomPromptDuration(levelConfig, 'tap', currentRound);
       prompts.push({
         id: `tap_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
         gridPosition: position,
         startTime: Date.now(),
-        duration: 3000,
+        duration,
         isActive: true,
         isCompleted: false,
         isFeint: false,
@@ -158,34 +185,59 @@ export const generateTapPrompts = (opponentConfig: any, currentRound: number): T
     return prompts;
   }
 
-  const maxFeints = Math.min(feintConfig.maxFeints, maxFeintsAllowed);
-  const shouldIncludeFeints = Math.random() < feintConfig.probability;
-  const numFeints = shouldIncludeFeints ? Math.floor(Math.random() * maxFeints) + 1 : 0;
-  const feintIndices = new Set<number>();
-
-  console.log('🎯 Feint Generation:', {
-    numPrompts,
-    minRealPrompts,
-    maxFeintsAllowed,
-    maxFeints,
-    probability: feintConfig.probability,
-    shouldIncludeFeints,
-    numFeints
-  });
-
-  // Randomly select which prompt indices will be feints
-  // Ensure we don't make ALL prompts feints
-  for (let i = 0; i < numFeints; i++) {
-    let index: number;
-    do {
-      index = Math.floor(Math.random() * numPrompts);
-    } while (feintIndices.has(index));
-    feintIndices.add(index);
+  // Use new precise tap prompt configuration
+  const tapConfig = feintConfig.tapPromptConfig;
+  if (!tapConfig) {
+    console.log('🎯 No tapPromptConfig found, using legacy logic');
+    // Fallback to legacy logic
+    const numPrompts = Math.floor(Math.random() * 3) + 1;
+    const maxFeints = Math.min(feintConfig.maxFeints, numPrompts - 1);
+    const shouldIncludeFeints = Math.random() < feintConfig.probability;
+    const numFeints = shouldIncludeFeints ? Math.floor(Math.random() * maxFeints) + 1 : 0;
+    const numTaps = numPrompts - numFeints;
+    
+    return generateTapPromptsWithCounts(levelConfig, currentRound, numTaps, numFeints);
   }
 
-  console.log('🎯 Feint Indices:', Array.from(feintIndices));
+  // Use new precise configuration
+  const numTaps = tapConfig.minTaps + Math.floor(Math.random() * (tapConfig.maxTaps - tapConfig.minTaps + 1));
+  const numFeints = tapConfig.minFeints + Math.floor(Math.random() * (tapConfig.maxFeints - tapConfig.minFeints + 1));
+  
+  console.log('🎯 Tap Prompt Generation:', {
+    numTaps,
+    numFeints,
+    totalPrompts: numTaps + numFeints,
+    config: tapConfig
+  });
 
-  for (let i = 0; i < numPrompts; i++) {
+  return generateTapPromptsWithCounts(levelConfig, currentRound, numTaps, numFeints);
+};
+
+// Helper function to generate tap prompts with exact counts
+const generateTapPromptsWithCounts = (levelConfig: LevelConfig, currentRound: number, numTaps: number, numFeints: number): TapPrompt[] => {
+  const totalPrompts = numTaps + numFeints;
+  const prompts: TapPrompt[] = [];
+  const usedPositions = new Set<number>();
+
+  // Create array of prompt types (taps and feints)
+  const promptTypes: boolean[] = [];
+  for (let i = 0; i < numTaps; i++) {
+    promptTypes.push(false); // false = real tap
+  }
+  for (let i = 0; i < numFeints; i++) {
+    promptTypes.push(true); // true = feint
+  }
+
+  // Shuffle the array to randomize positions
+  for (let i = promptTypes.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [promptTypes[i], promptTypes[j]] = [promptTypes[j], promptTypes[i]];
+  }
+
+  console.log('🎯 Prompt Types (after shuffle):', promptTypes.map(t => t ? 'feint' : 'tap'));
+
+  // Generate prompts based on shuffled types
+  for (let i = 0; i < totalPrompts; i++) {
     let position: number;
     do {
       position = Math.floor(Math.random() * 9);
@@ -193,7 +245,8 @@ export const generateTapPrompts = (opponentConfig: any, currentRound: number): T
 
     usedPositions.add(position);
 
-    const isFeint = feintIndices.has(i);
+    const isFeint = promptTypes[i];
+    const duration = getRandomPromptDuration(levelConfig, 'tap', currentRound);
 
     console.log(`🎯 Prompt ${i}: Position ${position}, Feint: ${isFeint}`);
 
@@ -201,7 +254,7 @@ export const generateTapPrompts = (opponentConfig: any, currentRound: number): T
       id: `tap_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
       gridPosition: position,
       startTime: Date.now(),
-      duration: 3000,
+      duration,
       isActive: true,
       isCompleted: false,
       isFeint: isFeint,

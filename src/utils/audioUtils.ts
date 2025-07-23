@@ -144,14 +144,23 @@ export const playSound = async (
   getEffectiveVolume: (type: 'master' | 'sfx' | 'music') => number
 ) => {
   try {
+    console.log('🔊 playSound called, soundRef exists:', !!soundRef.current);
     if (soundRef.current) {
       const effectiveVolume = getEffectiveVolume('sfx');
-      if (effectiveVolume === 0) return;
+      console.log('🔊 Effective volume:', effectiveVolume);
+      if (effectiveVolume === 0) {
+        console.log('🔊 Volume is 0, skipping sound');
+        return;
+      }
 
+      console.log('🔊 Setting volume and replaying sound');
       await soundRef.current.setVolumeAsync(effectiveVolume);
       await soundRef.current.replayAsync();
+      console.log('🔊 Sound played successfully');
+    } else {
+      console.log('🔊 Sound ref is null, cannot play');
     }
   } catch (error) {
-    console.log('Sound play error:', error);
+    console.log('🔊 Sound play error:', error);
   }
 }; 

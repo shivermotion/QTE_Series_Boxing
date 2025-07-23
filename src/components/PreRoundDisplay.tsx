@@ -41,15 +41,18 @@ const PreRoundDisplay: React.FC<PreRoundDisplayProps> = ({
   const [displayText, setDisplayText] = React.useState(preRoundText);
 
   // Reanimated values for pre-round animations
-  const preRoundScale = useSharedValue(0);
+  const preRoundScale = useSharedValue(1);
   const preRoundOpacity = useSharedValue(0);
-  const preRoundRotation = useSharedValue(0);
-  const preRoundBlur = useSharedValue(10);
+  const preRoundTranslateX = useSharedValue(-screenWidth);
+  const preRoundJitter = useSharedValue(0);
   const flashOpacity = useSharedValue(0);
 
   const preRoundAnimatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ scale: preRoundScale.value }, { rotate: `${preRoundRotation.value}deg` }],
+      transform: [
+        { translateX: preRoundTranslateX.value + preRoundJitter.value },
+        { scale: preRoundScale.value },
+      ],
       opacity: preRoundOpacity.value,
     };
   });
@@ -63,29 +66,34 @@ const PreRoundDisplay: React.FC<PreRoundDisplayProps> = ({
   const startPreRoundSequence = (roundNumber?: number) => {
     try {
       // Reset all animation values
-      preRoundScale.value = 0;
+      preRoundScale.value = 1;
       preRoundOpacity.value = 0;
-      preRoundRotation.value = 0;
-      preRoundBlur.value = 10;
+      preRoundTranslateX.value = -screenWidth;
+      preRoundJitter.value = 0;
       flashOpacity.value = 0;
 
       // Set initial text
       runOnJS(setDisplayText)(preRoundText);
 
-      // Epic entrance animation
-      preRoundScale.value = withSequence(
-        withSpring(1.5, { damping: 8, stiffness: 100 }),
-        withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) })
-      );
+      // Slide in from left with impact jitter
+      preRoundOpacity.value = withTiming(1, { duration: 200 });
+      preRoundTranslateX.value = withTiming(0, {
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+      });
 
-      preRoundOpacity.value = withTiming(1, { duration: 300 });
-
-      preRoundRotation.value = withSequence(
-        withTiming(360, { duration: 500, easing: Easing.out(Easing.cubic) }),
-        withTiming(0, { duration: 0 })
-      );
-
-      preRoundBlur.value = withTiming(0, { duration: 400 });
+      // Impact jitter when reaching center
+      setTimeout(() => {
+        preRoundJitter.value = withSequence(
+          withTiming(-10, { duration: 50 }),
+          withTiming(10, { duration: 50 }),
+          withTiming(-8, { duration: 50 }),
+          withTiming(8, { duration: 50 }),
+          withTiming(-5, { duration: 50 }),
+          withTiming(5, { duration: 50 }),
+          withTiming(0, { duration: 100 })
+        );
+      }, 400);
 
       // Flash effect
       flashOpacity.value = withSequence(
@@ -93,62 +101,109 @@ const PreRoundDisplay: React.FC<PreRoundDisplayProps> = ({
         withTiming(0, { duration: 300 })
       );
 
+      // Slide out to right after initial text
+      setTimeout(() => {
+        preRoundTranslateX.value = withTiming(screenWidth, {
+          duration: 300,
+          easing: Easing.in(Easing.cubic),
+        });
+        preRoundOpacity.value = withTiming(0, { duration: 300 });
+      }, 800);
+
       // Transition to "GET READY!"
       setTimeout(() => {
         try {
           runOnJS(setDisplayText)('GET READY!');
-          preRoundScale.value = 0;
-          preRoundRotation.value = -180;
+          preRoundTranslateX.value = -screenWidth;
+          preRoundJitter.value = 0;
+          preRoundOpacity.value = 1;
 
-          preRoundScale.value = withSequence(
-            withSpring(1.8, { damping: 6, stiffness: 120 }),
-            withTiming(1.2, { duration: 300 })
-          );
-
-          preRoundRotation.value = withTiming(0, {
-            duration: 500,
+          // Slide in from left
+          preRoundTranslateX.value = withTiming(0, {
+            duration: 400,
             easing: Easing.out(Easing.cubic),
           });
+
+          // Impact jitter
+          setTimeout(() => {
+            preRoundJitter.value = withSequence(
+              withTiming(-12, { duration: 50 }),
+              withTiming(12, { duration: 50 }),
+              withTiming(-8, { duration: 50 }),
+              withTiming(8, { duration: 50 }),
+              withTiming(-4, { duration: 50 }),
+              withTiming(4, { duration: 50 }),
+              withTiming(0, { duration: 100 })
+            );
+          }, 400);
 
           flashOpacity.value = withSequence(
             withTiming(0.6, { duration: 150 }),
             withTiming(0, { duration: 250 })
           );
+
+          // Slide out to right
+          setTimeout(() => {
+            preRoundTranslateX.value = withTiming(screenWidth, {
+              duration: 300,
+              easing: Easing.in(Easing.cubic),
+            });
+            preRoundOpacity.value = withTiming(0, { duration: 300 });
+          }, 800);
         } catch (error) {
           console.log('🎬 ERROR in PreRoundDisplay GET READY transition:', error);
           runOnJS(onPreRoundComplete)();
         }
-      }, 1500);
+      }, 1200);
 
       // Transition to "FIGHT!"
       setTimeout(() => {
         try {
           runOnJS(setDisplayText)('FIGHT!');
-          preRoundScale.value = 0;
-          preRoundRotation.value = 0;
+          preRoundTranslateX.value = -screenWidth;
+          preRoundJitter.value = 0;
+          preRoundOpacity.value = 1;
 
-          preRoundScale.value = withSequence(
-            withSpring(2.5, { damping: 4, stiffness: 150 }),
-            withDelay(500, withTiming(0, { duration: 300 }))
-          );
+          // Slide in from left
+          preRoundTranslateX.value = withTiming(0, {
+            duration: 400,
+            easing: Easing.out(Easing.cubic),
+          });
 
-          preRoundOpacity.value = withSequence(
-            withTiming(1, { duration: 100 }),
-            withDelay(500, withTiming(0, { duration: 300 }))
-          );
+          // Impact jitter
+          setTimeout(() => {
+            preRoundJitter.value = withSequence(
+              withTiming(-15, { duration: 50 }),
+              withTiming(15, { duration: 50 }),
+              withTiming(-10, { duration: 50 }),
+              withTiming(10, { duration: 50 }),
+              withTiming(-5, { duration: 50 }),
+              withTiming(5, { duration: 50 }),
+              withTiming(0, { duration: 100 })
+            );
+          }, 400);
 
           flashOpacity.value = withSequence(
             withTiming(1, { duration: 100 }),
             withTiming(0, { duration: 500 })
           );
 
-          // End pre-round and start game
+          // Slide out to right and end pre-round
           setTimeout(() => {
-            try {
-              runOnJS(onPreRoundComplete)();
-            } catch (error) {
-              console.log('🎬 ERROR in PreRoundDisplay completion:', error);
-            }
+            preRoundTranslateX.value = withTiming(screenWidth, {
+              duration: 300,
+              easing: Easing.in(Easing.cubic),
+            });
+            preRoundOpacity.value = withTiming(0, { duration: 300 });
+
+            // End pre-round and start game
+            setTimeout(() => {
+              try {
+                runOnJS(onPreRoundComplete)();
+              } catch (error) {
+                console.log('🎬 ERROR in PreRoundDisplay completion:', error);
+              }
+            }, 300);
           }, 1000);
         } catch (error) {
           console.log('🎬 ERROR in PreRoundDisplay FIGHT transition:', error);
@@ -215,7 +270,7 @@ const PreRoundDisplay: React.FC<PreRoundDisplayProps> = ({
                     <Shadow dx={4} dy={4} blur={10} color="rgba(0,0,0,0.8)" />
                   </SkiaText>
 
-                  {/* Main text with blur */}
+                  {/* Main text */}
                   <SkiaText
                     x={screenWidth / 2}
                     y={100}
@@ -223,9 +278,7 @@ const PreRoundDisplay: React.FC<PreRoundDisplayProps> = ({
                     font={null}
                     color="#FFFFFF"
                     style="fill"
-                  >
-                    <Blur blur={preRoundBlur} />
-                  </SkiaText>
+                  />
                 </Group>
               </Canvas>
             );

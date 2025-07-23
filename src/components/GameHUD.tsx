@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GameState } from '../types/game';
+import { getLevelConfig } from '../data/gameConfig';
 
 // ============================================================================
 // GAME HUD COMPONENT
@@ -45,6 +46,8 @@ const GameHUD: React.FC<GameHUDProps> = ({
     return () => breatheAnimation.stop();
   }, []);
 
+  const levelConfig = getLevelConfig(gameState.level);
+
   return (
     <>
       {/* Top HUD - Opponent */}
@@ -66,7 +69,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
                 style={[
                   styles.hpFill,
                   {
-                    width: `${(gameState.opponentHP / opponentConfig.hp) * 100}%`,
+                    width: `${(gameState.opponentHP / levelConfig.hp) * 100}%`,
                     alignSelf: 'flex-end', // Anchor to right side
                   },
                 ]}
@@ -75,7 +78,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
                 style={[
                   styles.hpBorder,
                   {
-                    width: `${(gameState.opponentHP / opponentConfig.hp) * 100}%`,
+                    width: `${(gameState.opponentHP / levelConfig.hp) * 100}%`,
                     alignSelf: 'flex-end', // Anchor to right side
                   },
                 ]}

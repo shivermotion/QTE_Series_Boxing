@@ -17,6 +17,8 @@ interface TimingPromptProps {
   prompt: TimingPromptType;
   onMiss: () => void;
   onSuccess: (hitQuality: 'perfect' | 'good') => void;
+  isPaused: boolean;
+  globalPausedDuration: number;
 }
 
 // Screen dimensions are no longer needed since we're positioning within the input area
@@ -42,7 +44,13 @@ const INPUT_AREA_SIZE = 400; // Size of the green input area
 const GRID_SIZE = 100; // Size of each grid cell
 const GRID_SPACING = 20; // Spacing between grid cells
 
-const TimingPrompt: React.FC<TimingPromptProps> = ({ prompt, onMiss, onSuccess }) => {
+const TimingPrompt: React.FC<TimingPromptProps> = ({
+  prompt,
+  onMiss,
+  onSuccess,
+  isPaused,
+  globalPausedDuration,
+}) => {
   const ringDistance = useSharedValue(MAX_RING_DISTANCE);
   const ringOpacity = useSharedValue(1);
   const circleScale = useSharedValue(1);
@@ -53,10 +61,6 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({ prompt, onMiss, onSuccess }
 
   // Animation duration based on prompt duration
   const animationDuration = prompt.duration;
-
-  // Calculate perfect timing window
-  const perfectWindowStart = prompt.perfectWindowStart;
-  const perfectWindowEnd = prompt.perfectWindowEnd;
 
   // Calculate position based on grid position within the 400x400 input area
   const gridPos = GRID_POSITIONS[prompt.gridPosition];
@@ -73,10 +77,81 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({ prompt, onMiss, onSuccess }
   const centerX = gridOffsetX + gridPos.x * (GRID_SIZE + GRID_SPACING) + GRID_SIZE / 2;
   const centerY = gridOffsetY + gridPos.y * (GRID_SIZE + GRID_SPACING) + GRID_SIZE / 2;
 
+  // Handle pause/resume - cancel and restart animation
   useEffect(() => {
-    // Only start animation once
-    if (hasStartedAnimation.current) return;
+    if (isPaused) {
+      // Game paused - cancel animation
+      console.log('🎯 Timing prompt pausing animation for prompt:', prompt.gridPosition);
+      cancelAnimation(ringDistance);
+      cancelAnimation(circleScale);
+    } else if (
+      hasStartedAnimation.current &&
+      !hasTriggeredMiss.current &&
+      !hasCompletedSuccessfully.current
+    ) {
+      // Game resumed - restart animation with remaining duration
+      const now = Date.now();
+      const elapsedBeforePause = now - prompt.startTime - globalPausedDuration;
+      const remainingDuration = animationDuration - elapsedBeforePause;
+
+      console.log('🎯 Timing prompt resuming animation for prompt:', prompt.gridPosition, {
+        now,
+        promptStartTime: prompt.startTime,
+        globalPausedDuration,
+        elapsedBeforePause,
+        remainingDuration,
+        animationDuration,
+        progress: elapsedBeforePause / animationDuration,
+      });
+
+      if (remainingDuration > 0) {
+        // Calculate the target ring distance based on progress
+        const progress = elapsedBeforePause / animationDuration;
+        const currentDistance = MAX_RING_DISTANCE - (MAX_RING_DISTANCE - RING_THICKNESS) * progress;
+
+        // Set the current ring distance and then animate to the end
+        ringDistance.value = currentDistance;
+
+        // Resume animation from current position
+        ringDistance.value = withTiming(
+          RING_THICKNESS,
+          { duration: remainingDuration },
+          finished => {
+            if (finished && !hasTriggeredMiss.current && !hasCompletedSuccessfully.current) {
+              console.log(
+                '🎯 Timing prompt animation finished - triggering miss for prompt:',
+                prompt.gridPosition
+              );
+              hasTriggeredMiss.current = true;
+              runOnJS(onMiss)();
+            }
+          }
+        );
+      } else {
+        console.log(
+          '🎯 Timing prompt remaining duration <= 0, not resuming animation for prompt:',
+          prompt.gridPosition
+        );
+        // If no remaining duration, trigger miss immediately
+        if (!hasTriggeredMiss.current && !hasCompletedSuccessfully.current) {
+          hasTriggeredMiss.current = true;
+          runOnJS(onMiss)();
+        }
+      }
+    }
+  }, [isPaused]); // Only depend on isPaused, not globalPausedDuration
+
+  useEffect(() => {
+    // Only start animation once and only if not paused
+    if (hasStartedAnimation.current || isPaused) return;
     hasStartedAnimation.current = true;
+
+    console.log('🎯 Starting timing prompt animation for prompt:', prompt.gridPosition, {
+      animationDuration,
+      isPaused,
+      globalPausedDuration,
+      startTime: prompt.startTime,
+    });
 
     try {
       // Start ring shrinking animation
@@ -87,6 +162,10 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({ prompt, onMiss, onSuccess }
         finished => {
           if (finished && !hasTriggeredMiss.current && !hasCompletedSuccessfully.current) {
             // Ring has finished shrinking - auto miss (only if not already completed)
+            console.log(
+              '🎯 Timing prompt animation completed - triggering miss for prompt:',
+              prompt.gridPosition
+            );
             hasTriggeredMiss.current = true;
             runOnJS(onMiss)();
           }
@@ -94,8 +173,11 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({ prompt, onMiss, onSuccess }
       );
 
       // Add pulse effect to circle
-      circleScale.value = withTiming(1.1, { duration: 500 }, () => {
-        circleScale.value = withTiming(1, { duration: 500 });
+      circleScale.value = withTiming(1.1, { duration: 500 }, finished => {
+        'worklet';
+        if (finished) {
+          circleScale.value = withTiming(1, { duration: 500 });
+        }
       });
     } catch (error) {
       console.log('🎯 ERROR in timing prompt useEffect:', error);
@@ -103,77 +185,46 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({ prompt, onMiss, onSuccess }
       hasTriggeredMiss.current = true;
       onMiss();
     }
-  }, [animationDuration, onMiss]);
+  }, [animationDuration, onMiss, isPaused]);
 
   const ringStyle = useAnimatedStyle(() => {
-    // Simple time-based color logic
-    const now = Date.now();
-    const timeSinceStart = now - prompt.startTime;
-
-    // Determine color based on timing windows
-    let borderColor = '#ff4444'; // Default red (miss)
-
-    if (timeSinceStart >= prompt.goodEarlyStart && timeSinceStart <= prompt.goodLateEnd) {
-      // In good timing window
-      if (
-        timeSinceStart >= prompt.perfectWindowStart &&
-        timeSinceStart <= prompt.perfectWindowEnd
-      ) {
-        borderColor = '#00ff00'; // Perfect timing (green)
-      } else {
-        borderColor = '#ffff00'; // Good timing (yellow)
-      }
-    }
-
+    'worklet';
+    // Simple ring style - no color changes based on timing
     return {
       position: 'absolute',
       width: CIRCLE_SIZE + ringDistance.value * 2,
       height: CIRCLE_SIZE + ringDistance.value * 2,
       borderRadius: (CIRCLE_SIZE + ringDistance.value * 2) / 2,
       borderWidth: RING_THICKNESS,
-      borderColor: borderColor,
+      borderColor: '#ff4444', // Consistent red color
       opacity: ringOpacity.value,
     };
   }, []);
 
   const circleStyle = useAnimatedStyle(() => {
-    // Simple time-based perfect zone detection
-    const now = Date.now();
-    const timeSinceStart = now - prompt.startTime;
-
-    const isInPerfectZone =
-      timeSinceStart >= prompt.perfectWindowStart && timeSinceStart <= prompt.perfectWindowEnd;
-    const borderColor = isInPerfectZone ? '#00ff00' : '#00aa00'; // Brighter green when in perfect zone
-
+    'worklet';
+    // Simple circle style - no green border
     return {
       width: CIRCLE_SIZE,
       height: CIRCLE_SIZE,
       borderRadius: CIRCLE_SIZE / 2,
       backgroundColor: '#ff4444',
-      borderWidth: RING_THICKNESS,
-      borderColor: borderColor,
-      shadowColor: isInPerfectZone ? '#00ff00' : 'transparent',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: isInPerfectZone ? 0.8 : 0,
-      shadowRadius: 8,
+      borderWidth: 0, // No border
       transform: [{ scale: circleScale.value }],
     };
   }, []);
 
   const handleTap = () => {
-    if (hasTriggeredMiss.current) return;
+    if (hasTriggeredMiss.current || isPaused) return;
 
     try {
       const now = Date.now();
-      const timeSinceStart = now - prompt.startTime;
-
-      // Simple time-based perfect zone detection
-      const isInPerfectZone =
-        timeSinceStart >= prompt.perfectWindowStart && timeSinceStart <= prompt.perfectWindowEnd;
+      // Adjust timing calculation to account for paused duration
+      const actualTimeSinceStart = now - prompt.startTime - globalPausedDuration;
 
       console.log('🎯 Timing prompt tapped:', {
         gridPosition: prompt.gridPosition,
-        timeSinceStart,
+        timeSinceStart: actualTimeSinceStart,
         perfectWindowStart: prompt.perfectWindowStart,
         perfectWindowEnd: prompt.perfectWindowEnd,
         goodEarlyStart: prompt.goodEarlyStart,
@@ -181,13 +232,16 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({ prompt, onMiss, onSuccess }
         goodLateStart: prompt.goodLateStart,
         goodLateEnd: prompt.goodLateEnd,
         ringDistance: ringDistance.value,
-        isInPerfectZone,
+        globalPausedDuration,
+        originalPerfectStart: prompt.perfectWindowStart,
+        originalPerfectEnd: prompt.perfectWindowEnd,
+        isPaused,
       });
 
-      // Multi-tier timing window check
+      // Multi-tier timing window check - use original timing windows
       if (
-        timeSinceStart >= prompt.perfectWindowStart &&
-        timeSinceStart <= prompt.perfectWindowEnd
+        actualTimeSinceStart >= prompt.perfectWindowStart &&
+        actualTimeSinceStart <= prompt.perfectWindowEnd
       ) {
         // Perfect timing
         console.log('🎯 PERFECT TIMING!');
@@ -196,7 +250,10 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({ prompt, onMiss, onSuccess }
         cancelAnimation(ringDistance); // Stop the ring animation
         setShowSuccess(true); // Show success feedback
         onSuccess('perfect');
-      } else if (timeSinceStart >= prompt.goodEarlyStart && timeSinceStart < prompt.goodEarlyEnd) {
+      } else if (
+        actualTimeSinceStart >= prompt.goodEarlyStart &&
+        actualTimeSinceStart < prompt.goodEarlyEnd
+      ) {
         // Good timing (early)
         console.log('🎯 GOOD TIMING (early)!');
         hasTriggeredMiss.current = true;
@@ -204,7 +261,10 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({ prompt, onMiss, onSuccess }
         cancelAnimation(ringDistance); // Stop the ring animation
         setShowSuccess(true); // Show success feedback
         onSuccess('good');
-      } else if (timeSinceStart >= prompt.goodLateStart && timeSinceStart <= prompt.goodLateEnd) {
+      } else if (
+        actualTimeSinceStart >= prompt.goodLateStart &&
+        actualTimeSinceStart <= prompt.goodLateEnd
+      ) {
         // Good timing (late)
         console.log('🎯 GOOD TIMING (late)!');
         hasTriggeredMiss.current = true;
@@ -212,7 +272,7 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({ prompt, onMiss, onSuccess }
         cancelAnimation(ringDistance); // Stop the ring animation
         setShowSuccess(true); // Show success feedback
         onSuccess('good');
-      } else if (timeSinceStart < prompt.goodEarlyStart) {
+      } else if (actualTimeSinceStart < prompt.goodEarlyStart) {
         // Early miss (too early)
         console.log('🎯 EARLY MISS (too early)');
         hasTriggeredMiss.current = true;

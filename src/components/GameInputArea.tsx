@@ -21,6 +21,7 @@ interface GameInputAreaProps {
   onGridTap: (gridPosition: number) => void;
   onTimingSuccess: (gridPosition: number, hitQuality: 'perfect' | 'good') => void;
   onTimingMiss: () => void;
+  getCurrentPausedDuration: () => number;
 }
 
 const GameInputArea: React.FC<GameInputAreaProps> = ({
@@ -34,6 +35,7 @@ const GameInputArea: React.FC<GameInputAreaProps> = ({
   onGridTap,
   onTimingSuccess,
   onTimingMiss,
+  getCurrentPausedDuration,
 }) => {
   return (
     <View style={styles.inputArea}>
@@ -73,6 +75,8 @@ const GameInputArea: React.FC<GameInputAreaProps> = ({
                 prompt={prompt}
                 onMiss={onTimingMiss}
                 onSuccess={hitQuality => onTimingSuccess(prompt.gridPosition, hitQuality)}
+                isPaused={gameState.isPaused}
+                globalPausedDuration={getCurrentPausedDuration()}
               />
             ))}
         </View>

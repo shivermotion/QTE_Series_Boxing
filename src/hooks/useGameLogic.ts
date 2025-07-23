@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { GameState, Prompt, TapPrompt, TimingPrompt, HitQuality } from '../types/game';
-import { getOpponentConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/opponents';
+import { 
+  getLevelConfig, 
+  getRoundHPGoal, 
+  getRandomPromptInterval,
+  getPromptConfig 
+} from '../data/gameConfig';
 import { generatePrompt, generateTapPrompts, generateTimingPrompts, generateSuperComboSequence } from '../utils/promptUtils';
 import { triggerHaptic } from '../utils/hapticUtils';
 import { createParticles, createFeedbackText } from '../utils/visualEffects';
@@ -11,15 +16,15 @@ import { findSuperMoveByCombo, SuperMove } from '../data/superMoves';
 // ============================================================================
 
 export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSuccess?: () => void, onScreenShake?: () => void) => {
-  const opponentConfig = getOpponentConfig(selectedLevel);
+  const levelConfig = getLevelConfig(selectedLevel);
 
   // Game state
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
     lives: 3,
-    opponentHP: opponentConfig.hp,
+    opponentHP: levelConfig.hp,
     currentRound: 1,
-    roundHPGoal: getRoundHPGoal(opponentConfig, 1),
+    roundHPGoal: getRoundHPGoal(levelConfig, 1),
     superMeter: 0, // Initialize super meter
     isSuperComboActive: false,
     isSuperModeActive: false, // Initialize super mode
@@ -40,7 +45,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   const [superComboSequence, setSuperComboSequence] = useState<Prompt[]>([]);
   const [superComboIndex, setSuperComboIndex] = useState(0);
   const [lastPromptTime, setLastPromptTime] = useState(0);
-  const [promptInterval, setPromptInterval] = useState(getRandomPromptInterval(opponentConfig, 1));
+  const [promptInterval, setPromptInterval] = useState(getRandomPromptInterval(levelConfig, 1));
 
   // UI state
   const [isGameOver, setIsGameOver] = useState(false);
@@ -68,6 +73,11 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   const [lastTapTime, setLastTapTime] = useState(0);
   const [tapCount, setTapCount] = useState(0);
 
+  // Pause tracking
+  const pauseStartTime = useRef<number | null>(null);
+  const totalPausedDuration = useRef(0);
+  const lastPauseState = useRef(false);
+
   // Refs
   const particleIdCounter = useRef(0);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
@@ -90,16 +100,20 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       return;
     }
 
-    const prompt = generatePrompt(opponentConfig);
+    // Reset pause tracking for new prompts
+    totalPausedDuration.current = 0;
+    pauseStartTime.current = gameState.isPaused ? Date.now() : null;
+
+    const prompt = generatePrompt(levelConfig, gameState.currentRound);
     console.log('🎯 Spawning prompt type:', prompt.type);
 
     if (prompt.type === 'tap') {
-      const tapPrompts = generateTapPrompts(opponentConfig, gameState.currentRound);
+      const tapPrompts = generateTapPrompts(levelConfig, gameState.currentRound);
       setActiveTapPrompts(tapPrompts);
       setCurrentPrompt(prompt);
       setActiveTimingPrompts([]);
     } else if (prompt.type === 'timing') {
-      const timingPrompts = generateTimingPrompts(opponentConfig, gameState.currentRound);
+      const timingPrompts = generateTimingPrompts(levelConfig, gameState.currentRound);
       console.log('🎯 Generated timing prompts:', timingPrompts.length, timingPrompts);
       setActiveTimingPrompts(timingPrompts);
       setCurrentPrompt(null);
@@ -122,7 +136,12 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     if (!currentPrompt || !currentPrompt.isActive) return;
 
     const now = Date.now();
-    const timeDiff = now - currentPrompt.startTime;
+    // Get current paused duration if currently paused
+    let currentPausedDuration = totalPausedDuration.current;
+    if (pauseStartTime.current) {
+      currentPausedDuration += now - pauseStartTime.current;
+    }
+    const timeDiff = now - currentPrompt.startTime - currentPausedDuration;
 
     const isCorrectInput =
       currentPrompt.type === inputType &&
@@ -134,20 +153,28 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       let damage = 0;
       let powerGain = 0;
 
-      if (timeDiff <= opponentConfig.reactionTime.perfect) {
-        hitQuality = 'perfect';
-        points = 100;
-        damage = opponentConfig.damage.perfect;
-        powerGain = 10;
-        triggerHaptic('success');
-        if (onSuccess) onSuccess();
-      } else if (timeDiff <= opponentConfig.reactionTime.good) {
-        hitQuality = 'good';
-        points = 50;
-        damage = opponentConfig.damage.good;
-        powerGain = 5;
-        triggerHaptic('success');
-        if (onSuccess) onSuccess();
+      // Use timingWindows for all prompt types that need timing evaluation
+      if (currentPrompt.type === 'swipe' || currentPrompt.type === 'timing' || currentPrompt.type === 'tap') {
+        // Get prompt configuration for the specific type
+        const promptConfig = getPromptConfig(levelConfig, currentPrompt.type, gameState.currentRound);
+        
+        if (timeDiff <= promptConfig.timingWindows.perfect) {
+          hitQuality = 'perfect';
+          points = 100;
+          damage = levelConfig.damage.perfect;
+          powerGain = 10;
+        } else if (timeDiff <= promptConfig.timingWindows.good) {
+          hitQuality = 'good';
+          points = 50;
+          damage = levelConfig.damage.good;
+          powerGain = 5;
+        } else {
+          // If completed within prompt duration but outside timing windows, still count as success
+          hitQuality = 'good';
+          points = 25; // Reduced points for slow completion
+          damage = levelConfig.damage.good;
+          powerGain = 3;
+        }
       }
 
       if (hitQuality !== 'miss') {
@@ -161,6 +188,9 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
           superMeter: Math.min(100, prev.superMeter + superMeterGain),
           avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
         }));
+
+        triggerHaptic('success');
+        if (onSuccess) onSuccess();
       }
     } else {
       handleMiss();
@@ -192,7 +222,12 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     }
 
     const now = Date.now();
-    const timeDiff = now - tapPrompt.startTime;
+    // Get current paused duration if currently paused
+    let currentPausedDuration = totalPausedDuration.current;
+    if (pauseStartTime.current) {
+      currentPausedDuration += now - pauseStartTime.current;
+    }
+    const timeDiff = now - tapPrompt.startTime - currentPausedDuration;
 
     if (timeDiff > tapPrompt.duration) {
       handleMiss();
@@ -237,50 +272,26 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     if (successfulTaps === totalRealPrompts) {
       console.log('🎯 SUCCESS! All real prompts completed');
       
-      // Safety check: ensure we have valid prompts with startTime
-      let overallTimeElapsed: number;
-      if (completedPrompts.length === 0 || !completedPrompts[0]?.startTime) {
-        console.log('🎯 ERROR: Invalid completedPrompts array, defaulting to good timing');
-        overallTimeElapsed = 1000; // Default to good timing
-      } else {
-        overallTimeElapsed = completionTime - completedPrompts[0].startTime;
-      }
+      // For tap prompts, success is determined by completing all prompts within their duration
+      // We don't use opponent reaction time windows for tap prompts - those are for timing prompts
+      const hitQuality: HitQuality = 'good'; // Tap prompts are always 'good' if completed
+      const points = 50 * totalRealPrompts;
+      const damage = 25 * totalRealPrompts;
+      const powerGain = 5 * totalRealPrompts;
 
-      let hitQuality: HitQuality = 'miss';
-      let points = 0;
-      let damage = 0;
-      let powerGain = 0;
+      // Calculate super meter gain
+      const superMeterGain = 10 * totalRealPrompts;
+      
+      setGameState(prev => ({
+        ...prev,
+        score: prev.score + points,
+        // Don't deal damage to opponent - fill super meter instead
+        superMeter: Math.min(100, prev.superMeter + superMeterGain),
+        avatarState: 'success',
+      }));
 
-      if (overallTimeElapsed <= opponentConfig.reactionTime.perfect) {
-        hitQuality = 'perfect';
-        points = 100 * totalRealPrompts;
-        damage = 50 * totalRealPrompts;
-        powerGain = 10 * totalRealPrompts;
-      } else if (overallTimeElapsed <= opponentConfig.reactionTime.good) {
-        hitQuality = 'good';
-        points = 50 * totalRealPrompts;
-        damage = 25 * totalRealPrompts;
-        powerGain = 5 * totalRealPrompts;
-      }
-
-      if (hitQuality !== 'miss') {
-        // Calculate super meter gain based on hit quality and number of prompts
-        const superMeterGain = hitQuality === 'perfect' ? 15 * totalRealPrompts : 10 * totalRealPrompts;
-        
-        setGameState(prev => ({
-          ...prev,
-          score: prev.score + points,
-          // Don't deal damage to opponent - fill super meter instead
-          superMeter: Math.min(100, prev.superMeter + superMeterGain),
-          avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
-        }));
-
-        triggerHaptic('success');
-        if (onSuccess) onSuccess();
-      } else {
-        console.log('🎯 MISS! Not all real prompts completed');
-        handleMiss();
-      }
+      triggerHaptic('success');
+      if (onSuccess) onSuccess();
     } else {
       console.log('🎯 MISS! Not all real prompts completed');
       handleMiss();
@@ -294,6 +305,10 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     setActiveTapPrompts([]);
     setActiveTimingPrompts([]);
     setCurrentPrompt(null);
+    
+    // Reset pause tracking for next prompts
+    totalPausedDuration.current = 0;
+    pauseStartTime.current = gameState.isPaused ? Date.now() : null;
   };
 
   // ============================================================================
@@ -347,11 +362,11 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       // Use the last hit quality for overall scoring (timing prompts have their own multi-tier timing)
       if (lastHitQuality === 'perfect') {
         points = 100 * totalPrompts;
-        damage = opponentConfig.damage.perfect * totalPrompts;
+        damage = levelConfig.damage.perfect * totalPrompts;
         powerGain = 10 * totalPrompts;
       } else if (lastHitQuality === 'good') {
         points = 50 * totalPrompts;
-        damage = opponentConfig.damage.good * totalPrompts;
+        damage = levelConfig.damage.good * totalPrompts;
         powerGain = 5 * totalPrompts;
       }
 
@@ -366,8 +381,14 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
         avatarState: lastHitQuality === 'perfect' ? 'perfect' : 'success',
       }));
 
+      console.log('🎯 Triggering haptic feedback and onSuccess callback');
       triggerHaptic('success');
-      if (onSuccess) onSuccess();
+      if (onSuccess) {
+        console.log('🎯 Calling onSuccess callback');
+        onSuccess();
+      } else {
+        console.log('🎯 onSuccess callback is undefined');
+      }
     } else {
       console.log('🎯 MISS! Not all timing prompts completed');
       handleMiss();
@@ -417,11 +438,11 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     setGameState(prev => ({
       ...prev,
       currentRound: nextRound,
-      roundHPGoal: getRoundHPGoal(opponentConfig, nextRound),
+      roundHPGoal: getRoundHPGoal(levelConfig, nextRound),
       isPaused: true,
     }));
 
-    const newInterval = getRandomPromptInterval(opponentConfig, nextRound);
+    const newInterval = getRandomPromptInterval(levelConfig, nextRound);
     setPromptInterval(newInterval);
 
     // Start cooldown instead of immediately showing pre-round
@@ -459,14 +480,14 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
 
   const advanceToNextLevel = () => {
     const nextLevel = gameState.level + 1;
-    const nextOpponentConfig = getOpponentConfig(nextLevel);
+    const nextLevelConfig = getLevelConfig(nextLevel);
 
     setGameState(prev => ({
       ...prev,
       level: nextLevel,
-      opponentHP: nextOpponentConfig.hp,
+      opponentHP: nextLevelConfig.hp,
       currentRound: 1,
-      roundHPGoal: getRoundHPGoal(nextOpponentConfig, 1),
+      roundHPGoal: getRoundHPGoal(nextLevelConfig, 1),
       powerMeter: 0,
       isPaused: false, // Resume the game
     }));
@@ -570,7 +591,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       // Check if opponent is defeated
       if (gameState.opponentHP - superMove.damage <= 0) {
         // Check if this is the final round of the level
-        if (gameState.currentRound >= opponentConfig.rounds) {
+        if (gameState.currentRound >= levelConfig.rounds) {
           completeLevel();
         } else {
           completeRound();
@@ -617,7 +638,12 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     if (!currentSuperPrompt || !currentSuperPrompt.isActive) return;
 
     const now = Date.now();
-    const timeDiff = now - currentSuperPrompt.startTime;
+    // Get current paused duration if currently paused
+    let currentPausedDuration = totalPausedDuration.current;
+    if (pauseStartTime.current) {
+      currentPausedDuration += now - pauseStartTime.current;
+    }
+    const timeDiff = now - currentSuperPrompt.startTime - currentPausedDuration;
 
     const isCorrectInput = currentSuperPrompt.direction === direction;
 
@@ -636,12 +662,12 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       triggerHaptic('success');
 
       if (superComboIndex + 1 >= superComboSequence.length) {
-        setGameState(prev => ({
-          ...prev,
-          score: prev.score + 500,
-          opponentHP: Math.max(0, prev.opponentHP - opponentConfig.damage.superCombo),
-          isSuperComboActive: false,
-        }));
+              setGameState(prev => ({
+        ...prev,
+        score: prev.score + 500,
+        opponentHP: Math.max(0, prev.opponentHP - levelConfig.damage.superCombo),
+        isSuperComboActive: false,
+      }));
 
         setSuperComboSequence([]);
         setSuperComboIndex(0);
@@ -663,6 +689,24 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
   // EFFECTS
   // ============================================================================
 
+  // Track pause/resume to calculate paused duration
+  useEffect(() => {
+    if (gameState.isPaused && !lastPauseState.current) {
+      // Game just paused
+      pauseStartTime.current = Date.now();
+      console.log('🎮 Game paused at:', pauseStartTime.current);
+    } else if (!gameState.isPaused && lastPauseState.current) {
+      // Game just resumed
+      if (pauseStartTime.current) {
+        const pauseDuration = Date.now() - pauseStartTime.current;
+        totalPausedDuration.current += pauseDuration;
+        console.log('🎮 Game resumed, pause duration:', pauseDuration, 'total paused:', totalPausedDuration.current);
+      }
+      pauseStartTime.current = null;
+    }
+    lastPauseState.current = gameState.isPaused;
+  }, [gameState.isPaused]);
+
   // Auto-miss timer for ALL prompts (tap, swipe, super combo)
   useEffect(() => {
     if (
@@ -676,11 +720,17 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
 
     const checkExpiredPrompts = () => {
       const now = Date.now();
+      
+      // Get current paused duration if currently paused
+      let currentPausedDuration = totalPausedDuration.current;
+      if (pauseStartTime.current) {
+        currentPausedDuration += now - pauseStartTime.current;
+      }
 
       // Check tap prompts
       if (activeTapPrompts.length > 0) {
         const promptStartTime = activeTapPrompts[0].startTime;
-        const overallTimeElapsed = now - promptStartTime;
+        const overallTimeElapsed = now - promptStartTime - currentPausedDuration;
         const hasRealPrompts = activeTapPrompts.some(
           p => !p.isFeint && p.isActive && !p.isCompleted
         );
@@ -701,7 +751,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
         !currentPrompt.isCompleted &&
         currentPrompt.type === 'swipe'
       ) {
-        const timeElapsed = now - currentPrompt.startTime;
+        const timeElapsed = now - currentPrompt.startTime - currentPausedDuration;
         if (timeElapsed > currentPrompt.duration) {
           console.log('🎯 Auto-miss: Swipe prompt expired');
           if (!isInCooldown) {
@@ -716,9 +766,10 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
         const now = Date.now();
         
         // Activate timing prompts when they reach their appearance time
+        // Account for paused duration when checking activation time
         const updatedPrompts = activeTimingPrompts.map(prompt => {
-          if (!prompt.isActive && now >= prompt.startTime) {
-            console.log('🎯 Timing prompt appearing:', prompt.gridPosition, 'at time:', now);
+          if (!prompt.isActive && now >= prompt.startTime + currentPausedDuration) {
+            console.log('🎯 Timing prompt appearing:', prompt.gridPosition, 'at time:', now, 'adjusted startTime:', prompt.startTime + currentPausedDuration);
             return { ...prompt, isActive: true };
           }
           return prompt;
@@ -730,17 +781,9 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
         }
 
         // Check for expired timing prompts - check all active prompts
-        const activePrompts = updatedPrompts.filter(p => p.isActive && !p.isCompleted);
-        for (const activePrompt of activePrompts) {
-          const timeElapsed = now - activePrompt.startTime;
-          if (timeElapsed > activePrompt.duration) {
-            console.log('🎯 Auto-miss: Timing prompt expired');
-            if (!isInCooldown) {
-              handleMiss();
-            }
-            return;
-          }
-        }
+        // Since the timing prompt component handles its own pause/resume and expiration,
+        // we rely on it calling onMiss when the animation completes
+        // This avoids duplicate miss detection and ensures pause handling is consistent
       }
 
       // Check super combo prompts
@@ -750,7 +793,7 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       ) {
         const currentSuperPrompt = superComboSequence[superComboIndex];
         if (currentSuperPrompt.isActive && !currentSuperPrompt.isCompleted) {
-          const timeElapsed = now - currentSuperPrompt.startTime;
+          const timeElapsed = now - currentSuperPrompt.startTime - currentPausedDuration;
           if (timeElapsed > currentSuperPrompt.duration) {
             console.log('🎯 Auto-miss: Super combo prompt expired');
             if (!isInCooldown) {
@@ -812,7 +855,14 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     }
   }, [isCooldown, cooldownTime]);
 
-
+  // Get current total paused duration
+  const getCurrentPausedDuration = () => {
+    let currentPausedDuration = totalPausedDuration.current;
+    if (pauseStartTime.current) {
+      currentPausedDuration += Date.now() - pauseStartTime.current;
+    }
+    return currentPausedDuration;
+  };
 
   return {
     // State
@@ -889,5 +939,6 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
     handleSuperComboProgress,
     handleSuperComboComplete,
     clearAllPrompts,
+    getCurrentPausedDuration,
   };
 }; 
