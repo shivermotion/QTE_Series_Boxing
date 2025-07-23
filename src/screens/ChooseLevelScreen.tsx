@@ -55,45 +55,23 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
   backgroundImage,
   isScrolling,
 }) => {
-  const buttonScale = useRef(new Animated.Value(0)).current;
-  const buttonOpacity = useRef(new Animated.Value(0)).current;
-  const buttonTranslateY = useRef(new Animated.Value(50)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const buttonOpacity = useRef(new Animated.Value(1)).current;
+  const buttonTranslateX = useRef(new Animated.Value(-screenWidth * 1.5)).current;
   const buttonGlow = useRef(new Animated.Value(0)).current;
-  const buttonSpinRotation = useRef(new Animated.Value(0)).current;
   const buttonSelectionScale = useRef(new Animated.Value(1)).current;
-  const buttonSelectionRotation = useRef(new Animated.Value(0)).current;
+  const buttonBlinkOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Staggered entrance animation with spin-in effect
+    // Staggered entrance animation with snap-to-position effect
     Animated.sequence([
       Animated.delay(delay),
-      Animated.parallel([
-        Animated.timing(buttonOpacity, {
-          toValue: 1,
-          duration: 800,
-          easing: Easing.out(Easing.back(1.2)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(buttonScale, {
-          toValue: 1,
-          duration: 800,
-          easing: Easing.out(Easing.back(1.2)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(buttonTranslateY, {
-          toValue: 0,
-          duration: 800,
-          easing: Easing.out(Easing.back(1.2)),
-          useNativeDriver: true,
-        }),
-        // Spin-in effect - starts at 360 degrees and spins to 0
-        Animated.timing(buttonSpinRotation, {
-          toValue: 1,
-          duration: 800,
-          easing: Easing.out(Easing.back(1.2)),
-          useNativeDriver: true,
-        }),
-      ]),
+      Animated.timing(buttonTranslateX, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
     ]).start();
 
     // Continuous glow effect
@@ -113,44 +91,38 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
         }),
       ])
     ).start();
-  }, [buttonOpacity, buttonScale, buttonTranslateY, buttonGlow, buttonSpinRotation, delay, level]);
+  }, [buttonTranslateX, buttonGlow, delay, level]);
 
   // Handle selection state changes
   useEffect(() => {
     if (isSelected) {
-      // Enlarge and spin when selected
-      Animated.parallel([
-        Animated.timing(buttonSelectionScale, {
-          toValue: 1.2,
-          duration: 300,
-          easing: Easing.out(Easing.back(1.2)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(buttonSelectionRotation, {
-          toValue: 1,
-          duration: 600,
-          easing: Easing.out(Easing.back(1.2)),
-          useNativeDriver: true,
-        }),
-      ]).start();
+      // Start classic retro blinking animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(buttonBlinkOpacity, {
+            toValue: 0.2,
+            duration: 150,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(buttonBlinkOpacity, {
+            toValue: 1,
+            duration: 150,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
     } else {
       // Return to normal state when deselected
-      Animated.parallel([
-        Animated.timing(buttonSelectionScale, {
-          toValue: 1,
-          duration: 300,
-          easing: Easing.out(Easing.back(1.2)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(buttonSelectionRotation, {
-          toValue: 0,
-          duration: 300,
-          easing: Easing.out(Easing.back(1.2)),
-          useNativeDriver: true,
-        }),
-      ]).start();
+      Animated.timing(buttonBlinkOpacity, {
+        toValue: 1,
+        duration: 150,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start();
     }
-  }, [isSelected, buttonSelectionScale, buttonSelectionRotation]);
+  }, [isSelected, buttonBlinkOpacity]);
 
   const [pressStartTime, setPressStartTime] = React.useState<number | null>(null);
   const [wasScrollingDuringPress, setWasScrollingDuringPress] = React.useState(false);
@@ -298,26 +270,8 @@ const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
   return (
     <Animated.View
       style={{
-        transform: [
-          { scale: buttonScale },
-          { translateY: buttonTranslateY },
-          // Spin-in effect: starts at 360 degrees, spins to 0, then locks upright
-          {
-            rotate: buttonSpinRotation.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['360deg', '0deg'],
-            }),
-          },
-          // Selection effects: scale and rotation
-          { scale: buttonSelectionScale },
-          {
-            rotate: buttonSelectionRotation.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['0deg', '360deg'],
-            }),
-          },
-        ],
-        opacity: buttonOpacity,
+        transform: [{ translateX: buttonTranslateX }],
+        opacity: Animated.multiply(buttonOpacity, buttonBlinkOpacity),
       }}
     >
       <TouchableOpacity
