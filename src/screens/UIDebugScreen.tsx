@@ -8,6 +8,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useAudio } from '../contexts/AudioContext';
 import LottiePrompt from '../components/LottiePrompt';
@@ -53,7 +54,7 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
   const [opponentHP, setOpponentHP] = useState(1000);
   const [currentRound, setCurrentRound] = useState(1);
   const [level, setLevel] = useState(1);
-  const [powerMeter, setPowerMeter] = useState(0);
+  const [superMeter, setSuperMeter] = useState(0);
   const [isSuperComboActive, setIsSuperComboActive] = useState(false);
   const [showPreRound, setShowPreRound] = useState(false);
   const [preRoundText, setPreRoundText] = useState('ROUND 1');
@@ -74,14 +75,38 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
       startTime: number;
       duration: number;
       isCompleted: boolean;
+      isFeint: boolean;
     }[]
   >([]);
   const [showMissAnimation, setShowMissAnimation] = useState(false);
+
+  // Animation for breathing glow effect
+  const glowAnim = useRef(new Animated.Value(0)).current;
 
   // Stop main theme when component mounts
   useEffect(() => {
     stopMainTheme();
   }, [stopMainTheme]);
+
+  // Breathing glow animation
+  useEffect(() => {
+    const breatheAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+      ])
+    );
+    breatheAnimation.start();
+    return () => breatheAnimation.stop();
+  }, []);
 
   // Animation refs
   const screenShakeAnim = useRef(new Animated.Value(0)).current;
@@ -258,7 +283,7 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
     setAvatarState('success');
     setScore(prev => prev + 100);
     setOpponentHP(prev => Math.max(0, prev - 50));
-    setPowerMeter(prev => Math.min(100, prev + 10));
+    setSuperMeter(prev => Math.min(100, prev + 10));
     animateAvatar();
     triggerHaptic('medium');
     setTimeout(() => setAvatarState('idle'), 1000);
@@ -272,7 +297,6 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
 
     setAvatarState('failure');
     setLives(prev => Math.max(0, prev - 1));
-    setPowerMeter(prev => Math.max(0, prev - 5));
     screenShake();
     triggerHaptic('light');
 
@@ -292,7 +316,7 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
     setAvatarState('perfect');
     setScore(prev => prev + 300);
     setOpponentHP(prev => Math.max(0, prev - 150));
-    setPowerMeter(100);
+    setSuperMeter(100);
     animateAvatar();
     triggerHaptic('heavy');
     createParticles(screenWidth / 2, screenHeight * 0.2, '#00ff00', 8);
@@ -308,7 +332,7 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
     setOpponentHP(1000);
     setCurrentRound(1);
     setLevel(1);
-    setPowerMeter(0);
+    setSuperMeter(0);
     setIsSuperComboActive(false);
     setAvatarState('idle');
     setParticles([]);
@@ -343,8 +367,8 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
   };
 
   const testSuperCombo = () => {
-    if (powerMeter >= 100) {
-      setPowerMeter(0);
+    if (superMeter >= 100) {
+      setSuperMeter(0);
       triggerHaptic('heavy');
       createFeedbackText('SUPER COMBO!', screenWidth / 2, screenHeight * 0.2, '#ff00ff');
       createParticles(screenWidth / 2, screenHeight * 0.2, '#ff00ff', 20);
@@ -392,6 +416,7 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
         startTime: Date.now(),
         duration: 5000,
         isCompleted: false,
+        isFeint: false,
       });
     }
 
@@ -450,7 +475,27 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
                 </View>
               </View>
               <View style={styles.hpBar}>
-                <View style={[styles.hpFill, { width: `${(opponentHP / 1000) * 100}%` }]} />
+                <LinearGradient
+                  colors={['#ef4444', '#dc2626']} // Light red to dark red gradient
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[
+                    styles.hpFill,
+                    {
+                      width: `${(opponentHP / 1000) * 100}%`,
+                      alignSelf: 'flex-end', // Anchor to right side
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.hpBorder,
+                    {
+                      width: `${(opponentHP / 1000) * 100}%`,
+                      alignSelf: 'flex-end', // Anchor to right side
+                    },
+                  ]}
+                />
               </View>
             </View>
             <View style={styles.avatarContainer}>
@@ -465,12 +510,30 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
         {/* Bottom HUD - Player */}
         <View style={styles.bottomHud}>
           <View style={styles.playerRow}>
-            <View style={styles.playerAvatarContainer}>
+            <TouchableOpacity
+              style={styles.playerAvatarContainer}
+              onPress={() => {
+                if (superMeter >= 100) {
+                  setSuperMeter(0);
+                  triggerHaptic('heavy');
+                  createFeedbackText('SUPER!', screenWidth / 2, screenHeight * 0.2, '#ffff00');
+                }
+              }}
+              activeOpacity={0.8}
+            >
               <Animated.Image
                 source={require('../../assets/avatar/neutral.jpg')}
-                style={[styles.avatar, { transform: [{ scale: avatarScaleAnim }] }]}
+                style={[
+                  styles.avatar,
+                  {
+                    transform: [{ scale: avatarScaleAnim }],
+                    borderWidth: 3,
+                    borderColor: superMeter >= 100 ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+                    borderRadius: 32,
+                  },
+                ]}
               />
-            </View>
+            </TouchableOpacity>
             <View style={styles.playerContainer}>
               <View style={styles.playerTopRow}>
                 <Text style={styles.playerLabel}>PLAYER</Text>
@@ -489,15 +552,50 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
                   </View>
                 </View>
               </View>
-              <View style={styles.powerBar}>
-                <View
-                  style={[
-                    styles.powerFill,
-                    {
-                      width: `${powerMeter}%`,
-                    },
-                  ]}
-                />
+              <View style={styles.superMeterContainer}>
+                <View style={styles.superMeterBar}>
+                  {/* Glow effect underneath the meter - only left, top, bottom edges animate */}
+                  <Animated.View
+                    style={[
+                      styles.superMeterGlow,
+                      {
+                        width: `${Math.max(superMeter, 5)}%`,
+                        opacity: glowAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.3, 0.8],
+                        }),
+                        transform: [
+                          {
+                            scaleX: glowAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [1.0, 1.05],
+                            }),
+                          },
+                          {
+                            scaleY: glowAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [1.0, 1.1],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  />
+                  <LinearGradient
+                    colors={['#1e3a8a', '#3b82f6']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.superMeterFill, { width: `${superMeter}%` }]}
+                  />
+                  <Animated.View
+                    style={[
+                      styles.superMeterBorder,
+                      {
+                        width: `${Math.max(superMeter, 5)}%`,
+                      },
+                    ]}
+                  />
+                </View>
               </View>
             </View>
           </View>
@@ -613,6 +711,26 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
             <Text style={styles.testButtonText}>Test Super Combo</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.testButton}
+            onPress={() => {
+              setSuperMeter(prev => Math.min(100, prev + 25));
+              triggerHaptic('medium');
+            }}
+          >
+            <Text style={styles.testButtonText}>Fill Super Meter (+25)</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.testButton}
+            onPress={() => {
+              setSuperMeter(50); // Set to 50% to see the glow effect clearly
+              triggerHaptic('medium');
+            }}
+          >
+            <Text style={styles.testButtonText}>Set Super Meter to 50%</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.testButton} onPress={testPreRound}>
             <Text style={styles.testButtonText}>Test Pre-Round</Text>
           </TouchableOpacity>
@@ -720,8 +838,8 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
             <Text style={styles.stateValue}>{feedbackTexts.length}</Text>
           </View>
           <View style={styles.stateRow}>
-            <Text style={styles.stateLabel}>Power Meter:</Text>
-            <Text style={styles.stateValue}>{powerMeter}%</Text>
+            <Text style={styles.stateLabel}>Super Meter:</Text>
+            <Text style={styles.stateValue}>{superMeter}%</Text>
           </View>
           <View style={styles.stateRow}>
             <Text style={styles.stateLabel}>Current Round:</Text>
@@ -869,13 +987,22 @@ const styles = StyleSheet.create({
   hpBar: {
     height: 20,
     backgroundColor: '#333',
-    borderRadius: 10,
+    borderRadius: 3,
     overflow: 'hidden',
     marginVertical: 5,
+    transform: [{ skewX: '20deg' }],
   },
   hpFill: {
     height: '100%',
-    backgroundColor: '#ff0000',
+  },
+  hpBorder: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    height: '100%',
+    borderWidth: 3,
+    borderColor: '#ffffff',
+    borderRadius: 3,
   },
   avatarContainer: {
     width: 64,
@@ -939,16 +1066,50 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
     borderRadius: 10,
   },
-  powerBar: {
+  superMeterContainer: {
+    marginTop: 5,
+  },
+  superMeterBar: {
     height: 20,
     backgroundColor: '#333',
-    borderRadius: 10,
-    overflow: 'hidden',
+    borderRadius: 3,
     marginVertical: 5,
+    transform: [{ skewX: '20deg' }],
   },
-  powerFill: {
+  superMeterFill: {
     height: '100%',
-    backgroundColor: '#ff00ff',
+  },
+  superMeterGlow: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    height: 24, // Fixed height instead of calc
+    backgroundColor: '#ffffff',
+    borderRadius: 5,
+    opacity: 0.6,
+  },
+  superMeterBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: '100%',
+    borderWidth: 3,
+    borderColor: '#ffffff',
+    borderRadius: 3,
+  },
+  superButton: {
+    backgroundColor: '#ffff00',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+  },
+  superButtonText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   lottieArea: {
     position: 'absolute',

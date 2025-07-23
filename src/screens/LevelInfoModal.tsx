@@ -76,37 +76,83 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
   }, [visible, modalOpacity, modalScale, contentTranslateY]);
 
   const getChapterName = (level: number) => {
-    const chapters = [
-      'The Beginning',
-      'First Blood',
-      'Rising Star',
-      'The Challenge',
-      'Midnight Brawl',
-      "Champion's Path",
-      'Dark Arena',
-      'Final Countdown',
-      "Legend's Trial",
-      'Ultimate Showdown',
-    ];
-    return chapters[level - 1] || `Chapter ${level}`;
+    try {
+      const opponent = getOpponentConfig(level);
+      return opponent.name;
+    } catch (error) {
+      // Fallback to hardcoded values if opponent not found
+      const chapters = [
+        'The Beginning',
+        'First Blood',
+        'Rising Star',
+        'The Challenge',
+        'Midnight Brawl',
+        "Champion's Path",
+        'Dark Arena',
+        'Final Countdown',
+        "Legend's Trial",
+        'Ultimate Showdown',
+      ];
+      return chapters[level - 1] || `Chapter ${level}`;
+    }
   };
 
   const getDifficultyColor = (level: number) => {
-    if (level <= 3) return '#00ff00'; // Green for easy
-    if (level <= 6) return '#ffff00'; // Yellow for medium
-    if (level <= 8) return '#ff8800'; // Orange for hard
-    return '#ff0000'; // Red for expert
+    try {
+      const opponent = getOpponentConfig(level);
+      switch (opponent.difficulty) {
+        case 'easy':
+          return '#00ff00'; // Green
+        case 'medium':
+          return '#ffff00'; // Yellow
+        case 'hard':
+          return '#ff8800'; // Orange
+        case 'expert':
+          return '#ff0000'; // Red
+        default:
+          return '#00ff00';
+      }
+    } catch (error) {
+      // Fallback to hardcoded values if opponent not found
+      if (level <= 3) return '#00ff00'; // Green for easy
+      if (level <= 6) return '#ffff00'; // Yellow for medium
+      if (level <= 8) return '#ff8800'; // Orange for hard
+      return '#ff0000'; // Red for expert
+    }
   };
 
   const getDifficultyText = (level: number) => {
-    if (level <= 3) return 'Easy';
-    if (level <= 6) return 'Medium';
-    if (level <= 8) return 'Hard';
-    return 'Expert';
+    try {
+      const opponent = getOpponentConfig(level);
+      return opponent.difficulty.charAt(0).toUpperCase() + opponent.difficulty.slice(1);
+    } catch (error) {
+      // Fallback to hardcoded values if opponent not found
+      if (level <= 3) return 'Easy';
+      if (level <= 6) return 'Medium';
+      if (level <= 8) return 'Hard';
+      return 'Expert';
+    }
   };
 
   const getDifficultyStars = (level: number) => {
-    return Math.min(level, 5);
+    try {
+      const opponent = getOpponentConfig(level);
+      switch (opponent.difficulty) {
+        case 'easy':
+          return 1;
+        case 'medium':
+          return 3;
+        case 'hard':
+          return 4;
+        case 'expert':
+          return 5;
+        default:
+          return Math.min(level, 5);
+      }
+    } catch (error) {
+      // Fallback to hardcoded values if opponent not found
+      return Math.min(level, 5);
+    }
   };
 
   const getLevelImage = (level: number) => {
@@ -185,11 +231,18 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
                   </View>
                 </View>
 
-                {/* Story description placeholder */}
+                {/* Story description */}
                 <View style={styles.storySection}>
                   <Text style={styles.storyLabel}>Story</Text>
                   <Text style={styles.storyText}>
-                    {`Chapter ${level} of your boxing journey awaits. Face new challenges, discover hidden techniques, and prove your worth in the ring. The story continues...`}
+                    {(() => {
+                      try {
+                        const opponent = getOpponentConfig(level);
+                        return opponent.description;
+                      } catch (error) {
+                        return `Chapter ${level} of your boxing journey awaits. Face new challenges, discover hidden techniques, and prove your worth in the ring. The story continues...`;
+                      }
+                    })()}
                   </Text>
                 </View>
 
