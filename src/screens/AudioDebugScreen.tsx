@@ -25,6 +25,17 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
   const mainThemeSound = useRef<Audio.Sound | null>(null);
   const qteSuccessSound = useRef<Audio.Sound | null>(null);
   const qteFailureSound = useRef<Audio.Sound | null>(null);
+  const countdownTenSound = useRef<Audio.Sound | null>(null);
+  const countdownNineSound = useRef<Audio.Sound | null>(null);
+  const countdownEightSound = useRef<Audio.Sound | null>(null);
+  const countdownSevenSound = useRef<Audio.Sound | null>(null);
+  const countdownSixSound = useRef<Audio.Sound | null>(null);
+  const countdownFiveSound = useRef<Audio.Sound | null>(null);
+  const countdownFourSound = useRef<Audio.Sound | null>(null);
+  const countdownThreeSound = useRef<Audio.Sound | null>(null);
+  const countdownTwoSound = useRef<Audio.Sound | null>(null);
+  const countdownOneSound = useRef<Audio.Sound | null>(null);
+  const knockoutSound = useRef<Audio.Sound | null>(null);
 
   const audioFiles: Record<string, any> = {
     hit: require('../../assets/audio/hit.mp3'),
@@ -35,6 +46,17 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
     'main theme': require('../../assets/audio/main_theme.mp3'),
     'qte success': require('../../assets/audio/qte_success.mp3'),
     'qte failure': require('../../assets/audio/qte_failure.mp3'),
+    'countdown ten': require('../../assets/audio/ten.mp3'),
+    'countdown nine': require('../../assets/audio/nine.mp3'),
+    'countdown eight': require('../../assets/audio/eight.mp3'),
+    'countdown seven': require('../../assets/audio/seven.mp3'),
+    'countdown six': require('../../assets/audio/six.mp3'),
+    'countdown five': require('../../assets/audio/five.mp3'),
+    'countdown four': require('../../assets/audio/four.mp3'),
+    'countdown three': require('../../assets/audio/three.mp3'),
+    'countdown two': require('../../assets/audio/two.mp3'),
+    'countdown one': require('../../assets/audio/one.mp3'),
+    knockout: require('../../assets/audio/knockout.mp3'),
   };
 
   // State to toggle between label and file name for each sound
@@ -83,6 +105,17 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
     await tryLoad('main theme', mainThemeSound);
     await tryLoad('qte success', qteSuccessSound);
     await tryLoad('qte failure', qteFailureSound);
+    await tryLoad('countdown ten', countdownTenSound);
+    await tryLoad('countdown nine', countdownNineSound);
+    await tryLoad('countdown eight', countdownEightSound);
+    await tryLoad('countdown seven', countdownSevenSound);
+    await tryLoad('countdown six', countdownSixSound);
+    await tryLoad('countdown five', countdownFiveSound);
+    await tryLoad('countdown four', countdownFourSound);
+    await tryLoad('countdown three', countdownThreeSound);
+    await tryLoad('countdown two', countdownTwoSound);
+    await tryLoad('countdown one', countdownOneSound);
+    await tryLoad('knockout', knockoutSound);
     setLoadingSoundName(null);
     setIsLoading(false);
   };
@@ -96,6 +129,17 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
     if (mainThemeSound.current) await mainThemeSound.current.unloadAsync();
     if (qteSuccessSound.current) await qteSuccessSound.current.unloadAsync();
     if (qteFailureSound.current) await qteFailureSound.current.unloadAsync();
+    if (countdownTenSound.current) await countdownTenSound.current.unloadAsync();
+    if (countdownNineSound.current) await countdownNineSound.current.unloadAsync();
+    if (countdownEightSound.current) await countdownEightSound.current.unloadAsync();
+    if (countdownSevenSound.current) await countdownSevenSound.current.unloadAsync();
+    if (countdownSixSound.current) await countdownSixSound.current.unloadAsync();
+    if (countdownFiveSound.current) await countdownFiveSound.current.unloadAsync();
+    if (countdownFourSound.current) await countdownFourSound.current.unloadAsync();
+    if (countdownThreeSound.current) await countdownThreeSound.current.unloadAsync();
+    if (countdownTwoSound.current) await countdownTwoSound.current.unloadAsync();
+    if (countdownOneSound.current) await countdownOneSound.current.unloadAsync();
+    if (knockoutSound.current) await knockoutSound.current.unloadAsync();
   };
 
   const playSound = async (
@@ -331,6 +375,127 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
               {qteFailureSound.current ? 'Loaded' : 'Not Loaded'}
             </Text>
           </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Countdown Ten:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                countdownTenSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {countdownTenSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Countdown Nine:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                countdownNineSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {countdownNineSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Countdown Eight:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                countdownEightSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {countdownEightSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Countdown Seven:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                countdownSevenSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {countdownSevenSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Countdown Six:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                countdownSixSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {countdownSixSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Countdown Five:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                countdownFiveSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {countdownFiveSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Countdown Four:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                countdownFourSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {countdownFourSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Countdown Three:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                countdownThreeSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {countdownThreeSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Countdown Two:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                countdownTwoSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {countdownTwoSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Countdown One:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                countdownOneSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {countdownOneSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Knockout:</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                knockoutSound.current ? styles.statusSuccess : styles.statusError,
+              ]}
+            >
+              {knockoutSound.current ? 'Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
         </View>
 
         {/* Test all sounds/music - SFX */}
@@ -345,6 +510,17 @@ const AudioDebugScreen: React.FC<AudioDebugScreenProps> = ({ onBackToMenu }) => 
               ['Punch', 'punch', punchSound],
               ['QTE Success', 'qte success', qteSuccessSound],
               ['QTE Failure', 'qte failure', qteFailureSound],
+              ['Countdown Ten', 'countdown ten', countdownTenSound],
+              ['Countdown Nine', 'countdown nine', countdownNineSound],
+              ['Countdown Eight', 'countdown eight', countdownEightSound],
+              ['Countdown Seven', 'countdown seven', countdownSevenSound],
+              ['Countdown Six', 'countdown six', countdownSixSound],
+              ['Countdown Five', 'countdown five', countdownFiveSound],
+              ['Countdown Four', 'countdown four', countdownFourSound],
+              ['Countdown Three', 'countdown three', countdownThreeSound],
+              ['Countdown Two', 'countdown two', countdownTwoSound],
+              ['Countdown One', 'countdown one', countdownOneSound],
+              ['Knockout', 'knockout', knockoutSound],
             ] as [string, string, React.MutableRefObject<Audio.Sound | null>][]
           ).map(([label, key, ref]) => (
             <View

@@ -8,6 +8,7 @@ import {
   Animated,
   Easing,
   Dimensions,
+  Platform,
 } from 'react-native';
 import {
   Canvas,
@@ -18,7 +19,7 @@ import {
   Skia,
   Paint,
   useClock,
-  Image,
+  Image as SkiaImage,
   useImage,
 } from '@shopify/react-native-skia';
 import { useSharedValue } from 'react-native-reanimated';
@@ -26,6 +27,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { useAudio } from '../contexts/AudioContext';
 import BoxerImg from '../../assets/main_menu/boxer.png';
+import SilhouetteImg from '../../assets/main_menu/silhouette.png';
+import RingGirl1Img from '../../assets/main_menu/ring_girl_1.png';
+import RingGirl2Img from '../../assets/main_menu/ring_girl_2.png';
+import RefImg from '../../assets/main_menu/ref.png';
 
 interface MainMenuProps {
   onStartGame: (mode: 'arcade' | 'endless') => void;
@@ -108,7 +113,7 @@ const AnimatedStageBeams = ({
   const baseAngles =
     corner === 'left'
       ? [Math.PI / 3, Math.PI / 4, Math.PI / 6] // Downward and inward
-      : [Math.PI - Math.PI / 3, Math.PI - Math.PI / 4, Math.PI - Math.PI / 6];
+      : [(125 * Math.PI) / 180, (125 * Math.PI) / 180, (125 * Math.PI) / 180]; // 125 degrees for right beams
 
   return (
     <>
@@ -166,37 +171,18 @@ const SkiaTitleImage = ({
     };
   }, [opacity, scale, translateY]);
 
-  console.log('SkiaTitleImage render:', {
-    imageLoaded: !!image,
-    currentOpacity,
-    currentScale,
-    currentTranslateY,
-    screenWidth,
-    screenHeight,
-  });
-
   if (!image) {
-    console.log('❌ Image not loaded');
     return null;
   }
 
   const imageWidth = screenWidth * 1.1;
   const imageHeight = imageWidth * (image.height() / image.width());
   const x = (screenWidth - imageWidth * currentScale) / 2; // Keep perfectly centered
-  const y = screenHeight * 0.08 + currentTranslateY;
-
-  console.log('Image dimensions:', {
-    imageWidth,
-    imageHeight,
-    x,
-    y,
-    finalWidth: imageWidth * currentScale,
-    finalHeight: imageHeight * currentScale,
-  });
+  const y = screenHeight * 0.1 + currentTranslateY; // Ever so slightly raised position
 
   return (
     <>
-      <Image
+      <SkiaImage
         image={image}
         x={x}
         y={y}
@@ -557,7 +543,17 @@ const OverlayWithSpotlights = ({ revealingMode = false }: { revealingMode?: bool
   }, [clock]);
 
   return (
-    <Canvas style={[StyleSheet.absoluteFillObject, { zIndex: 3 }]} pointerEvents="none">
+    <Canvas
+      style={[
+        StyleSheet.absoluteFillObject,
+        {
+          zIndex: 2,
+          // Android-specific pointer events
+          ...(Platform.OS === 'android' && { pointerEvents: 'box-none' }),
+        },
+      ]}
+      pointerEvents={Platform.OS === 'android' ? 'box-none' : 'none'}
+    >
       {/* Overlay rectangle */}
       <SkiaPath
         path={makeOverlayRect(0, 0, screenWidth, screenHeight)}
@@ -601,8 +597,6 @@ const MainMenu: React.FC<MainMenuProps> = ({
   const leftAnims = [0, 1, 2].map(() => useRef(new Animated.Value(0)).current);
   const rightAnims = [0, 1, 2].map(() => useRef(new Animated.Value(0)).current);
 
-  // UI visibility toggle for debugging
-  const [showUI, setShowUI] = React.useState(true);
   // Add state for tap-to-start overlay
   const [showTapToStart, setShowTapToStart] = React.useState(false); // initially false
   // Add state for flash sequence
@@ -617,6 +611,19 @@ const MainMenu: React.FC<MainMenuProps> = ({
   const boxerTranslateX = useRef(new Animated.Value(screenWidth * 0.7)).current; // start off-screen right (mirrored)
   const [boxerVisible, setBoxerVisible] = React.useState(false);
   const [boxerBehindOverlay, setBoxerBehindOverlay] = React.useState(false);
+
+  // Silhouette image slide-in animation
+  const silhouetteTranslateX = useRef(new Animated.Value(-screenWidth * 0.7)).current; // start off-screen left
+  const [silhouetteVisible, setSilhouetteVisible] = React.useState(false);
+
+  // Ring girls slide-in animation
+  const ringGirl1TranslateX = useRef(new Animated.Value(-screenWidth * 0.8)).current; // start further off-screen left
+  const ringGirl2TranslateX = useRef(new Animated.Value(-screenWidth * 0.9)).current; // start even further off-screen left
+  const [ringGirlsVisible, setRingGirlsVisible] = React.useState(false);
+
+  // Ref image slide-in animation
+  const refTranslateX = useRef(new Animated.Value(-screenWidth * 0.6)).current; // start off-screen left
+  const [refVisible, setRefVisible] = React.useState(false);
 
   // Title image animations
   const titleOpacity = useRef(new Animated.Value(1)).current;
@@ -731,11 +738,45 @@ const MainMenu: React.FC<MainMenuProps> = ({
   const runFlashSequence = () => {
     setFlashing(true);
     setBoxerVisible(true);
+    setSilhouetteVisible(true);
+    setRingGirlsVisible(true);
+    setRefVisible(true);
 
-    // Animate boxer sliding in during flashes
+    // Animate boxer sliding in during flashes (fastest - foreground layer)
     Animated.timing(boxerTranslateX, {
       toValue: 0, // snapped to right edge
-      duration: 440, // match total flash duration
+      duration: 280, // fastest duration for parallax effect
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    // Animate silhouette sliding in from left to center (slowest - background layer)
+    Animated.timing(silhouetteTranslateX, {
+      toValue: (screenWidth - screenWidth * 1.5) / 2, // center the large silhouette
+      duration: 600, // slower duration for parallax effect
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    // Animate ring girls sliding in (medium speed - middle layer)
+    Animated.timing(ringGirl1TranslateX, {
+      toValue: (screenWidth - screenWidth * 0.8) / 2 - 50, // slightly to the left of center
+      duration: 480, // medium duration for parallax effect
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    Animated.timing(ringGirl2TranslateX, {
+      toValue: (screenWidth - screenWidth * 0.8) / 2 + 50, // slightly to the right of center
+      duration: 480, // medium duration for parallax effect
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    // Animate ref sliding in from left to left side (fastest - foreground layer)
+    Animated.timing(refTranslateX, {
+      toValue: -screenWidth * 0.1, // move further left
+      duration: 360, // faster duration for parallax effect
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
@@ -831,13 +872,13 @@ const MainMenu: React.FC<MainMenuProps> = ({
         Animated.sequence([
           Animated.timing(anim, {
             toValue: 1,
-            duration: 3000 + i * 600,
+            duration: 2800 + i * 800,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: false,
           }),
           Animated.timing(anim, {
             toValue: 0,
-            duration: 3000 + i * 600,
+            duration: 2800 + i * 800,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: false,
           }),
@@ -849,13 +890,13 @@ const MainMenu: React.FC<MainMenuProps> = ({
         Animated.sequence([
           Animated.timing(anim, {
             toValue: 1,
-            duration: 3200 + i * 600,
+            duration: 3600 + i * 400,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: false,
           }),
           Animated.timing(anim, {
             toValue: 0,
-            duration: 3200 + i * 600,
+            duration: 3600 + i * 400,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: false,
           }),
@@ -911,11 +952,78 @@ const MainMenu: React.FC<MainMenuProps> = ({
         {/* Camera Flashes: above background, below overlay */}
         <CameraFlashes />
 
-        {/* Skia Canvas for stage light beams - revealing mode only */}
-        <Canvas style={StyleSheet.absoluteFillObject}>
+        {/* Skia Canvas for stage light beams - behind silhouette */}
+        <Canvas
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              zIndex: 0, // same layer as silhouette, but rendered first
+              // Android-specific pointer events
+              ...(Platform.OS === 'android' && { pointerEvents: 'box-none' }),
+            },
+          ]}
+          pointerEvents={Platform.OS === 'android' ? 'box-none' : 'none'}
+        >
           <AnimatedStageBeams corner="left" anims={leftAnims} maxBeams={1} />
           <AnimatedStageBeams corner="right" anims={rightAnims} maxBeams={1} />
         </Canvas>
+
+        {/* Ref image slides in from left to left side */}
+        {refVisible && (
+          <Animated.Image
+            source={RefImg}
+            style={[
+              styles.refImage,
+              {
+                transform: [{ translateX: refTranslateX }],
+              },
+            ]}
+            resizeMode="contain"
+          />
+        )}
+
+        {/* Silhouette image slides in from left to center */}
+        {silhouetteVisible && (
+          <Animated.Image
+            source={SilhouetteImg}
+            style={[
+              styles.silhouetteImage,
+              {
+                transform: [{ translateX: silhouetteTranslateX }],
+              },
+            ]}
+            resizeMode="contain"
+          />
+        )}
+
+        {/* Dark Overlay Layer */}
+        <View style={styles.darkOverlay} />
+
+        {/* Ring girls slide in from left */}
+        {ringGirlsVisible && (
+          <>
+            <Animated.Image
+              source={RingGirl1Img}
+              style={[
+                styles.ringGirlImage,
+                {
+                  transform: [{ translateX: ringGirl1TranslateX }],
+                },
+              ]}
+              resizeMode="contain"
+            />
+            <Animated.Image
+              source={RingGirl2Img}
+              style={[
+                styles.ringGirlImage,
+                {
+                  transform: [{ translateX: ringGirl2TranslateX }, { scaleX: -1 }],
+                },
+              ]}
+              resizeMode="contain"
+            />
+          </>
+        )}
 
         {/* Boxer image slides in during flashes, then moves behind overlay */}
         {boxerVisible && (
@@ -936,26 +1044,38 @@ const MainMenu: React.FC<MainMenuProps> = ({
         {/* Skia overlay - always present to cover boxer image */}
         <OverlayWithSpotlights revealingMode={true} />
 
-        {/* Hide UI toggle button (always visible, above overlay) */}
-        <TouchableOpacity
-          style={[styles.hideUIButton, { top: insets.top + 12, zIndex: 10 }]}
-          onPress={() => setShowUI(v => !v)}
-        >
-          <Text style={styles.hideUIButtonText}>{showUI ? 'Hide UI' : 'Show UI'}</Text>
-        </TouchableOpacity>
-
         {/* Bright gleam effect */}
         {flashing && (
-          <Canvas style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <Canvas
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                zIndex: 4,
+                // Android-specific pointer events
+                ...(Platform.OS === 'android' && { pointerEvents: 'box-none' }),
+              },
+            ]}
+            pointerEvents={Platform.OS === 'android' ? 'box-none' : 'none'}
+          >
             <BrightGleam flashAnim={flashAnim} />
           </Canvas>
         )}
 
-        {/* All other UI is hidden when showUI is false or tap-to-start is active */}
-        {showUI && (
-          <View style={styles.contentContainer}>
+        {/* All other UI is hidden when tap-to-start is active */}
+        {
+          <View style={[styles.contentContainer, { zIndex: 6 }]}>
             {/* Skia Title Image - on top layer */}
-            <Canvas style={[StyleSheet.absoluteFillObject, { zIndex: 5 }]} pointerEvents="none">
+            <Canvas
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  zIndex: 5,
+                  // Android-specific pointer events
+                  ...(Platform.OS === 'android' && { pointerEvents: 'box-none' }),
+                },
+              ]}
+              pointerEvents={Platform.OS === 'android' ? 'box-none' : 'none'}
+            >
               <SkiaTitleImage
                 opacity={titleOpacity}
                 scale={titleScale}
@@ -965,11 +1085,22 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
             {/* Menu area: show Tap to Start or menu buttons */}
             {menuAreaReady && (
-              <View style={styles.menuContainer}>
+              <View style={[styles.menuContainer, { zIndex: 7 }]}>
                 {showTapToStart ? (
                   <TouchableOpacity
-                    style={styles.tapToStartMenuArea}
-                    activeOpacity={1}
+                    style={[
+                      styles.tapToStartMenuArea,
+                      {
+                        zIndex: 8,
+                        // Android-specific improvements
+                        ...(Platform.OS === 'android' && {
+                          minHeight: 400,
+                          paddingVertical: 60,
+                          backgroundColor: 'rgba(0,0,0,0.05)', // Slightly more visible on Android
+                        }),
+                      },
+                    ]}
+                    activeOpacity={0.8}
                     onPress={handleTapToStart}
                   >
                     <Animated.Text style={[styles.tapToStartText, { opacity: tapToStartOpacity }]}>
@@ -1075,7 +1206,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
               </View>
             )}
           </View>
-        )}
+        }
       </ImageBackground>
     </Animated.View>
   );
@@ -1170,20 +1301,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontFamily: 'System',
   },
-  hideUIButton: {
-    position: 'absolute',
-    right: 20,
-    backgroundColor: '#ff00ff',
-    padding: 10,
-    borderRadius: 8,
-  },
 
-  hideUIButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'System',
-  },
   tapToStartOverlay: {
     // (no longer used)
   },
@@ -1203,11 +1321,48 @@ const styles = StyleSheet.create({
     fontFamily: 'System',
   },
   tapToStartMenuArea: {
-    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 200,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 220,
     paddingVertical: 40,
+  },
+
+  darkOverlay: {
+    position: 'absolute',
+    top: screenHeight * 0.66, // starts at 66% height
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)', // dark overlay
+    zIndex: 0, // same layer as silhouette
+  },
+  silhouetteImage: {
+    position: 'absolute',
+    top: screenHeight * 0.2, // raise it higher up
+    width: screenWidth * 1.5, // much larger, will overflow
+    aspectRatio: 0.08, // make it EXTREMELY taller
+    maxHeight: screenHeight * 8, // allow extreme overflow
+    zIndex: 0, // bottom layer (3rd layer)
+  },
+  refImage: {
+    position: 'absolute',
+    top: screenHeight * 0.3, // raise it higher up
+    width: screenWidth * 0.7, // larger size
+    aspectRatio: 0.8,
+    maxHeight: screenHeight * 0.8, // larger max height
+    zIndex: 1, // middle layer (2nd layer)
+  },
+  ringGirlImage: {
+    position: 'absolute',
+    bottom: -screenHeight * 0.2, // lower position
+    width: screenWidth * 0.4, // make smaller
+    aspectRatio: 0.6,
+    maxHeight: screenHeight * 0.6, // smaller max height
+    zIndex: 1, // middle layer (2nd layer)
   },
 
   boxerImage: {
@@ -1217,7 +1372,7 @@ const styles = StyleSheet.create({
     width: screenWidth * 0.7,
     aspectRatio: 0.7, // maintain image proportions (adjust as needed)
     maxHeight: screenHeight,
-    zIndex: 0, // always below overlay
+    zIndex: 5, // same layer as title image (top layer)
   },
 });
 
