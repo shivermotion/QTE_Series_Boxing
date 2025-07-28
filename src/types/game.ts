@@ -1,51 +1,96 @@
-export interface Target {
+// ============================================================================
+// GAME TYPES AND INTERFACES
+// ============================================================================
+
+export interface GameScreenProps {
+  gameMode: 'arcade' | 'endless';
+  selectedLevel?: number;
+  onBackToMenu: () => void;
+  onChooseLevel?: () => void;
+  debugMode: boolean;
+}
+
+export interface Prompt {
   id: string;
-  lane: 'left' | 'center' | 'right';
-  position: number;
-  speed: number;
-  type: 'normal' | 'power';
+  type: 'tap' | 'swipe' | 'hold-and-flick' | 'timing';
+  direction?: 'left' | 'right' | 'up' | 'down';
+  startTime: number;
+  duration: number;
+  isActive: boolean;
+  isCompleted: boolean;
+}
+
+export interface TapPrompt {
+  id: string;
+  gridPosition: number; // 0-8 for 3x3 grid (0=top-left, 8=bottom-right)
+  startTime: number;
+  duration: number;
+  isActive: boolean;
+  isCompleted: boolean;
+  isFeint: boolean;
+}
+
+export interface TimingPrompt {
+  id: string;
+  gridPosition: number; // 0-8 for 3x3 grid (0=top-left, 8=bottom-right)
+  startTime: number;
+  duration: number;
+  isActive: boolean;
+  isCompleted: boolean;
+  perfectWindowStart: number; // Time when perfect window starts
+  perfectWindowEnd: number;   // Time when perfect window ends
+  goodEarlyStart: number;     // Time when good (early) window starts
+  goodEarlyEnd: number;       // Time when good (early) window ends
+  goodLateStart: number;      // Time when good (late) window starts
+  goodLateEnd: number;        // Time when good (late) window ends
+  isFeint: boolean;
 }
 
 export interface GameState {
   score: number;
   lives: number;
-  targets: Target[];
-  avatarState: 'idle' | 'success' | 'failure';
-  combo: number;
-  gameMode: 'arcade' | 'endless';
+  opponentHP: number;
+  currentRound: number;
+  roundHPGoal: number;
+  superMeter: number; // Super meter that fills up instead of dealing damage
+  isSuperComboActive: boolean;
+  isSuperModeActive: boolean; // When speed lines are playing
+  avatarState: 'idle' | 'success' | 'failure' | 'perfect';
   isPaused: boolean;
   gameTime: number;
   level: number;
 }
 
-export interface HitResult {
-  type: 'perfect' | 'good' | 'miss';
-  points: number;
-  combo: number;
-}
-
-export interface AvatarAnimation {
-  currentFrame: number;
-  totalFrames: number;
-  frameDuration: number;
-  lastFrameTime: number;
-}
-
-export interface GameConfig {
-  perfectHitWindow: number; // 200ms
-  goodHitWindow: number; // 400ms
-  targetSpeed: number;
-  spawnInterval: number;
-  screenWidth: number;
-  screenHeight: number;
-  hitZoneY: number; // 0.8 of screen height
-}
-
-export type Lane = 'left' | 'center' | 'right';
-
-export interface GestureEvent {
+export interface Particle {
+  id: string;
   x: number;
   y: number;
-  velocityY?: number;
-  type: 'tap' | 'swipe';
-} 
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  color: string;
+}
+
+export interface FeedbackText {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+  life: number;
+  maxLife: number;
+}
+
+export interface TouchState {
+  startY: number;
+  startX: number;
+  startTime: number;
+  isHolding: boolean;
+  holdStartTime: number;
+}
+
+export type HitQuality = 'perfect' | 'good' | 'success' | 'miss';
+export type SwipeDirection = 'left' | 'right' | 'up' | 'down';
+export type InputType = 'tap' | 'swipe' | 'hold-and-flick';
+export type HapticType = 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning'; 

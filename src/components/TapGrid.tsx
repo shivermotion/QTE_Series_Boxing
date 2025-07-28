@@ -9,6 +9,7 @@ interface TapPrompt {
   duration: number;
   isActive: boolean;
   isCompleted: boolean;
+  isFeint: boolean; // New property for fakeout prompts
 }
 
 interface TapGridProps {
@@ -62,6 +63,7 @@ const TapGrid: React.FC<TapGridProps> = ({ activeTapPrompts, onGridTap }) => {
     const prompt = getPromptAtPosition(position);
     const isActive = !!prompt && !prompt.isCompleted;
     const isCompleted = !!prompt && prompt.isCompleted;
+    const isFeint = !!prompt && prompt.isFeint;
 
     const tapAnimation = tapAnimations[position];
 
@@ -81,12 +83,16 @@ const TapGrid: React.FC<TapGridProps> = ({ activeTapPrompts, onGridTap }) => {
               width: cellSize,
               height: cellSize,
               backgroundColor: isActive
-                ? 'rgba(255, 255, 0, 0.3)'
+                ? isFeint
+                  ? 'rgba(255, 0, 0, 0.4)' // Red background for feints
+                  : 'rgba(255, 255, 0, 0.3)' // Yellow background for normal taps
                 : isCompleted
                 ? 'rgba(0, 255, 0, 0.6)' // Green for completed
                 : 'rgba(255, 255, 255, 0.1)',
               borderColor: isActive
-                ? '#ffff00'
+                ? isFeint
+                  ? '#ff0000' // Red border for feints
+                  : '#ffff00' // Yellow border for normal taps
                 : isCompleted
                 ? '#00ff00' // Green border for completed
                 : 'rgba(255, 255, 255, 0.3)',
@@ -96,7 +102,7 @@ const TapGrid: React.FC<TapGridProps> = ({ activeTapPrompts, onGridTap }) => {
           onPress={() => handleTap(position)}
           activeOpacity={0.7}
         >
-          {isActive && (
+          {isActive && !isFeint && (
             <View style={styles.lottieContainer}>
               <LottieView
                 source={require('../../assets/lottie/tap.lottie')}
@@ -104,6 +110,11 @@ const TapGrid: React.FC<TapGridProps> = ({ activeTapPrompts, onGridTap }) => {
                 loop
                 style={styles.lottieAnimation}
               />
+            </View>
+          )}
+          {isActive && isFeint && (
+            <View style={styles.feintContainer}>
+              <Text style={styles.feintText}>❌</Text>
             </View>
           )}
           {isCompleted && (
@@ -175,6 +186,17 @@ const styles = StyleSheet.create({
   completedText: {
     fontSize: 40,
     color: '#ffffff',
+    fontWeight: 'bold',
+  },
+  feintContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  feintText: {
+    fontSize: 40,
+    color: '#ff0000',
     fontWeight: 'bold',
   },
 });

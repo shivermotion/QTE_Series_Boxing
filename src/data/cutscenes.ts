@@ -99,5 +99,220 @@ export const cutscenes = {
       },
     ],
   },
-  // Add more levels as needed...
+  level3: {
+    title: "Rising Star",
+    story: "The competition gets tougher. Can you rise to the challenge?",
+    difficulty: "Medium",
+    image: cutsceneImage1,
+    cutscene: [
+      {
+        image: cutsceneImage1,
+        transition: 'fade',
+        speechBubbles: [
+          {
+            id: 'bubble5',
+            image: speechBubbleImage,
+            text: "You're getting better, but I'm just getting started!",
+            position: { x: 50, y: 40 },
+            size: { width: 350, height: 180 },
+            textStyle: {
+              fontSize: 18,
+              color: '#000',
+              fontWeight: 'bold',
+              textAlign: 'center',
+            },
+          },
+        ],
+      },
+    ],
+  },
+  level4: {
+    title: "The Challenge",
+    story: "A true test of your skills awaits...",
+    difficulty: "Medium",
+    image: cutsceneImage2,
+    cutscene: [
+      {
+        image: cutsceneImage2,
+        transition: 'fade',
+        speechBubbles: [
+          {
+            id: 'bubble6',
+            image: speechBubbleImage,
+            text: "This is where the real fight begins!",
+            position: { x: 50, y: 40 },
+            size: { width: 350, height: 180 },
+            textStyle: {
+              fontSize: 18,
+              color: '#000',
+              fontWeight: 'bold',
+              textAlign: 'center',
+            },
+          },
+        ],
+      },
+    ],
+  },
+  level5: {
+    title: "Midnight Brawl",
+    story: "The underground awaits. Are you ready for the darkness?",
+    difficulty: "Hard",
+    image: cutsceneImage3,
+    cutscene: [
+      {
+        image: cutsceneImage3,
+        transition: 'fade',
+        speechBubbles: [
+          {
+            id: 'bubble7',
+            image: speechBubbleImage,
+            text: "Welcome to the underground. No rules here!",
+            position: { x: 50, y: 40 },
+            size: { width: 350, height: 180 },
+            textStyle: {
+              fontSize: 18,
+              color: '#000',
+              fontWeight: 'bold',
+              textAlign: 'center',
+            },
+          },
+        ],
+      },
+    ],
+  },
+  level6: {
+    title: "Champion's Path",
+    story: "The path to greatness is paved with challenges...",
+    difficulty: "Hard",
+    image: cutsceneImage1,
+    cutscene: [
+      {
+        image: cutsceneImage1,
+        transition: 'fade',
+        speechBubbles: [
+          {
+            id: 'bubble8',
+            image: speechBubbleImage,
+            text: "Only the strongest survive this path!",
+            position: { x: 50, y: 40 },
+            size: { width: 350, height: 180 },
+            textStyle: {
+              fontSize: 18,
+              color: '#000',
+              fontWeight: 'bold',
+              textAlign: 'center',
+            },
+          },
+        ],
+      },
+    ],
+  },
+  level7: {
+    title: "Dark Arena",
+    story: "In the shadows, legends are made...",
+    difficulty: "Expert",
+    image: cutsceneImage2,
+    cutscene: [
+      {
+        image: cutsceneImage2,
+        transition: 'fade',
+        speechBubbles: [
+          {
+            id: 'bubble9',
+            image: speechBubbleImage,
+            text: "The shadows will consume you!",
+            position: { x: 50, y: 40 },
+            size: { width: 350, height: 180 },
+            textStyle: {
+              fontSize: 18,
+              color: '#000',
+              fontWeight: 'bold',
+              textAlign: 'center',
+            },
+          },
+        ],
+      },
+    ],
+  },
+  level8: {
+    title: "Final Countdown",
+    story: "The ultimate challenge approaches...",
+    difficulty: "Expert",
+    image: cutsceneImage3,
+    cutscene: [
+      {
+        image: cutsceneImage3,
+        transition: 'fade',
+        speechBubbles: [
+          {
+            id: 'bubble10',
+            image: speechBubbleImage,
+            text: "This is your final test!",
+            position: { x: 50, y: 40 },
+            size: { width: 350, height: 180 },
+            textStyle: {
+              fontSize: 18,
+              color: '#000',
+              fontWeight: 'bold',
+              textAlign: 'center',
+            },
+          },
+        ],
+      },
+    ],
+  },
+  level9: {
+    title: "Legend's Trial",
+    story: "Only legends survive this trial...",
+    difficulty: "Expert",
+    image: cutsceneImage1,
+    cutscene: [
+      {
+        image: cutsceneImage1,
+        transition: 'fade',
+        speechBubbles: [
+          {
+            id: 'bubble11',
+            image: speechBubbleImage,
+            text: "Prove you are worthy of legend!",
+            position: { x: 50, y: 40 },
+            size: { width: 350, height: 180 },
+            textStyle: {
+              fontSize: 18,
+              color: '#000',
+              fontWeight: 'bold',
+              textAlign: 'center',
+            },
+          },
+        ],
+      },
+    ],
+  },
+  level10: {
+    title: "Ultimate Showdown",
+    story: "The final battle. The undefeated awaits...",
+    difficulty: "Expert",
+    image: cutsceneImage4,
+    cutscene: [
+      {
+        image: cutsceneImage4,
+        transition: 'fade',
+        speechBubbles: [
+          {
+            id: 'bubble12',
+            image: speechBubbleImage,
+            text: "I am the undefeated. You will fall!",
+            position: { x: 50, y: 40 },
+            size: { width: 350, height: 180 },
+            textStyle: {
+              fontSize: 18,
+              color: '#000',
+              fontWeight: 'bold',
+              textAlign: 'center',
+            },
+          },
+        ],
+      },
+    ],
+  },
 }; 
