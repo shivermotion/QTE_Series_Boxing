@@ -104,8 +104,8 @@ export const generateTimingPrompts = (levelConfig: LevelConfig, currentRound: nu
 
     // Use hero's timing configuration
     const duration = getRandomPromptDuration(levelConfig, 'timing', currentRound);
-    const perfectWindowDuration = promptConfig.timingWindows.perfect;
-    const goodWindowDuration = promptConfig.timingWindows.good;
+    const perfectWindowDuration = promptConfig.gradeThresholds.perfect;
+    const goodWindowDuration = promptConfig.gradeThresholds.good;
     const staggerDelay = timingConfig.staggerDelay;
     
     // Calculate the visual appearance time for this prompt

@@ -7,58 +7,39 @@ interface TestArrowProps {
 }
 
 const TestArrow: React.FC<TestArrowProps> = ({ direction, isActive }) => {
-  const scaleAnim = useRef(new Animated.Value(0)).current;
+  // Remove scale and pulse, only use opacity for blinking
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const blinkAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (isActive) {
-      // Initial appearance animation
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      // Continuous pulse animation
-      const pulseAnimation = Animated.loop(
+      // Instantly show at full size
+      opacityAnim.setValue(1);
+      // Start fast blinking
+      blinkAnimRef.current = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.2,
-            duration: 500,
+          Animated.timing(opacityAnim, {
+            toValue: 0.2,
+            duration: 120,
             useNativeDriver: true,
           }),
-          Animated.timing(pulseAnim, {
+          Animated.timing(opacityAnim, {
             toValue: 1,
-            duration: 500,
+            duration: 120,
             useNativeDriver: true,
           }),
         ])
       );
-      pulseAnimation.start();
+      blinkAnimRef.current.start();
     } else {
-      // Hide animation
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-      pulseAnim.setValue(1);
+      // Hide and stop blinking
+      if (blinkAnimRef.current) blinkAnimRef.current.stop();
+      opacityAnim.setValue(0);
     }
+    // Cleanup on unmount
+    return () => {
+      if (blinkAnimRef.current) blinkAnimRef.current.stop();
+    };
   }, [isActive]);
 
   const getArrowSymbol = () => {
@@ -102,8 +83,8 @@ const TestArrow: React.FC<TestArrowProps> = ({ direction, isActive }) => {
           styles.arrowSymbol,
           {
             color: getArrowColor(),
-            transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }],
             opacity: opacityAnim,
+            // No scale or pulse
           },
         ]}
       >

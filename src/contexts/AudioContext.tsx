@@ -86,7 +86,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       }
 
       const mainTheme = new Audio.Sound();
-      await mainTheme.loadAsync(require('../../assets/audio/main_theme.mp3'));
+      // await mainTheme.loadAsync(require('../../assets/audio/main_theme.mp3'));
       await mainTheme.setIsLoopingAsync(true);
       const effectiveVolume = getEffectiveVolume('music');
       await mainTheme.setVolumeAsync(effectiveVolume);

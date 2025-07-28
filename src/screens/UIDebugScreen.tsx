@@ -527,9 +527,13 @@ const UIDebugScreen: React.FC<UIDebugScreenProps> = ({ onBackToMenu }) => {
                   styles.avatar,
                   {
                     transform: [{ scale: avatarScaleAnim }],
-                    borderWidth: 3,
+                    borderWidth: 4,
                     borderColor: superMeter >= 100 ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
-                    borderRadius: 32,
+                    // Match the irregular shape from the avatar style
+                    borderTopLeftRadius: 30,
+                    borderTopRightRadius: 12,
+                    borderBottomLeftRadius: 12,
+                    borderBottomRightRadius: 48,
                   },
                 ]}
               />
@@ -1005,8 +1009,8 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   avatarContainer: {
-    width: 64,
-    height: 64,
+    width: 96,
+    height: 96,
     marginLeft: 20,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1024,8 +1028,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   playerAvatarContainer: {
-    width: 64,
-    height: 64,
+    width: 96,
+    height: 96,
     marginRight: 20,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1169,11 +1173,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 3,
+    width: 96,
+    height: 96,
+    borderWidth: 4,
     borderColor: '#ffffff',
+    // Create irregular shape with convex oblique corner using border radius
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 48, // This creates the convex oblique corner
   },
 
   comboDisplay: {

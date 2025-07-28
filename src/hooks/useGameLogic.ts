@@ -158,21 +158,21 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
         // Get prompt configuration for the specific type
         const promptConfig = getPromptConfig(levelConfig, currentPrompt.type, gameState.currentRound);
         
-        if (timeDiff <= promptConfig.timingWindows.perfect) {
+        if (timeDiff <= promptConfig.gradeThresholds.perfect) {
           hitQuality = 'perfect';
           points = 100;
           damage = levelConfig.damage.perfect;
           powerGain = 10;
-        } else if (timeDiff <= promptConfig.timingWindows.good) {
+        } else if (timeDiff <= promptConfig.gradeThresholds.good) {
           hitQuality = 'good';
           points = 50;
           damage = levelConfig.damage.good;
           powerGain = 5;
         } else {
           // If completed within prompt duration but outside timing windows, still count as success
-          hitQuality = 'good';
+          hitQuality = 'success';
           points = 25; // Reduced points for slow completion
-          damage = levelConfig.damage.good;
+          damage = levelConfig.damage.success;
           powerGain = 3;
         }
       }
@@ -181,10 +181,17 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
         // Calculate super meter gain based on hit quality
         const superMeterGain = hitQuality === 'perfect' ? 15 : 10;
         
+        // Use configurable damage values from level config
+        const inputDamage = hitQuality === 'perfect' ? levelConfig.damage.perfect : 
+                           hitQuality === 'good' ? levelConfig.damage.good : 
+                           levelConfig.damage.success;
+        
+        console.log(`🥊 DAMAGE DEALT: ${inputDamage} (${hitQuality} ${currentPrompt.type} prompt)`);
+        
         setGameState(prev => ({
           ...prev,
           score: prev.score + points,
-          // Don't deal damage to opponent - fill super meter instead
+          opponentHP: Math.max(0, prev.opponentHP - inputDamage),
           superMeter: Math.min(100, prev.superMeter + superMeterGain),
           avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
         }));
@@ -276,16 +283,21 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       // We don't use opponent reaction time windows for tap prompts - those are for timing prompts
       const hitQuality: HitQuality = 'good'; // Tap prompts are always 'good' if completed
       const points = 50 * totalRealPrompts;
-      const damage = 25 * totalRealPrompts;
+      const damage = levelConfig.damage.good * totalRealPrompts;
       const powerGain = 5 * totalRealPrompts;
 
       // Calculate super meter gain
       const superMeterGain = 10 * totalRealPrompts;
       
+      // Use configurable damage values from level config
+      const tapDamage = levelConfig.damage.good * totalRealPrompts;
+      
+      console.log(`🥊 DAMAGE DEALT: ${tapDamage} (${hitQuality} tap prompt - ${totalRealPrompts} prompts completed)`);
+      
       setGameState(prev => ({
         ...prev,
         score: prev.score + points,
-        // Don't deal damage to opponent - fill super meter instead
+        opponentHP: Math.max(0, prev.opponentHP - tapDamage),
         superMeter: Math.min(100, prev.superMeter + superMeterGain),
         avatarState: 'success',
       }));
@@ -373,10 +385,17 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       // Calculate super meter gain based on hit quality and number of prompts
       const superMeterGain = lastHitQuality === 'perfect' ? 15 * totalPrompts : 10 * totalPrompts;
       
+      // Use configurable damage values from level config
+      const timingDamage = lastHitQuality === 'perfect' ? 
+                          levelConfig.damage.perfect * totalPrompts : 
+                          levelConfig.damage.good * totalPrompts;
+      
+      console.log(`🥊 DAMAGE DEALT: ${timingDamage} (${lastHitQuality} timing prompt - ${totalPrompts} prompts completed)`);
+      
       setGameState(prev => ({
         ...prev,
         score: prev.score + points,
-        // Don't deal damage to opponent - fill super meter instead
+        opponentHP: Math.max(0, prev.opponentHP - timingDamage),
         superMeter: Math.min(100, prev.superMeter + superMeterGain),
         avatarState: lastHitQuality === 'perfect' ? 'perfect' : 'success',
       }));
@@ -574,6 +593,8 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       console.log('🥊 SUPER COMBO EXECUTED:', superMove.name, 'Damage:', superMove.damage);
       
       // Deal massive damage to opponent
+      console.log(`🥊 DAMAGE DEALT: ${superMove.damage} (${superMove.name} super move)`);
+      
       setGameState(prev => ({
         ...prev,
         opponentHP: Math.max(0, prev.opponentHP - superMove.damage),
@@ -662,12 +683,14 @@ export const useGameLogic = (selectedLevel: number, onMiss?: () => void, onSucce
       triggerHaptic('success');
 
       if (superComboIndex + 1 >= superComboSequence.length) {
-              setGameState(prev => ({
-        ...prev,
-        score: prev.score + 500,
-        opponentHP: Math.max(0, prev.opponentHP - levelConfig.damage.superCombo),
-        isSuperComboActive: false,
-      }));
+                      console.log(`🥊 DAMAGE DEALT: ${levelConfig.damage.superCombo} (super combo base damage)`);
+        
+        setGameState(prev => ({
+          ...prev,
+          score: prev.score + 500,
+          opponentHP: Math.max(0, prev.opponentHP - levelConfig.damage.superCombo),
+          isSuperComboActive: false,
+        }));
 
         setSuperComboSequence([]);
         setSuperComboIndex(0);

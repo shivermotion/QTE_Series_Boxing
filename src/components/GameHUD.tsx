@@ -108,9 +108,13 @@ const GameHUD: React.FC<GameHUDProps> = ({
                 styles.avatar,
                 avatarScaleStyle,
                 {
-                  borderWidth: 3,
+                  borderWidth: 4,
                   borderColor: gameState.superMeter >= 100 ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
-                  borderRadius: 32,
+                  // Match the irregular shape from the avatar style
+                  borderTopLeftRadius: 30,
+                  borderTopRightRadius: 12,
+                  borderBottomLeftRadius: 12,
+                  borderBottomRightRadius: 48,
                 },
               ]}
             />
@@ -238,18 +242,25 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   playerAvatarContainer: {
-    width: 64,
-    height: 64,
+    width: 96,
+    height: 96,
     marginRight: 20,
   },
   avatarContainer: {
-    width: 64,
-    height: 64,
+    width: 96,
+    height: 96,
     marginLeft: 20,
   },
   avatar: {
-    width: 64,
-    height: 64,
+    width: 96,
+    height: 96,
+    borderWidth: 4,
+    borderColor: '#ffffff',
+    // Create irregular shape with convex oblique corner using border radius
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 48, // This creates the convex oblique corner
   },
   opponentContainer: {
     flex: 1,
