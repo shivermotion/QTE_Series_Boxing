@@ -37,6 +37,7 @@ interface MainMenuProps {
   onOpenSettings: () => void;
   onOpenAudioDebug: () => void;
   onOpenUIDebug: () => void;
+  onOpenModel3D: () => void;
   debugMode: boolean;
   onToggleDebugMode: () => void;
 }
@@ -584,6 +585,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
   onOpenSettings,
   onOpenAudioDebug,
   onOpenUIDebug,
+  onOpenModel3D,
   debugMode,
   onToggleDebugMode,
 }) => {
@@ -1169,6 +1171,18 @@ const MainMenu: React.FC<MainMenuProps> = ({
                       <Text style={styles.buttonText}>UI Debug</Text>
                     </AnimatedButton>
 
+                    <AnimatedButton
+                      style={[styles.button, styles.model3dButton]}
+                      onPress={async () => {
+                        await playPunchSound();
+                        onOpenModel3D();
+                      }}
+                      delay={0}
+                      instant={true}
+                    >
+                      <Text style={styles.buttonText}>3D Model</Text>
+                    </AnimatedButton>
+
                     {/* Debug Mode Toggle */}
                     <AnimatedButton
                       style={[
@@ -1265,6 +1279,10 @@ const styles = StyleSheet.create({
   uiDebugButton: {
     backgroundColor: '#000000',
     borderColor: '#ff00ff',
+  },
+  model3dButton: {
+    backgroundColor: '#8000ff',
+    borderColor: '#00ffff',
   },
   debugButton: {
     backgroundColor: '#00ff00',

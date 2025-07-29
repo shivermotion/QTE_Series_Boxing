@@ -13,6 +13,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import CreditsScreen from './src/screens/CreditsScreen';
 import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
+import Model3DScreen from './src/screens/Model3DScreen';
 import SplashScreenComponent from './src/screens/SplashScreen';
 import CutsceneScreen from './src/screens/CutsceneScreen';
 import { cutscenes } from './src/data/cutscenes';
@@ -36,7 +37,8 @@ type Screen =
   | 'settings'
   | 'credits'
   | 'audioDebug'
-  | 'uiDebug';
+  | 'uiDebug'
+  | 'model3d';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
@@ -110,6 +112,10 @@ function AppContent() {
     setCurrentScreen('uiDebug');
   };
 
+  const handleOpenModel3D = () => {
+    setCurrentScreen('model3d');
+  };
+
   const toggleDebugMode = () => {
     setDebugMode(!debugMode);
   };
@@ -127,6 +133,7 @@ function AppContent() {
             onOpenSettings={handleOpenSettings}
             onOpenAudioDebug={handleOpenAudioDebug}
             onOpenUIDebug={handleOpenUIDebug}
+            onOpenModel3D={handleOpenModel3D}
             debugMode={debugMode}
             onToggleDebugMode={toggleDebugMode}
           />
@@ -151,8 +158,10 @@ function AppContent() {
           <CreditsScreen onBackToMenu={handleBackToMenu} />
         ) : currentScreen === 'audioDebug' ? (
           <AudioDebugScreen onBackToMenu={handleBackToMenu} />
-        ) : (
+        ) : currentScreen === 'uiDebug' ? (
           <UIDebugScreen onBackToMenu={handleBackToMenu} />
+        ) : (
+          <Model3DScreen onBackToMenu={handleBackToMenu} />
         )}
       </GestureHandlerRootView>
     </SafeAreaProvider>
