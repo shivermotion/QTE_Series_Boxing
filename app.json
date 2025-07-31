@@ -14,7 +14,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.jday89.QTE-Series-Boxing"
+      "bundleIdentifier": "com.jday89.QTE-Series-Boxing",
+      "deploymentTarget": "16.0"
     },
     "android": {
       "adaptiveIcon": {

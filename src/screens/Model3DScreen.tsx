@@ -9,6 +9,21 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  FilamentScene,
+  FilamentView,
+  DefaultLight,
+  Model,
+  Camera,
+  Animator,
+} from 'react-native-filament';
+
+// Type for animation items based on the API documentation
+type AnimationItem = {
+  index: number;
+  duration: number;
+  name: string;
+};
 
 interface Model3DScreenProps {
   onBackToMenu: () => void;
@@ -17,6 +32,8 @@ interface Model3DScreenProps {
 const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu }) => {
   const insets = useSafeAreaInsets();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [animations, setAnimations] = useState<AnimationItem[]>([]);
+  const [currentAnimationIndex, setCurrentAnimationIndex] = useState(0);
   const slideAnim = React.useRef(new Animated.Value(0)).current;
 
   const screenWidth = Dimensions.get('window').width;
@@ -43,6 +60,57 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu }) => {
           source={require('../../assets/character_menu/wall_texture.png')}
           style={styles.wallTextureImage}
           resizeMode="cover"
+        />
+      </View>
+
+      {/* 3D Scene Layer - Full Screen */}
+      <View style={styles.sceneLayer}>
+        <View style={styles.sceneContainer}>
+          <FilamentScene>
+            <FilamentView style={styles.filamentView}>
+              {/* Light source for the 3D scene */}
+              <DefaultLight />
+
+              {/* 3D Model */}
+              <Model
+                source={require('../../assets/models/punching_bag.glb')}
+                scale={[0.5, 0.5, 0.5]}
+                translate={[0, -2, 0]}
+              >
+                <Animator
+                  animationIndex={currentAnimationIndex}
+                  onAnimationsLoaded={loadedAnimations => {
+                    // Only set animations if they haven't been set yet or if they're different
+                    if (
+                      animations.length === 0 ||
+                      JSON.stringify(animations) !== JSON.stringify(loadedAnimations)
+                    ) {
+                      console.log('Animations loaded:', loadedAnimations);
+                      setAnimations(loadedAnimations);
+                    }
+                  }}
+                />
+              </Model>
+
+              {/* Camera for viewing the scene */}
+              <Camera />
+            </FilamentView>
+          </FilamentScene>
+        </View>
+
+        {/* Transparent overlay for tap detection */}
+        <TouchableOpacity
+          style={styles.tapOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            if (animations.length > 0) {
+              const nextIndex = (currentAnimationIndex + 1) % animations.length;
+              setCurrentAnimationIndex(nextIndex);
+              console.log(
+                `Tap detected - Switched to animation: ${animations[nextIndex].name} (index: ${nextIndex})`
+              );
+            }
+          }}
         />
       </View>
 
@@ -79,6 +147,27 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu }) => {
           <Text style={styles.tabText}>{isDrawerOpen ? '›' : '‹'}</Text>
         </TouchableOpacity>
       </Animated.View>
+
+      {/* Animation Debug Overlay */}
+      <View style={[styles.debugOverlay, { bottom: insets.bottom + 20 }]}>
+        <Text style={styles.debugText}>Animations: {animations.length}</Text>
+        <Text style={styles.debugText}>Current: {currentAnimationIndex}</Text>
+        {animations.length > 0 && (
+          <Text style={styles.debugText}>Playing: {animations[currentAnimationIndex]?.name}</Text>
+        )}
+        <Text style={styles.debugText}>Tap the punching bag to cycle animations!</Text>
+        {animations.length > 0 && (
+          <TouchableOpacity
+            style={styles.animationButton}
+            onPress={() => {
+              const nextIndex = (currentAnimationIndex + 1) % animations.length;
+              setCurrentAnimationIndex(nextIndex);
+            }}
+          >
+            <Text style={styles.debugText}>Next Animation</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 };
@@ -109,12 +198,30 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 5,
+    zIndex: 3, // Wall texture layer
     overflow: 'hidden',
   },
   wallTextureImage: {
     width: '100%',
     height: '100%',
+  },
+
+  // 3D Scene Layer - positioned above wall texture
+  sceneLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 4, // 3D Scene layer above wall texture
+  },
+  sceneContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  filamentView: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
 
   boxerLayer: {
@@ -123,7 +230,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '50%',
-    zIndex: 2,
+    zIndex: 2, // Boxer layer above background
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -139,16 +246,23 @@ const styles = StyleSheet.create({
   },
   debugOverlay: {
     position: 'absolute',
-    top: 20,
     left: 20,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     padding: 10,
     borderRadius: 5,
+    zIndex: 6, // Debug overlay above tap overlay
   },
   debugText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  animationButton: {
+    marginTop: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: '#007bff',
+    borderRadius: 5,
   },
 
   drawer: {
@@ -168,7 +282,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 10,
-    zIndex: 7, // Always on top
+    zIndex: 7, // Drawer on top
     // TODO: Fix radial curve corners using trickery later
   },
   exposedTab: {
@@ -233,6 +347,15 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 16,
     fontWeight: '500',
+  },
+  tapOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 5, // Tap overlay above 3D scene
   },
 });
 
