@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  Image,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Model3DScreenProps {
@@ -28,18 +36,33 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu }) => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Layer 1: Black Background */}
-      <View style={styles.backgroundLayer}>
-        <Text style={styles.backgroundText}>Background Layer</Text>
+    <View style={styles.container}>
+      {/* Wall Texture Layer - Top Half (Beyond Safe Area) */}
+      <View style={styles.wallTextureLayer}>
+        <Image
+          source={require('../../assets/character_menu/wall_texture.png')}
+          style={styles.wallTextureImage}
+          resizeMode="cover"
+        />
       </View>
 
-      {/* Layer 2: Side Navigation Drawer */}
+      {/* Boxer Image Layer */}
+      <View style={styles.boxerLayer}>
+        <Image
+          source={require('../../assets/character_menu/boxer.png')}
+          style={styles.boxerImage}
+          resizeMode="cover"
+        />
+      </View>
+
+      {/* Layer 3: Side Navigation Drawer (Top) */}
       <Animated.View
         style={[
           styles.drawer,
           {
             width: drawerWidth,
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
             transform: [
               {
                 translateX: slideAnim.interpolate({
@@ -55,19 +78,6 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu }) => {
         <TouchableOpacity style={styles.exposedTab} onPress={toggleDrawer} activeOpacity={1}>
           <Text style={styles.tabText}>{isDrawerOpen ? '›' : '‹'}</Text>
         </TouchableOpacity>
-
-        {/* Rectangle Below Exposed Tab */}
-        <View style={styles.belowTabRectangle}>
-          <View style={styles.innerRedRectangle} />
-        </View>
-
-        {/* Top Rectangle Container */}
-        <View style={styles.topRectangleContainer}>
-          <View style={styles.topRectangle} />
-        </View>
-
-        {/* Drawer Header */}
-        <View style={styles.drawerHeader}></View>
       </Animated.View>
     </View>
   );
@@ -75,41 +85,72 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#00ff00',
-  },
-  backgroundLayer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backgroundText: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  topRectangleContainer: {
-    position: 'absolute',
-    top: -5,
-    left: -10,
-    width: '50%',
-    height: 75,
-    backgroundColor: '#ffffff',
-    // borderWidth: 1,
-    // borderColor: '#00000',
-    zIndex: 1,
-  },
-  topRectangle: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#00ff00',
-    borderTopRightRadius: 0,
-    borderBottomRightRadius: 55,
-    // TODO: Fix radial curve corners using trickery later
+    backgroundColor: '#e5e1b0',
   },
+  backgroundLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+
+  wallTextureLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 5,
+    overflow: 'hidden',
+  },
+  wallTextureImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  boxerLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    zIndex: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    // borderWidth: 1,
+    // borderColor: '#000000',
+    borderBottomLeftRadius: 100,
+    borderBottomRightRadius: 100,
+    // resizeMode: 'contain',
+  },
+  boxerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  debugOverlay: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 10,
+    borderRadius: 5,
+  },
+  debugText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+
   drawer: {
     position: 'absolute',
     top: 20,
@@ -122,53 +163,30 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 55,
     borderBottomLeftRadius: 100,
     borderBottomRightRadius: 55,
-    shadowColor: '#00ffff',
+    shadowColor: '#000000',
     shadowOffset: { width: -5, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 10,
+    zIndex: 7, // Always on top
     // TODO: Fix radial curve corners using trickery later
   },
   exposedTab: {
     position: 'absolute',
-    left: -50,
+    left: -40,
     top: 70,
-    width: 50,
+    width: 40,
     height: '45%',
     backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     borderTopLeftRadius: 55,
-    borderBottomLeftRadius: 55,
+    borderBottomLeftRadius: 30,
     // borderWidth: 1,
     // borderColor: '#000000',
     // TODO: Fix radial curve corners using trickery later
   },
-  belowTabRectangle: {
-    position: 'absolute',
-    left: -40,
-    top: 430,
-    width: 80,
-    height: '50%',
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
-    // borderWidth: 1,
-    // TODO: Fix radial curve corners using trickery later
-  },
-  innerRedRectangle: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#00ff00',
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
-    borderTopRightRadius: 80,
-    borderBottomRightRadius: 0,
-    // TODO: Fix radial curve corners using trickery later
-  },
+
   tabText: {
     color: '#000000',
     fontSize: 24,
