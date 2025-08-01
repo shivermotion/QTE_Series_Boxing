@@ -51,6 +51,7 @@ function AppContent() {
     BOXING: require('./assets/fonts/boxing/BOXING.ttf'),
     'BOXING-Striped': require('./assets/fonts/boxing/BOXING_striped.ttf'),
     DigitalStrip: require('./assets/fonts/digital_strip/digistrip.ttf'),
+    'Round8-Four': require('./assets/fonts/round-8-font-1754003737-0/round8-four.otf'),
   });
 
   // Handle font loading
@@ -160,9 +161,9 @@ function AppContent() {
           <AudioDebugScreen onBackToMenu={handleBackToMenu} />
         ) : currentScreen === 'uiDebug' ? (
           <UIDebugScreen onBackToMenu={handleBackToMenu} />
-        ) : (
-          <Model3DScreen onBackToMenu={handleBackToMenu} />
-        )}
+        ) : currentScreen === 'model3d' ? (
+          <Model3DScreen onBackToMenu={handleBackToMenu} fontsLoaded={fontsLoaded} />
+        ) : null}
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );

@@ -27,18 +27,17 @@ type AnimationItem = {
 
 interface Model3DScreenProps {
   onBackToMenu: () => void;
+  fontsLoaded?: boolean;
 }
 
-const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu }) => {
+const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu, fontsLoaded }) => {
   const insets = useSafeAreaInsets();
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [animations, setAnimations] = useState<AnimationItem[]>([]);
   const [currentAnimationIndex, setCurrentAnimationIndex] = useState(0);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const slideAnim = React.useRef(new Animated.Value(0)).current;
-
-  const screenWidth = Dimensions.get('window').width;
-  const drawerWidth = screenWidth * 0.85; // 80% of screen width
-  const exposedTabWidth = 0.0 * screenWidth; // Width of the exposed tab
+  const textSlideAnim = React.useRef(new Animated.Value(-200)).current;
+  const textScrollAnim = React.useRef(new Animated.Value(-200)).current;
 
   const toggleDrawer = () => {
     const toValue = isDrawerOpen ? 0 : 1;
@@ -51,6 +50,46 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu }) => {
 
     setIsDrawerOpen(!isDrawerOpen);
   };
+
+  // Animate text sliding in from top left when drawer opens
+  useEffect(() => {
+    if (isDrawerOpen) {
+      Animated.timing(textSlideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      // Reset text position when drawer closes
+      Animated.timing(textSlideAnim, {
+        toValue: -200,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isDrawerOpen]);
+
+  // Continuous scrolling animation for text
+  useEffect(() => {
+    const startScrolling = () => {
+      Animated.loop(
+        Animated.timing(textScrollAnim, {
+          toValue: 200,
+          duration: 4000,
+          useNativeDriver: true,
+        })
+      ).start();
+    };
+
+    if (isDrawerOpen) {
+      // Start scrolling after the initial slide-in animation
+      const timer = setTimeout(startScrolling, 800);
+      return () => clearTimeout(timer);
+    } else {
+      // Reset scroll position when drawer closes
+      textScrollAnim.setValue(-200);
+    }
+  }, [isDrawerOpen]);
 
   return (
     <View style={styles.container}>
@@ -117,35 +156,37 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu }) => {
       {/* Boxer Image Layer */}
       <View style={styles.boxerLayer}>
         <Image
-          source={require('../../assets/character_menu/boxer.png')}
+          source={require('../../assets/character_menu/boxer_halftone.png')}
           style={styles.boxerImage}
           resizeMode="cover"
         />
       </View>
 
-      {/* Layer 3: Side Navigation Drawer (Top) */}
+      {/* Select Character Text */}
       <Animated.View
         style={[
-          styles.drawer,
+          styles.selectCharacterText,
           {
-            width: drawerWidth,
-            paddingTop: insets.top,
-            paddingBottom: insets.bottom,
+            top: insets.top + 10,
             transform: [
               {
-                translateX: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [drawerWidth - exposedTabWidth, 0],
-                }),
+                translateX: textSlideAnim,
+              },
+              {
+                translateX: textScrollAnim,
               },
             ],
           },
         ]}
       >
-        {/* Exposed Tab */}
-        <TouchableOpacity style={styles.exposedTab} onPress={toggleDrawer} activeOpacity={1}>
-          <Text style={styles.tabText}>{isDrawerOpen ? '›' : '‹'}</Text>
-        </TouchableOpacity>
+        <Text
+          style={[
+            styles.selectCharacterTextContent,
+            { fontFamily: fontsLoaded ? 'Round8-Four' : undefined },
+          ]}
+        >
+          Select
+        </Text>
       </Animated.View>
 
       {/* Animation Debug Overlay */}
@@ -168,6 +209,35 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu }) => {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Drawer using drawer.png */}
+      <Animated.View
+        style={[
+          styles.drawer,
+          {
+            transform: [
+              {
+                translateX: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [340, 0], // Slide in from right (300px off-screen)
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.drawerImageContainer}
+          onPress={toggleDrawer}
+          activeOpacity={1.0}
+        >
+          <Image
+            source={require('../../assets/character_menu/drawer.png')}
+            style={styles.drawerImage}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };
@@ -265,89 +335,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
 
-  drawer: {
-    position: 'absolute',
-    top: 20,
-    right: 5,
-    bottom: 20,
-    backgroundColor: '#ffffff',
-    borderWidth: 3,
-    borderColor: '#ffffff',
-    borderTopLeftRadius: 55,
-    borderTopRightRadius: 55,
-    borderBottomLeftRadius: 100,
-    borderBottomRightRadius: 55,
-    shadowColor: '#000000',
-    shadowOffset: { width: -5, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
-    zIndex: 7, // Drawer on top
-    // TODO: Fix radial curve corners using trickery later
-  },
-  exposedTab: {
-    position: 'absolute',
-    left: -40,
-    top: 70,
-    width: 40,
-    height: '45%',
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderTopLeftRadius: 55,
-    borderBottomLeftRadius: 30,
-    // borderWidth: 1,
-    // borderColor: '#000000',
-    // TODO: Fix radial curve corners using trickery later
-  },
-
-  tabText: {
-    color: '#000000',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  drawerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: 'rgba(0, 255, 255, 0.0)',
-    width: '100%',
-  },
-  drawerTitle: {
-    color: '#000000',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    color: '#000000',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  drawerContent: {
-    flex: 1,
-    padding: 20,
-  },
-  drawerItem: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    marginVertical: 5,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: 8,
-  },
-  drawerItemText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '500',
-  },
   tapOverlay: {
     position: 'absolute',
     top: 0,
@@ -356,6 +343,40 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'transparent',
     zIndex: 5, // Tap overlay above 3D scene
+  },
+  drawer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 10, // Top layer above everything
+  },
+  drawerImageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
+  },
+  drawerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  selectCharacterText: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 7, // Above debug overlay
+    minWidth: 200,
+    minHeight: 40,
+  },
+  selectCharacterTextContent: {
+    color: '#ffffff',
+    fontSize: 48,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
 });
 
