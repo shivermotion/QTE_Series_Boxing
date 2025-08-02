@@ -8,6 +8,8 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
+import CurvedCarousel from '../components/CurvedCarousel';
+import VideoBackground from '../components/VideoBackground';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   FilamentScene,
@@ -55,8 +57,8 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu, fontsLoaded
     },
     {
       model: require('../../assets/models/model.glb'),
-      scale: [1, 1, 1] as [number, number, number],
-      translate: [0, -2, -30] as [number, number, number],
+      scale: [0.2, 0.2, 0.2] as [number, number, number],
+      translate: [500, -10, -30] as [number, number, number],
       rotation: [0, Math.PI / -4, 0] as [number, number, number], // 45° X-axis + 45° Y-axis for isometric view
       name: 'Model',
     },
@@ -221,17 +223,30 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu, fontsLoaded
         },
       ]}
     >
+      {/* Video Background - Only visible when model.glb is selected */}
+      {currentScene.name === 'Model' && (
+        <VideoBackground source={require('../../assets/video/boxing_ring.mp4')} />
+      )}
+
+      {/* Smoke Background - Only visible when boxer is selected */}
+      {currentScene.name === 'Boxer' && (
+        <VideoBackground source={require('../../assets/video/smoke_black.gif')} isGif={true} />
+      )}
       {/* Wall Texture Layer - Top Half (Beyond Safe Area) */}
       <View style={styles.wallTextureLayer}>
-        <Image
-          source={
-            currentScene.name === 'Punching Bag'
-              ? require('../../assets/character_menu/wall_texture.png')
-              : require('../../assets/character_menu/paper.png')
-          }
-          style={styles.wallTextureImage}
-          resizeMode="cover"
-        />
+        {currentScene.name === 'Model' ? (
+          <View style={styles.darkBlueOverlay} />
+        ) : (
+          <Image
+            source={
+              currentScene.name === 'Punching Bag'
+                ? require('../../assets/character_menu/wall_texture.png')
+                : require('../../assets/character_menu/paper.png')
+            }
+            style={styles.wallTextureImage}
+            resizeMode="cover"
+          />
+        )}
       </View>
 
       {/* 3D Scene Layer - Full Screen */}
@@ -290,6 +305,46 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu, fontsLoaded
         />
       </View>
 
+      {/* Curved Carousel - Only visible when model.glb is selected */}
+      {currentScene.name === 'Model' && (
+        <View style={styles.carouselLayer}>
+          {/* Header Text */}
+          <View style={styles.chapterHeader}>
+            <Text
+              style={[
+                styles.chapterHeaderText,
+                { fontFamily: fontsLoaded ? 'Round8-Four' : undefined },
+              ]}
+            >
+              select
+            </Text>
+            <Text
+              style={[
+                styles.chapterHeaderText,
+                { fontFamily: fontsLoaded ? 'Round8-Four' : undefined },
+              ]}
+            >
+              challenge
+            </Text>
+          </View>
+          <CurvedCarousel />
+        </View>
+      )}
+
+      {/* Equipment Header - Only visible when punching bag is selected */}
+      {currentScene.name === 'Punching Bag' && (
+        <View style={styles.equipmentHeader}>
+          <Text
+            style={[
+              styles.equipmentHeaderText,
+              { fontFamily: fontsLoaded ? 'Round8-Four' : undefined },
+            ]}
+          >
+            Equipment
+          </Text>
+        </View>
+      )}
+
       {/* Hero Image Layer */}
       <Animated.View
         style={[
@@ -311,7 +366,7 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu, fontsLoaded
         style={[
           styles.backButton,
           {
-            top: insets.top + 10,
+            bottom: insets.bottom + 10,
           },
         ]}
         onPress={() => cycleScene('prev')}
@@ -325,7 +380,7 @@ const Model3DScreen: React.FC<Model3DScreenProps> = ({ onBackToMenu, fontsLoaded
         style={[
           styles.nextButton,
           {
-            top: insets.top + 10,
+            bottom: insets.bottom + 10,
           },
         ]}
         onPress={() => cycleScene('next')}
@@ -448,6 +503,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  darkBlueOverlay: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1e3a8a', // Dark blue color
+    opacity: 0.7, // Somewhat transparent
+  },
 
   // 3D Scene Layer - positioned above wall texture
   sceneLayer: {
@@ -465,6 +526,59 @@ const styles = StyleSheet.create({
   filamentView: {
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  carouselLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 7, // Above the 3D scene layer
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chapterHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '25%', // Reduced from 33.33% to 25% (top quarter instead of third)
+    backgroundColor: '#ffffff', // White background
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 8, // Above the carousel
+  },
+  chapterHeaderText: {
+    color: '#000000', // Changed to black for white background
+    fontSize: 90, // Increased from 72 to 120 for very big text
+    fontWeight: '900', // Extra bold
+    textShadowColor: 'rgba(255, 255, 255, 0.8)', // Changed to white shadow
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+    // borderWidth: 2,
+    // borderColor: '#000000', // Changed to black border
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    width: '100%',
+    textAlign: 'left', // Changed from center to left alignment
+  },
+  equipmentHeader: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 8, // Above other content
+  },
+  equipmentHeaderText: {
+    color: '#ffffff',
+    fontSize: 72,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+    width: '100%',
+    textAlign: 'center',
   },
 
   boxerLayer: {
