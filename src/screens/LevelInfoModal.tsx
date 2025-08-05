@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,10 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
   const modalOpacity = useRef(new Animated.Value(0)).current;
   const modalScale = useRef(new Animated.Value(0.8)).current;
   const contentTranslateY = useRef(new Animated.Value(50)).current;
+
+  // Shatter animation state
+  const [showShatter, setShowShatter] = useState(false);
+  const shatterOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
@@ -164,8 +168,45 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
     return images[(level - 1) % images.length];
   };
 
+  const handleReadyPress = () => {
+    // Show shatter animation
+    setShowShatter(true);
+    shatterOpacity.setValue(0);
+
+    // Animate shatter in
+    Animated.timing(shatterOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      // After shatter animation completes, call onReady
+      setTimeout(() => {
+        setShowShatter(false);
+        onReady();
+      }, 1000); // Wait 1 second for shatter effect
+    });
+  };
+
   return (
     <Modal visible={visible} transparent={true} animationType="none" onRequestClose={onClose}>
+      {/* Shatter animation overlay */}
+      {showShatter && (
+        <Animated.View
+          style={[
+            styles.shatterOverlay,
+            {
+              opacity: shatterOpacity,
+            },
+          ]}
+        >
+          <Image
+            source={require('../../assets/video/shatter.gif')}
+            style={styles.shatterGif}
+            resizeMode="cover"
+          />
+        </Animated.View>
+      )}
+
       <Animated.View
         style={[
           styles.overlay,
@@ -247,7 +288,11 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
                 </View>
 
                 {/* Ready button */}
-                <TouchableOpacity style={styles.readyButton} onPress={onReady} activeOpacity={0.8}>
+                <TouchableOpacity
+                  style={styles.readyButton}
+                  onPress={handleReadyPress}
+                  activeOpacity={0.8}
+                >
                   <LinearGradient
                     colors={['#ff4444', '#ff6666', '#ff4444']}
                     style={styles.readyButtonGradient}
@@ -471,6 +516,18 @@ const styles = StyleSheet.create({
     textShadowColor: '#000000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  shatterOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  shatterGif: {
+    width: '100%',
+    height: '100%',
   },
 });
 

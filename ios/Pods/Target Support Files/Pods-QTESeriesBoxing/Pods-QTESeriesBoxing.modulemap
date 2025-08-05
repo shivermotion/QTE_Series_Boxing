@@ -1,0 +1,6 @@
+module Pods_QTESeriesBoxing {
+  umbrella header "Pods-QTESeriesBoxing-umbrella.h"
+
+  export *
+  module * { export * }
+}

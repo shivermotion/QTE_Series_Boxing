@@ -1,0 +1,204 @@
+{
+  "name": "react-native-filament",
+  "version": "1.8.0",
+  "summary": "A real-time physically based 3D rendering engine for React Native",
+  "homepage": "https://margelo.github.io/react-native-filament",
+  "license": "MIT",
+  "authors": "Marc Rousavy <me@mrousavy.com> (https://github.com/mrousavy)",
+  "platforms": {
+    "ios": "15.1"
+  },
+  "source": {
+    "git": "https://github.com/margelo/react-native-filament.git",
+    "tag": "1.8.0"
+  },
+  "pod_target_xcconfig": {
+    "GCC_PREPROCESSOR_DEFINITIONS": "FILAMENT_APP_USE_METAL=1 HAS_WORKLETS=true RNF_ENABLE_LOGS=true $(inherited)",
+    "CLANG_CXX_LANGUAGE_STANDARD": "c++20",
+    "HEADER_SEARCH_PATHS": "\"$(PODS_TARGET_SRCROOT)/cpp/**\" \"$(PODS_TARGET_SRCROOT)/ios/libs/bullet3/**\" \"$(PODS_TARGET_SRCROOT)/ios/libs/filament/include/**\" \"$(PODS_ROOT)/boost\" \"$(PODS_ROOT)/Headers/Private/Yoga\"",
+    "OTHER_CPLUSPLUSFLAGS": "$(inherited) -DRCT_NEW_ARCH_ENABLED=1 -DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -DFOLLY_CFG_NO_COROUTINES=1 -DFOLLY_HAVE_CLOCK_GETTIME=1 -Wno-comma -Wno-shorten-64-to-32",
+    "OTHER_SWIFT_FLAGS": "$(inherited) -DRCT_NEW_ARCH_ENABLED"
+  },
+  "source_files": [
+    "cpp/**/*.{h,c,cpp}",
+    "ios/src/**/*.{h,m,mm,cpp}",
+    "ios/libs/bullet3/**/*.{h,c,cpp}"
+  ],
+  "exclude_files": [
+    "ios/libs/bullet3/**/bt*All.{h,cpp}",
+    "ios/libs/bullet3/**/btLinearMathAll.cpp",
+    "ios/libs/bullet3/**/btBulletCollisionAll.cpp",
+    "ios/libs/bullet3/**/btBulletDynamicsAll.cpp"
+  ],
+  "preserve_paths": [
+    "cpp/**/*.h",
+    "ios/src/*.h"
+  ],
+  "dependencies": {
+    "react-native-worklets-core": [],
+    "React-Core": [],
+    "RCT-Folly": [
+      "2024.11.18.00"
+    ],
+    "glog": [],
+    "React-RCTFabric": [],
+    "ReactCodegen": [],
+    "RCTRequired": [],
+    "RCTTypeSafety": [],
+    "ReactCommon/turbomodule/bridging": [],
+    "ReactCommon/turbomodule/core": [],
+    "React-NativeModulesApple": [],
+    "Yoga": [],
+    "React-Fabric": [],
+    "React-graphics": [],
+    "React-utils": [],
+    "React-featureflags": [],
+    "React-debug": [],
+    "React-ImageManager": [],
+    "React-rendererdebug": [],
+    "DoubleConversion": [],
+    "React-jsi": [],
+    "React-renderercss": [],
+    "hermes-engine": [],
+    "React-hermes": []
+  },
+  "ios": {
+    "frameworks": [
+      "AVFoundation",
+      "CoreMedia"
+    ]
+  },
+  "resources": [
+    "assets/*"
+  ],
+  "compiler_flags": "-DRCT_NEW_ARCH_ENABLED=1 -DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -DFOLLY_CFG_NO_COROUTINES=1 -DFOLLY_HAVE_CLOCK_GETTIME=1 -Wno-comma -Wno-shorten-64-to-32",
+  "subspecs": [
+    {
+      "name": "filament",
+      "source_files": [
+        "ios/libs/filament/include/filament/*.h",
+        "ios/libs/filament/include/backend/*.h",
+        "ios/libs/filament/include/filament/MaterialChunkType.h",
+        "ios/libs/filament/include/filament/MaterialEnums.h",
+        "ios/libs/filament/include/ibl/*.h",
+        "ios/libs/filament/include/geometry/*.h"
+      ],
+      "header_mappings_dir": "ios/libs/filament/include",
+      "vendored_frameworks": [
+        "ios/libs/filament/lib/libfilament.xcframework",
+        "ios/libs/filament/lib/libbackend.xcframework",
+        "ios/libs/filament/lib/libfilabridge.xcframework",
+        "ios/libs/filament/lib/libfilaflat.xcframework",
+        "ios/libs/filament/lib/libibl.xcframework",
+        "ios/libs/filament/lib/libgeometry.xcframework"
+      ],
+      "dependencies": {
+        "react-native-filament/utils": [],
+        "react-native-filament/math": []
+      }
+    },
+    {
+      "name": "camutils",
+      "source_files": "ios/libs/filament/include/camutils/*.h",
+      "vendored_frameworks": "ios/libs/filament/lib/libcamutils.xcframework",
+      "header_dir": "camutils",
+      "header_mappings_dir": "ios/libs/filament/include",
+      "dependencies": {
+        "react-native-filament/math": []
+      }
+    },
+    {
+      "name": "utils",
+      "source_files": "ios/libs/filament/include/utils/**/*.h",
+      "header_mappings_dir": "ios/libs/filament/include",
+      "header_dir": "utils",
+      "vendored_frameworks": "ios/libs/filament/lib/libutils.xcframework",
+      "dependencies": {
+        "react-native-filament/tsl": []
+      }
+    },
+    {
+      "name": "tsl",
+      "source_files": "ios/libs/filament/include/tsl/*.h",
+      "header_dir": "tsl"
+    },
+    {
+      "name": "math",
+      "source_files": "ios/libs/filament/include/math/*.h",
+      "header_dir": "math",
+      "header_mappings_dir": "ios/libs/filament/include"
+    },
+    {
+      "name": "filamat",
+      "source_files": [
+        "ios/libs/filament/include/filamat/*.h",
+        "ios/libs/filament/include/filament/MaterialChunkType.h",
+        "ios/libs/filament/include/filament/MaterialEnums.h"
+      ],
+      "header_mappings_dir": "ios/libs/filament/include",
+      "vendored_frameworks": [
+        "ios/libs/filament/lib/libfilamat.xcframework",
+        "ios/libs/filament/lib/libshaders.xcframework",
+        "ios/libs/filament/lib/libsmol-v.xcframework",
+        "ios/libs/filament/lib/libfilabridge.xcframework"
+      ],
+      "dependencies": {
+        "react-native-filament/utils": [],
+        "react-native-filament/math": []
+      }
+    },
+    {
+      "name": "image",
+      "source_files": "ios/libs/filament/include/image/*.h",
+      "vendored_frameworks": "ios/libs/filament/lib/libimage.xcframework",
+      "header_dir": "image",
+      "dependencies": {
+        "react-native-filament/filament": []
+      }
+    },
+    {
+      "name": "ktxreader",
+      "source_files": "ios/libs/filament/include/ktxreader/*.h",
+      "header_mappings_dir": "ios/libs/filament/include",
+      "vendored_frameworks": [
+        "ios/libs/filament/lib/libktxreader.xcframework",
+        "ios/libs/filament/lib/libbasis_transcoder.xcframework"
+      ],
+      "dependencies": {
+        "react-native-filament/image": [],
+        "react-native-filament/filament": []
+      }
+    },
+    {
+      "name": "uberz",
+      "source_files": "ios/libs/filament/include/uberz/*.h",
+      "header_mappings_dir": "ios/libs/filament/include",
+      "vendored_frameworks": [
+        "ios/libs/filament/lib/libuberzlib.xcframework",
+        "ios/libs/filament/lib/libzstd.xcframework"
+      ],
+      "header_dir": "uberz",
+      "dependencies": {
+        "react-native-filament/filamat": [],
+        "react-native-filament/tsl": [],
+        "react-native-filament/utils": []
+      }
+    },
+    {
+      "name": "gltfio_core",
+      "source_files": "ios/libs/filament/include/gltfio/**/*.h",
+      "header_mappings_dir": "ios/libs/filament/include",
+      "vendored_frameworks": [
+        "ios/libs/filament/lib/libgltfio_core.xcframework",
+        "ios/libs/filament/lib/libdracodec.xcframework",
+        "ios/libs/filament/lib/libuberarchive.xcframework",
+        "ios/libs/filament/lib/libstb.xcframework"
+      ],
+      "dependencies": {
+        "react-native-filament/filament": [],
+        "react-native-filament/ktxreader": [],
+        "react-native-filament/uberz": []
+      }
+    }
+  ]
+}

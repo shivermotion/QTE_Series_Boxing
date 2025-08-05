@@ -8,9 +8,14 @@ import { Audio } from 'expo-av';
 interface SettingsScreenProps {
   onBackToMenu: () => void;
   onOpenCredits: () => void;
+  onReturnToTitle: () => void;
 }
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCredits }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({
+  onBackToMenu,
+  onOpenCredits,
+  onReturnToTitle,
+}) => {
   const insets = useSafeAreaInsets();
 
   const {
@@ -174,6 +179,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCre
             <Text style={styles.watchCreditsButtonText}>Watch Credits</Text>
           </TouchableOpacity>
         </View>
+
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.returnToTitleButton} onPress={onReturnToTitle}>
+            <Text style={styles.returnToTitleButtonText}>Return to Title Screen</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -301,6 +312,22 @@ const styles = StyleSheet.create({
   watchCreditsButtonText: {
     color: 'white',
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  returnToTitleButton: {
+    backgroundColor: '#ff8800',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#ff00ff',
+  },
+  returnToTitleButtonText: {
+    color: 'white',
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });

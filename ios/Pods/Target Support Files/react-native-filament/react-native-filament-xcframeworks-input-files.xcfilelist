@@ -1,0 +1,22 @@
+${PODS_ROOT}/Target Support Files/react-native-filament/react-native-filament-xcframeworks.sh
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libcamutils.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libfilamat.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libshaders.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libsmol-v.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libfilabridge.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libfilament.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libbackend.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libfilabridge.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libfilaflat.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libibl.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libgeometry.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libgltfio_core.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libdracodec.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libuberarchive.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libstb.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libimage.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libktxreader.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libbasis_transcoder.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libuberzlib.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libzstd.xcframework
+${PODS_ROOT}/../../node_modules/react-native-filament/ios/libs/filament/lib/libutils.xcframework
