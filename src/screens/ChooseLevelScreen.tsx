@@ -147,6 +147,9 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
   // Animation for hero image sliding in from right
   const heroImageTranslateX = useRef(new Animated.Value(screenWidth)).current;
 
+  // Animation for character name image sliding down from top
+  const characterNameTranslateY = useRef(new Animated.Value(-screenHeight)).current;
+
   const buttonSoundRef = useRef<Audio.Sound | null>(null);
 
   useEffect(() => {
@@ -202,6 +205,20 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
     }).start();
   }, [currentLevel, heroImageTranslateX]);
 
+  // Animate character name image sliding down
+  useEffect(() => {
+    // Start offscreen at top
+    characterNameTranslateY.setValue(-screenHeight);
+
+    // Slide down to center
+    Animated.timing(characterNameTranslateY, {
+      toValue: 0,
+      duration: 1000,
+      easing: Easing.out(Easing.back(1.2)),
+      useNativeDriver: true,
+    }).start();
+  }, [currentLevel, characterNameTranslateY]);
+
   const handleSelect = async () => {
     await playButtonSound();
     setModalVisible(true);
@@ -254,6 +271,22 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
           style={styles.paperTexture}
           resizeMode="cover"
         />
+
+        {/* Character name image that slides down from top */}
+        <Animated.View
+          style={[
+            styles.characterNameContainer,
+            {
+              transform: [{ translateY: characterNameTranslateY }],
+            },
+          ]}
+        >
+          <Image
+            source={require('../../assets/level_select/character_name.png')}
+            style={styles.characterNameImage}
+            resizeMode="contain"
+          />
+        </Animated.View>
 
         {/* Hero image that slides in from right */}
         <Animated.View
@@ -512,6 +545,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     fontFamily: 'Round8Four',
+  },
+  characterNameContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+    borderWidth: 2,
+    borderColor: 'blue',
+  },
+  characterNameImage: {
+    width: '100%',
+    height: '100%',
+    borderWidth: 2,
+    borderColor: 'purple',
   },
   heroImageContainer: {
     position: 'absolute',
