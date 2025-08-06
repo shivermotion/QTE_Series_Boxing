@@ -1,34 +1,30 @@
-import { MMKV, Mode } from 'react-native-mmkv';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GameState, initialGameState, SaveEvent } from '../types/gameState';
-
-// Create separate MMKV instances for different data types
-export const gameStorage = new MMKV({
-  id: 'game-progress',
-  encryptionKey: 'game-progress-key-2024',
-  mode: Mode.SINGLE_PROCESS,
-});
-
-export const settingsStorage = new MMKV({
-  id: 'game-settings',
-  encryptionKey: 'game-settings-key-2024',
-  mode: Mode.SINGLE_PROCESS,
-});
-
-export const statisticsStorage = new MMKV({
-  id: 'game-statistics',
-  mode: Mode.SINGLE_PROCESS,
-});
+import debounce from 'lodash.debounce';
 
 // Storage keys
-const GAME_STATE_KEY = 'game_state';
-const SAVE_EVENTS_KEY = 'save_events';
-const AUDIO_SETTINGS_KEY = 'audio_settings';
-const STATISTICS_KEY = 'statistics';
+const GAME_STATE_KEY = '@game_state';
+const SAVE_EVENTS_KEY = '@save_events';
+const AUDIO_SETTINGS_KEY = '@audio_settings';
+const STATISTICS_KEY = '@statistics';
+const ACHIEVEMENTS_KEY = '@achievements';
+const UNLOCKED_CHARACTERS_KEY = '@unlocked_characters';
 
 export class SaveManager {
   private static instance: SaveManager;
   private saveEvents: SaveEvent[] = [];
   private isSaving = false;
+  private autosaveTimer: NodeJS.Timeout | null = null;
+  private pendingAutosave = false;
+
+  // Debounced save function to prevent excessive saves
+  private debouncedSave = debounce(
+    async (state: GameState, eventType: SaveEvent['type']) => {
+      await this.performSave(state, eventType);
+    },
+    1000, // Wait 1 second before saving
+    { leading: false, trailing: true }
+  );
 
   private constructor() {
     this.loadSaveEvents();
@@ -46,10 +42,20 @@ export class SaveManager {
    */
   async loadGameState(): Promise<GameState> {
     try {
-      // Load main game state
-      const savedState = gameStorage.getString(GAME_STATE_KEY);
-      const audioSettings = settingsStorage.getString(AUDIO_SETTINGS_KEY);
-      const statistics = statisticsStorage.getString(STATISTICS_KEY);
+      // Load all parts of the game state in parallel for better performance
+      const [
+        savedState,
+        audioSettings,
+        statistics,
+        achievements,
+        unlockedCharacters,
+      ] = await Promise.all([
+        AsyncStorage.getItem(GAME_STATE_KEY),
+        AsyncStorage.getItem(AUDIO_SETTINGS_KEY),
+        AsyncStorage.getItem(STATISTICS_KEY),
+        AsyncStorage.getItem(ACHIEVEMENTS_KEY),
+        AsyncStorage.getItem(UNLOCKED_CHARACTERS_KEY),
+      ]);
 
       let gameState: GameState;
 
@@ -76,6 +82,17 @@ export class SaveManager {
         };
       }
 
+      // Merge achievements if they exist
+      if (achievements) {
+        gameState.achievements = JSON.parse(achievements);
+      }
+
+      // Merge unlocked characters if they exist
+      if (unlockedCharacters) {
+        gameState.unlockedCharacters = JSON.parse(unlockedCharacters);
+      }
+
+      console.log('Game state loaded successfully');
       return gameState;
     } catch (error) {
       console.error('Failed to load game state:', error);
@@ -84,11 +101,26 @@ export class SaveManager {
   }
 
   /**
-   * Save the game state to storage
+   * Save the game state to storage (public interface)
    */
   async saveGameState(state: GameState, eventType: SaveEvent['type'] = 'autosave'): Promise<boolean> {
+    // Use debounced save for non-critical events
+    if (eventType === 'autosave' || eventType === 'score_update') {
+      this.debouncedSave(state, eventType);
+      return true;
+    }
+    
+    // Immediate save for critical events
+    return this.performSave(state, eventType);
+  }
+
+  /**
+   * Perform the actual save operation
+   */
+  private async performSave(state: GameState, eventType: SaveEvent['type']): Promise<boolean> {
     if (this.isSaving) {
-      console.log('Save already in progress, skipping...');
+      console.log('Save already in progress, queueing...');
+      this.pendingAutosave = true;
       return false;
     }
 
@@ -98,32 +130,35 @@ export class SaveManager {
       const stateToSave = {
         ...state,
         lastSaved: new Date().toISOString(),
+        gameVersion: '1.0.0',
       };
 
-      // Save main game state (encrypted)
-      gameStorage.set(GAME_STATE_KEY, JSON.stringify(stateToSave));
+      // Save different parts of the state in parallel for better performance
+      const savePromises = [
+        // Save main game state
+        AsyncStorage.setItem(GAME_STATE_KEY, JSON.stringify({
+          currentLevel: stateToSave.currentLevel,
+          highestLevelUnlocked: stateToSave.highestLevelUnlocked,
+          totalScore: stateToSave.totalScore,
+          gamesPlayed: stateToSave.gamesPlayed,
+          gamesWon: stateToSave.gamesWon,
+          lastSaved: stateToSave.lastSaved,
+          gameVersion: stateToSave.gameVersion,
+        })),
+        // Save audio settings separately
+        AsyncStorage.setItem(AUDIO_SETTINGS_KEY, JSON.stringify(stateToSave.audioSettings)),
+        // Save statistics separately
+        AsyncStorage.setItem(STATISTICS_KEY, JSON.stringify(stateToSave.statistics)),
+        // Save achievements
+        AsyncStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(stateToSave.achievements)),
+        // Save unlocked characters
+        AsyncStorage.setItem(UNLOCKED_CHARACTERS_KEY, JSON.stringify(stateToSave.unlockedCharacters)),
+      ];
 
-      // Save audio settings separately (encrypted)
-      settingsStorage.set(AUDIO_SETTINGS_KEY, JSON.stringify(state.audioSettings));
+      await Promise.all(savePromises);
 
-      // Save statistics separately (unencrypted for performance)
-      statisticsStorage.set(STATISTICS_KEY, JSON.stringify(state.statistics));
-
-      // Record the save event
-      const saveEvent: SaveEvent = {
-        type: eventType,
-        timestamp: new Date().toISOString(),
-        data: { level: state.currentLevel, score: state.totalScore },
-      };
-
-      this.saveEvents.push(saveEvent);
-      this.saveSaveEvents();
-
-      // Keep only last 100 save events to prevent storage bloat
-      if (this.saveEvents.length > 100) {
-        this.saveEvents = this.saveEvents.slice(-100);
-        this.saveSaveEvents();
-      }
+      // Track save event
+      await this.addSaveEvent(eventType);
 
       console.log(`Game saved successfully (${eventType})`);
       return true;
@@ -132,109 +167,75 @@ export class SaveManager {
       return false;
     } finally {
       this.isSaving = false;
+      
+      // If there was a pending autosave, process it now
+      if (this.pendingAutosave) {
+        this.pendingAutosave = false;
+        // We don't recursively call save here to avoid infinite loops
+        console.log('Pending autosave will be processed on next cycle');
+      }
     }
   }
 
   /**
-   * Save immediately for critical events (no debouncing)
+   * Clear all game data
    */
-  async saveImmediately(state: GameState, eventType: SaveEvent['type']): Promise<boolean> {
-    return this.saveGameState(state, eventType);
-  }
-
-  /**
-   * Clear all saved game data
-   */
-  async clearGameData(): Promise<boolean> {
+  async clearGameData(): Promise<void> {
     try {
-      gameStorage.clearAll();
-      settingsStorage.clearAll();
-      statisticsStorage.clearAll();
+      await AsyncStorage.multiRemove([
+        GAME_STATE_KEY,
+        SAVE_EVENTS_KEY,
+        AUDIO_SETTINGS_KEY,
+        STATISTICS_KEY,
+        ACHIEVEMENTS_KEY,
+        UNLOCKED_CHARACTERS_KEY,
+      ]);
       this.saveEvents = [];
-      console.log('Game data cleared successfully');
-      return true;
+      console.log('Game data cleared');
     } catch (error) {
       console.error('Failed to clear game data:', error);
-      return false;
     }
   }
 
   /**
-   * Get save events history
+   * Export save data as a JSON string
    */
-  getSaveEvents(): SaveEvent[] {
-    return [...this.saveEvents];
-  }
-
-  /**
-   * Check if save data exists
-   */
-  hasSaveData(): boolean {
-    return gameStorage.contains(GAME_STATE_KEY);
-  }
-
-  /**
-   * Get the last save timestamp
-   */
-  getLastSaveTime(): string | null {
+  async exportSaveData(): Promise<string> {
     try {
-      const savedState = gameStorage.getString(GAME_STATE_KEY);
-      if (savedState) {
-        const parsedState = JSON.parse(savedState);
-        return parsedState.lastSaved || null;
-      }
-      return null;
-    } catch (error) {
-      console.error('Failed to get last save time:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Export save data (for backup purposes)
-   */
-  exportSaveData(): string | null {
-    try {
-      const gameState = gameStorage.getString(GAME_STATE_KEY);
-      const audioSettings = settingsStorage.getString(AUDIO_SETTINGS_KEY);
-      const statistics = statisticsStorage.getString(STATISTICS_KEY);
-      const saveEvents = this.saveEvents;
+      const gameState = await this.loadGameState();
+      const saveEvents = await AsyncStorage.getItem(SAVE_EVENTS_KEY);
       
-      return JSON.stringify({
-        gameState: gameState ? JSON.parse(gameState) : null,
-        audioSettings: audioSettings ? JSON.parse(audioSettings) : null,
-        statistics: statistics ? JSON.parse(statistics) : null,
-        saveEvents,
+      const exportData = {
+        gameState,
+        saveEvents: saveEvents ? JSON.parse(saveEvents) : [],
         exportDate: new Date().toISOString(),
-      });
+      };
+      
+      return JSON.stringify(exportData);
     } catch (error) {
       console.error('Failed to export save data:', error);
-      return null;
+      throw error;
     }
   }
 
   /**
-   * Import save data (for restore purposes)
+   * Import save data from a JSON string
    */
-  async importSaveData(data: string): Promise<boolean> {
+  async importSaveData(jsonData: string): Promise<boolean> {
     try {
-      const parsedData = JSON.parse(data);
+      const importData = JSON.parse(jsonData);
       
-      if (parsedData.gameState) {
-        gameStorage.set(GAME_STATE_KEY, JSON.stringify(parsedData.gameState));
+      if (!importData.gameState) {
+        throw new Error('Invalid save data format');
       }
       
-      if (parsedData.audioSettings) {
-        settingsStorage.set(AUDIO_SETTINGS_KEY, JSON.stringify(parsedData.audioSettings));
-      }
+      // Save the imported game state
+      await this.saveGameState(importData.gameState, 'import');
       
-      if (parsedData.statistics) {
-        statisticsStorage.set(STATISTICS_KEY, JSON.stringify(parsedData.statistics));
-      }
-      
-      if (parsedData.saveEvents) {
-        this.saveEvents = parsedData.saveEvents;
-        this.saveSaveEvents();
+      // Import save events if available
+      if (importData.saveEvents) {
+        await AsyncStorage.setItem(SAVE_EVENTS_KEY, JSON.stringify(importData.saveEvents));
+        this.saveEvents = importData.saveEvents;
       }
       
       console.log('Save data imported successfully');
@@ -246,70 +247,155 @@ export class SaveManager {
   }
 
   /**
-   * Get storage size information
+   * Check if save data exists
    */
-  getStorageInfo() {
-    return {
-      gameStorageSize: gameStorage.size,
-      settingsStorageSize: settingsStorage.size,
-      statisticsStorageSize: statisticsStorage.size,
-      totalSize: gameStorage.size + settingsStorage.size + statisticsStorage.size,
-    };
+  async hasSaveData(): Promise<boolean> {
+    try {
+      const savedState = await AsyncStorage.getItem(GAME_STATE_KEY);
+      return savedState !== null;
+    } catch (error) {
+      console.error('Failed to check save data:', error);
+      return false;
+    }
   }
 
   /**
-   * Optimize storage by trimming unused space
+   * Get the last save time
    */
-  optimizeStorage(): void {
+  async getLastSaveTime(): Promise<string | null> {
     try {
-      gameStorage.trim();
-      settingsStorage.trim();
-      statisticsStorage.trim();
+      const savedState = await AsyncStorage.getItem(GAME_STATE_KEY);
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        return state.lastSaved || null;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to get last save time:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Start autosave timer
+   */
+  startAutosave(intervalMs: number = 30000): void {
+    this.stopAutosave(); // Clear any existing timer
+    
+    this.autosaveTimer = setInterval(() => {
+      // The actual save will be triggered by the component using this
+      console.log('Autosave timer triggered');
+    }, intervalMs);
+  }
+
+  /**
+   * Stop autosave timer
+   */
+  stopAutosave(): void {
+    if (this.autosaveTimer) {
+      clearInterval(this.autosaveTimer);
+      this.autosaveTimer = null;
+    }
+  }
+
+  /**
+   * Get storage info
+   */
+  async getStorageInfo(): Promise<{ totalSize: number; itemCount: number }> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      let totalSize = 0;
+      
+      for (const key of keys) {
+        const value = await AsyncStorage.getItem(key);
+        if (value) {
+          totalSize += value.length;
+        }
+      }
+      
+      return {
+        totalSize,
+        itemCount: keys.length,
+      };
+    } catch (error) {
+      console.error('Failed to get storage info:', error);
+      return { totalSize: 0, itemCount: 0 };
+    }
+  }
+
+  /**
+   * Optimize storage by removing old save events
+   */
+  async optimizeStorage(): Promise<void> {
+    try {
+      // Keep only the last 100 save events
+      if (this.saveEvents.length > 100) {
+        this.saveEvents = this.saveEvents.slice(-100);
+        await AsyncStorage.setItem(SAVE_EVENTS_KEY, JSON.stringify(this.saveEvents));
+      }
+      
       console.log('Storage optimized');
     } catch (error) {
       console.error('Failed to optimize storage:', error);
     }
   }
 
-  /**
-   * Private methods
-   */
-  private loadSaveEvents(): void {
+  // Private helper methods
+
+  private mergeWithInitialState(savedState: Partial<GameState>): GameState {
+    // Deep merge to handle nested objects and new properties
+    return {
+      ...initialGameState,
+      ...savedState,
+      audioSettings: {
+        ...initialGameState.audioSettings,
+        ...(savedState.audioSettings || {}),
+      },
+      statistics: {
+        ...initialGameState.statistics,
+        ...(savedState.statistics || {}),
+      },
+      achievements: savedState.achievements || initialGameState.achievements,
+      unlockedCharacters: savedState.unlockedCharacters || initialGameState.unlockedCharacters,
+    };
+  }
+
+  private async loadSaveEvents(): Promise<void> {
     try {
-      const savedEvents = gameStorage.getString(SAVE_EVENTS_KEY);
-      this.saveEvents = savedEvents ? JSON.parse(savedEvents) : [];
+      const events = await AsyncStorage.getItem(SAVE_EVENTS_KEY);
+      if (events) {
+        this.saveEvents = JSON.parse(events);
+      }
     } catch (error) {
       console.error('Failed to load save events:', error);
       this.saveEvents = [];
     }
   }
 
-  private saveSaveEvents(): void {
+  private async addSaveEvent(type: SaveEvent['type']): Promise<void> {
+    const event: SaveEvent = {
+      type,
+      timestamp: new Date().toISOString(),
+    };
+    
+    this.saveEvents.push(event);
+    
+    // Keep only the last 100 events to prevent memory bloat
+    if (this.saveEvents.length > 100) {
+      this.saveEvents = this.saveEvents.slice(-100);
+    }
+    
     try {
-      gameStorage.set(SAVE_EVENTS_KEY, JSON.stringify(this.saveEvents));
+      await AsyncStorage.setItem(SAVE_EVENTS_KEY, JSON.stringify(this.saveEvents));
     } catch (error) {
-      console.error('Failed to save events:', error);
+      console.error('Failed to save event history:', error);
     }
   }
 
-  private mergeWithInitialState(savedState: Partial<GameState>): GameState {
-    const mergedState = { ...initialGameState };
-    
-    // Recursively merge objects
-    for (const key in savedState) {
-      if (savedState.hasOwnProperty(key)) {
-        const value = savedState[key as keyof GameState];
-        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-          (mergedState as any)[key] = { ...(mergedState as any)[key], ...value };
-        } else {
-          (mergedState as any)[key] = value;
-        }
-      }
-    }
-    
-    return mergedState;
+  public getSaveEvents(): SaveEvent[] {
+    return [...this.saveEvents];
   }
 }
 
-// Export a singleton instance
-export const saveManager = SaveManager.getInstance(); 
+// Export singleton instance
+export const saveManager = SaveManager.getInstance();

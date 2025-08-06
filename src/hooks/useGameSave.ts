@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useGame } from '../contexts/GameContext';
 import { SaveEvent } from '../types/gameState';
+import { saveManager } from '../utils/saveManager';
 
 export const useGameSave = () => {
   const {
@@ -80,9 +81,13 @@ export const useGameSave = () => {
   // Save status helpers
   const getSaveStatus = useCallback(() => {
     const lastSave = getLastSaveTime();
-    if (!lastSave) return { hasData: false, lastSave: null };
+    if (!lastSave) return { hasData: false, lastSave: null, timeSinceLastSave: null, isRecent: false };
     
     const lastSaveDate = new Date(lastSave);
+    if (isNaN(lastSaveDate.getTime())) {
+      return { hasData: false, lastSave: null, timeSinceLastSave: null, isRecent: false };
+    }
+    
     const now = new Date();
     const timeSinceLastSave = now.getTime() - lastSaveDate.getTime();
     
@@ -118,5 +123,10 @@ export const useGameSave = () => {
     // Direct access to context methods
     saveGame,
     incrementStat,
+    
+    // Additional save management functions
+    exportSaveData: () => saveManager.exportSaveData(),
+    importSaveData: (data: string) => saveManager.importSaveData(data),
+    clearGameData: () => saveManager.clearGameData(),
   };
 }; 

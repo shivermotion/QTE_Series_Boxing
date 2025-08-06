@@ -94,7 +94,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       // Save immediately for settings changes
       setTimeout(() => {
-        saveManager.saveImmediately(gameState, 'settings_change');
+        saveManager.saveGameState(gameState, 'settings_change');
       }, 0);
     },
     [gameState]
@@ -123,7 +123,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       // Save immediately for level completion
       setTimeout(() => {
-        saveManager.saveImmediately(newState, 'level_complete');
+        saveManager.saveGameState(newState, 'level_complete');
       }, 0);
 
       return newState;
@@ -139,7 +139,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       // Save immediately for score updates
       setTimeout(() => {
-        saveManager.saveImmediately(gameState, 'score_update');
+        saveManager.saveGameState(gameState, 'score_update');
       }, 0);
     },
     [gameState]
@@ -158,7 +158,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
       // Save immediately for achievement unlock
       setTimeout(() => {
-        saveManager.saveImmediately(newState, 'achievement_unlocked');
+        saveManager.saveGameState(newState, 'achievement_unlocked');
       }, 0);
 
       return newState;
@@ -207,12 +207,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, []);
 
   const hasSaveData = useCallback(() => {
-    return saveManager.hasSaveData();
-  }, []);
+    // Since saveManager.hasSaveData() is async, we need to handle this differently
+    // For now, we'll check if there's any data in the current gameState
+    return gameState.lastSaved !== null && gameState.lastSaved !== undefined;
+  }, [gameState.lastSaved]);
 
   const getLastSaveTime = useCallback(() => {
-    return saveManager.getLastSaveTime();
-  }, []);
+    // Return the lastSaved from the current gameState instead of calling async function
+    return gameState.lastSaved;
+  }, [gameState.lastSaved]);
 
   const getSaveEvents = useCallback(() => {
     return saveManager.getSaveEvents();

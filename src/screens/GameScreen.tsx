@@ -15,6 +15,7 @@ import { GameScreenProps } from '../types/game';
 // Hooks
 import { useGameAudio } from '../hooks/useGameAudio';
 import { useGameLogic } from '../hooks/useGameLogic';
+import { useGameSave } from '../hooks/useGameSave';
 
 // Components
 import GameOverScreen from './GameOverScreen';
@@ -25,6 +26,7 @@ import PreRoundDisplay from '../components/PreRoundDisplay';
 import CooldownDisplay from '../components/CooldownDisplay';
 import SuperModeOverlay from '../components/SuperModeOverlay';
 import SuperComboInput from '../components/SuperComboInput';
+import SaveStatusIndicator from '../components/SaveStatusIndicator';
 
 // Data
 import { getLevelConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/gameConfig';
@@ -54,6 +56,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
   // ============================================================================
 
   const { playGameSound, audioRefs } = useGameAudio();
+
+  // Add save system integration
+  const { handleScoreAdd, handlePunch, handleLevelComplete, manualSave } = useGameSave();
+
   const gameLogic = useGameLogic(
     selectedLevel,
     () => {
@@ -63,12 +69,22 @@ const GameScreen: React.FC<GameScreenProps> = ({
     () => {
       console.log('🎵 Playing QTE success sound');
       playGameSound(audioRefs.qteSuccessSound);
+
+      // Track punch statistics
+      handlePunch();
     },
     () => {
       screenShake();
       animateMissX();
     }
   );
+
+  // Effect to save when level is completed
+  useEffect(() => {
+    if (gameLogic?.isPostLevel) {
+      handleLevelComplete(selectedLevel, gameLogic.gameState.score);
+    }
+  }, [gameLogic?.isPostLevel, selectedLevel, gameLogic?.gameState?.score, handleLevelComplete]);
 
   // ============================================================================
   // ANIMATION VALUES
@@ -523,6 +539,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
           onComboComplete={gameLogic.handleSuperComboComplete}
           onComboProgress={gameLogic.handleSuperComboProgress}
         />
+
+        {/* Save Status Indicator */}
+        <SaveStatusIndicator showDetails={true} />
       </Animated.View>
     </GestureHandlerRootView>
   );

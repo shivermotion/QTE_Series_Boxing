@@ -33,7 +33,7 @@ export interface GameState {
 }
 
 export interface SaveEvent {
-  type: 'level_complete' | 'score_update' | 'achievement_unlocked' | 'settings_change' | 'autosave';
+  type: 'level_complete' | 'score_update' | 'achievement_unlocked' | 'settings_change' | 'autosave' | 'manual';
   timestamp: string;
   data?: any;
 }

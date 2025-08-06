@@ -14,6 +14,7 @@ import TapToStartScreen from './src/screens/TapToStartScreen';
 import ChooseLevelScreen from './src/screens/ChooseLevelScreen';
 import GameScreen from './src/screens/GameScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import SaveInfoScreen from './src/screens/SaveInfoScreen';
 import CreditsScreen from './src/screens/CreditsScreen';
 import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
@@ -39,6 +40,7 @@ type Screen =
   | 'cutscene'
   | 'game'
   | 'settings'
+  | 'saveInfo'
   | 'credits'
   | 'audioDebug'
   | 'uiDebug';
@@ -124,6 +126,10 @@ function AppContent() {
     setCurrentScreen('uiDebug');
   };
 
+  const handleOpenSaveInfo = () => {
+    setCurrentScreen('saveInfo');
+  };
+
   const toggleDebugMode = () => {
     setDebugMode(!debugMode);
   };
@@ -167,7 +173,10 @@ function AppContent() {
               onBackToMenu={handleBackToMenu}
               onOpenCredits={handleOpenCredits}
               onReturnToTitle={handleReturnToTitle}
+              onOpenSaveInfo={handleOpenSaveInfo}
             />
+          ) : currentScreen === 'saveInfo' ? (
+            <SaveInfoScreen onBack={handleBackToMenu} />
           ) : currentScreen === 'credits' ? (
             <CreditsScreen onBackToMenu={handleBackToMenu} />
           ) : currentScreen === 'audioDebug' ? (

@@ -9,12 +9,14 @@ interface SettingsScreenProps {
   onBackToMenu: () => void;
   onOpenCredits: () => void;
   onReturnToTitle: () => void;
+  onOpenSaveInfo: () => void;
 }
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onBackToMenu,
   onOpenCredits,
   onReturnToTitle,
+  onOpenSaveInfo,
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -144,6 +146,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
               thumbColor={'#00ffff'}
             />
           </View>
+        </View>
+
+        {/* Save Information Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Save Information</Text>
+          <TouchableOpacity style={styles.saveInfoButton} onPress={onOpenSaveInfo}>
+            <Text style={styles.saveInfoButtonText}>View Save Details</Text>
+          </TouchableOpacity>
         </View>
 
         {/* About Section */}
@@ -328,6 +338,22 @@ const styles = StyleSheet.create({
   returnToTitleButtonText: {
     color: 'white',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  saveInfoButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#45a049',
+  },
+  saveInfoButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });
