@@ -7,6 +7,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { AudioProvider } from './src/contexts/AudioContext';
 import { TransitionProvider } from './src/contexts/TransitionContext';
+import { GameProvider } from './src/contexts/GameContext';
 import TransitionWrapper from './src/components/TransitionWrapper';
 import MainMenu from './src/screens/MainMenu';
 import TapToStartScreen from './src/screens/TapToStartScreen';
@@ -141,6 +142,7 @@ function AppContent() {
               onStartGame={handleStartGame}
               onOpenSettings={handleOpenSettings}
               onOpenChooseLevel={() => setCurrentScreen('chooseLevel')}
+              onToggleDebugMode={toggleDebugMode}
             />
           ) : currentScreen === 'chooseLevel' ? (
             <ChooseLevelScreen
@@ -183,7 +185,9 @@ export default function App() {
   return (
     <AudioProvider>
       <TransitionProvider>
-        <AppContent />
+        <GameProvider>
+          <AppContent />
+        </GameProvider>
       </TransitionProvider>
     </AudioProvider>
   );
