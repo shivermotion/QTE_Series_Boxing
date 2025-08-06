@@ -239,23 +239,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
   };
 
   return (
-    <View style={styles.container}>
-      {/* Top border with image */}
-      <View style={styles.topBorder}>
-        <ImageBackground
-          source={require('../../assets/main_menu/boxing_ring.jpg')}
-          style={styles.topBorderImage}
-          resizeMode="cover"
-        />
-
-        {/* Back button at top left */}
-        <View style={[styles.backButtonContainer, { top: insets.top + 20 }]}>
-          <AnimatedButton style={styles.backButton} onPress={handleBack} instant={true}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </AnimatedButton>
-        </View>
-      </View>
-
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       {/* Main body area with background */}
       <View style={styles.bodyArea}>
         {/* Background GIF */}
@@ -269,6 +253,13 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
         <Image
           source={require('../../assets/transition_screen/paper_texture.png')}
           style={styles.paperTexture}
+          resizeMode="cover"
+        />
+
+        {/* Paper border overlay */}
+        <Image
+          source={require('../../assets/level_select/paper_border.png')}
+          style={styles.paperBorder}
           resizeMode="cover"
         />
 
@@ -304,8 +295,8 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
           />
         </Animated.View>
 
-        {/* HUD at bottom of body */}
-        <View style={styles.hudContainer}>
+        {/* HUD at bottom of body - Hidden for now */}
+        {/* <View style={styles.hudContainer}>
           <View style={styles.hudContent}>
             <Text style={styles.hudChapterTitle}>{getChapterTitle(currentLevel)}</Text>
             <Text style={styles.hudOpponentName}>Opponent Name</Text>
@@ -319,11 +310,18 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
               </View>
             </View>
           </View>
-        </View>
+        </View> */}
       </View>
 
-      {/* Bottom border with navigation buttons */}
-      <View style={styles.bottomBorder}>
+      {/* Back button at top left */}
+      <View style={[styles.backButtonContainer, { top: insets.top + 20 }]}>
+        <AnimatedButton style={styles.backButton} onPress={handleBack} instant={true}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </AnimatedButton>
+      </View>
+
+      {/* Bottom navigation buttons */}
+      <View style={[styles.bottomNavigationContainer, { bottom: insets.bottom + 20 }]}>
         <AnimatedButton style={styles.navButton} onPress={handleLeftArrow} instant={true}>
           <Text style={styles.navButtonText}>←</Text>
         </AnimatedButton>
@@ -353,15 +351,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a2e',
   },
-  topBorder: {
-    height: 120,
-    width: '100%',
-    overflow: 'hidden',
-  },
-  topBorderImage: {
-    width: '100%',
-    height: '100%',
-  },
   backButtonContainer: {
     position: 'absolute',
     left: 20,
@@ -386,8 +375,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'yellow',
     backgroundColor: '#0236F2',
   },
   backgroundGif: {
@@ -433,16 +420,15 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
     fontWeight: 'bold',
   },
-  bottomBorder: {
-    height: 120,
+  bottomNavigationContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 30,
-    paddingVertical: 20,
-    backgroundColor: '#2a2a3e',
-    borderTopWidth: 2,
-    borderTopColor: '#00ffff',
+    zIndex: 10,
   },
   navButton: {
     backgroundColor: '#ff4444',
@@ -555,31 +541,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
-    borderWidth: 2,
-    borderColor: 'blue',
   },
   characterNameImage: {
     width: '100%',
     height: '100%',
-    borderWidth: 2,
-    borderColor: 'purple',
   },
   heroImageContainer: {
     position: 'absolute',
-    right: 0,
     top: 0,
+    left: 0,
+    right: 0,
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 3,
-    borderWidth: 2,
-    borderColor: 'green',
   },
   heroImage: {
-    width: 300,
-    height: 400,
-    borderWidth: 2,
-    borderColor: 'red',
+    width: '100%',
+    height: '100%',
   },
   paperTexture: {
     position: 'absolute',
@@ -591,6 +570,16 @@ const styles = StyleSheet.create({
     height: '100%',
     // opacity: 0.3,
     zIndex: 1,
+  },
+  paperBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 2,
   },
 });
 
