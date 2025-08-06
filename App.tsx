@@ -20,6 +20,7 @@ import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
 import SplashScreenComponent from './src/screens/SplashScreen';
 import CutsceneScreen from './src/screens/CutsceneScreen';
+import GymScreen from './src/screens/GymScreen';
 import { cutscenes } from './src/data/cutscenes';
 
 // Keep the splash screen visible while we fetch resources
@@ -43,7 +44,8 @@ type Screen =
   | 'saveInfo'
   | 'credits'
   | 'audioDebug'
-  | 'uiDebug';
+  | 'uiDebug'
+  | 'gym';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
@@ -130,6 +132,10 @@ function AppContent() {
     setCurrentScreen('saveInfo');
   };
 
+  const handleOpenGym = () => {
+    setCurrentScreen('gym');
+  };
+
   const toggleDebugMode = () => {
     setDebugMode(!debugMode);
   };
@@ -148,6 +154,7 @@ function AppContent() {
               onStartGame={handleStartGame}
               onOpenSettings={handleOpenSettings}
               onOpenChooseLevel={() => setCurrentScreen('chooseLevel')}
+              onOpenGym={handleOpenGym}
               onToggleDebugMode={toggleDebugMode}
             />
           ) : currentScreen === 'chooseLevel' ? (
@@ -181,6 +188,8 @@ function AppContent() {
             <CreditsScreen onBackToMenu={handleBackToMenu} />
           ) : currentScreen === 'audioDebug' ? (
             <AudioDebugScreen onBackToMenu={handleBackToMenu} />
+          ) : currentScreen === 'gym' ? (
+            <GymScreen onBack={handleBackToMenu} />
           ) : (
             <UIDebugScreen onBackToMenu={handleBackToMenu} />
           )}

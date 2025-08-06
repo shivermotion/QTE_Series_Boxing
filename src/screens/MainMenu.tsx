@@ -5,11 +5,13 @@ import { Audio } from 'expo-av';
 import { useAudio } from '../contexts/AudioContext';
 import { useTransition } from '../contexts/TransitionContext';
 import ChooseLevelScreen from './ChooseLevelScreen';
+import GymScreen from './GymScreen';
 
 interface MainMenuProps {
   onStartGame: (mode: 'arcade' | 'endless') => void;
   onOpenSettings: () => void;
   onOpenChooseLevel: () => void;
+  onOpenGym: () => void;
   onToggleDebugMode: () => void;
 }
 
@@ -94,7 +96,12 @@ const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   );
 };
 
-const MainMenu: React.FC<MainMenuProps> = ({ onStartGame, onOpenSettings, onOpenChooseLevel }) => {
+const MainMenu: React.FC<MainMenuProps> = ({
+  onStartGame,
+  onOpenSettings,
+  onOpenChooseLevel,
+  onOpenGym,
+}) => {
   const { getEffectiveVolume, startMainTheme, isMainThemePlaying } = useAudio();
   const { startTransition, setTargetScreen } = useTransition();
 
@@ -258,7 +265,27 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStartGame, onOpenSettings, onOpen
                   style={styles.sideButton}
                   onPress={async () => {
                     await playPunchSound();
-                    onOpenSettings();
+
+                    const targetScreen = (
+                      <GymScreen
+                        onBack={() => {
+                          onOpenGym();
+                        }}
+                      />
+                    );
+
+                    setTargetScreen(targetScreen);
+
+                    startTransition(
+                      () => {
+                        onOpenGym();
+                      },
+                      {
+                        transitionImage: require('../../assets/transition_screen/paper_texture.png'),
+                        loadingDuration: 2000,
+                        wipeDuration: 800,
+                      }
+                    );
                   }}
                   delay={0}
                   instant={true}
