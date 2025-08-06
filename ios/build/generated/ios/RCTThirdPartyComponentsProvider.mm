@@ -23,7 +23,6 @@
 			@"RNCSlider": NSClassFromString(@"RNCSliderComponentView"), // @react-native-community/slider
 			@"SkiaPictureView": NSClassFromString(@"SkiaPictureView"), // @shopify/react-native-skia
 			@"LottieAnimationView": NSClassFromString(@"LottieAnimationViewComponentView"), // lottie-react-native
-			@"FilamentView": NSClassFromString(@"FilamentComponent"), // react-native-filament
 			@"RNGestureHandlerButton": NSClassFromString(@"RNGestureHandlerButtonComponentView"), // react-native-gesture-handler
 			@"RNCSafeAreaProvider": NSClassFromString(@"RNCSafeAreaProviderComponentView"), // react-native-safe-area-context
 			@"RNCSafeAreaView": NSClassFromString(@"RNCSafeAreaViewComponentView"), // react-native-safe-area-context
