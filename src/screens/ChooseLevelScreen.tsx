@@ -144,6 +144,12 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
   const [currentLevel, setCurrentLevel] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // Animation values for navigation buttons
+  const leftButtonScale = useRef(new Animated.Value(1)).current;
+  const rightButtonScale = useRef(new Animated.Value(1)).current;
+  const leftButtonOpacity = useRef(new Animated.Value(1)).current;
+  const rightButtonOpacity = useRef(new Animated.Value(1)).current;
+
   // Animation for hero image sliding in from right
   const heroImageTranslateX = useRef(new Animated.Value(screenWidth)).current;
 
@@ -190,6 +196,63 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
     await playButtonSound();
     setCurrentLevel(prev => Math.min(10, prev + 1));
   };
+
+  // Animate navigation buttons based on current level
+  useEffect(() => {
+    const animateButton = (
+      scaleValue: Animated.Value,
+      opacityValue: Animated.Value,
+      shouldAnimate: boolean
+    ) => {
+      if (shouldAnimate) {
+        // Pulsing animation
+        Animated.loop(
+          Animated.sequence([
+            Animated.parallel([
+              Animated.timing(scaleValue, {
+                toValue: 1.1,
+                duration: 800,
+                easing: Easing.inOut(Easing.ease),
+                useNativeDriver: true,
+              }),
+              Animated.timing(opacityValue, {
+                toValue: 0.7,
+                duration: 800,
+                easing: Easing.inOut(Easing.ease),
+                useNativeDriver: true,
+              }),
+            ]),
+            Animated.parallel([
+              Animated.timing(scaleValue, {
+                toValue: 1,
+                duration: 800,
+                easing: Easing.inOut(Easing.ease),
+                useNativeDriver: true,
+              }),
+              Animated.timing(opacityValue, {
+                toValue: 1,
+                duration: 800,
+                easing: Easing.inOut(Easing.ease),
+                useNativeDriver: true,
+              }),
+            ]),
+          ])
+        ).start();
+      } else {
+        // Stop animation and reset to normal
+        scaleValue.stopAnimation();
+        opacityValue.stopAnimation();
+        scaleValue.setValue(1);
+        opacityValue.setValue(1);
+      }
+    };
+
+    // Animate right button if there are more levels to go
+    animateButton(rightButtonScale, rightButtonOpacity, currentLevel < 10);
+
+    // Animate left button if there are previous levels to go
+    animateButton(leftButtonScale, leftButtonOpacity, currentLevel > 1);
+  }, [currentLevel, leftButtonScale, leftButtonOpacity, rightButtonScale, rightButtonOpacity]);
 
   // Animate hero image when level changes
   useEffect(() => {
@@ -315,23 +378,60 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
 
       {/* Back button at top left */}
       <View style={[styles.backButtonContainer, { top: insets.top + 20 }]}>
-        <AnimatedButton style={styles.backButton} onPress={handleBack} instant={true}>
-          <Text style={styles.backButtonText}>← Back</Text>
+        <AnimatedButton onPress={handleBack} instant={true}>
+          <View style={styles.backButtonWrapper}>
+            <Image
+              source={require('../../assets/level_select/toggle_4.png')}
+              style={styles.backButtonImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.backButtonText}>← Back</Text>
+          </View>
         </AnimatedButton>
       </View>
 
       {/* Bottom navigation buttons */}
       <View style={[styles.bottomNavigationContainer, { bottom: insets.bottom + 20 }]}>
-        <AnimatedButton style={styles.navButton} onPress={handleLeftArrow} instant={true}>
-          <Text style={styles.navButtonText}>←</Text>
+        <AnimatedButton onPress={handleLeftArrow} instant={true}>
+          <Animated.View
+            style={[
+              styles.navButtonWrapper,
+              {
+                transform: [{ scale: leftButtonScale }],
+                opacity: leftButtonOpacity,
+              },
+            ]}
+          >
+            <Image
+              source={require('../../assets/level_select/toggle_on_bg.png')}
+              style={styles.navButtonImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.navArrowText}>←</Text>
+          </Animated.View>
         </AnimatedButton>
 
         <AnimatedButton style={styles.selectButton} onPress={handleSelect} instant={true}>
           <Text style={styles.selectButtonText}>Select</Text>
         </AnimatedButton>
 
-        <AnimatedButton style={styles.navButton} onPress={handleRightArrow} instant={true}>
-          <Text style={styles.navButtonText}>→</Text>
+        <AnimatedButton onPress={handleRightArrow} instant={true}>
+          <Animated.View
+            style={[
+              styles.navButtonWrapper,
+              {
+                transform: [{ scale: rightButtonScale }],
+                opacity: rightButtonOpacity,
+              },
+            ]}
+          >
+            <Image
+              source={require('../../assets/level_select/toggle_on_bg.png')}
+              style={[styles.navButtonImage, { transform: [{ rotate: '180deg' }] }]}
+              resizeMode="contain"
+            />
+            <Text style={styles.navArrowText}>→</Text>
+          </Animated.View>
         </AnimatedButton>
       </View>
 
@@ -365,9 +465,22 @@ const styles = StyleSheet.create({
     borderColor: '#ffffff',
   },
   backButtonText: {
+    position: 'absolute',
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  backButtonImage: {
+    width: 80,
+    height: 80,
+  },
+  backButtonWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   bodyArea: {
     flex: 1,
@@ -446,8 +559,26 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
+  navButtonImage: {
+    width: 60,
+    height: 60,
+  },
+  navButtonWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  navArrowText: {
+    position: 'absolute',
+    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
   selectButton: {
-    backgroundColor: '#00ff00',
+    backgroundColor: '#000000',
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 8,
@@ -458,9 +589,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selectButtonText: {
-    color: '#000000',
+    color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'Round8Four',
+    textAlign: 'center',
+    width: '100%',
+    height: '100%',
+    textAlignVertical: 'center',
   },
   hudContainer: {
     position: 'absolute',
