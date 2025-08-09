@@ -1,23 +1,43 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FilamentScene } from 'react-native-filament';
 import GymScene from '../components/GymScene';
 
 interface GymScreenProps {
   onBack: () => void;
+  onNavigateToTutorial?: () => void;
+  onNavigateToEquipment?: () => void;
+  onNavigateToPlayerDetails?: () => void;
 }
 
-const GymScreen: React.FC<GymScreenProps> = ({ onBack }) => {
+const GymScreen: React.FC<GymScreenProps> = ({
+  onBack,
+  onNavigateToTutorial,
+  onNavigateToEquipment,
+  onNavigateToPlayerDetails,
+}) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.sceneContainer}>
         <FilamentScene>
-          <GymScene />
+          <GymScene
+            onNavigateToTutorial={onNavigateToTutorial}
+            onNavigateToEquipment={onNavigateToEquipment}
+            onNavigateToPlayerDetails={onNavigateToPlayerDetails}
+          />
         </FilamentScene>
 
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Image
+            source={require('../../assets/ui/Asset_28.png')}
+            style={styles.backButtonImage}
+            resizeMode="contain"
+          />
+          <View style={styles.backButtonOverlay}>
+            <Text style={styles.backArrow}>←</Text>
+            <Text style={styles.backText}>back</Text>
+          </View>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -36,27 +56,43 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     left: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    padding: 10,
     zIndex: 10,
   },
-  backButtonText: {
-    color: '#333333',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'System',
+  backButtonImage: {
+    width: 120,
+    height: 120,
+  },
+  backButtonOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    width: 200,
+  },
+  backArrow: {
+    fontSize: 90,
+    color: 'white',
+    fontWeight: 'bold',
+    fontFamily: 'Round8Four',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+  },
+  backText: {
+    fontSize: 36,
+    color: 'white',
+    fontWeight: 'bold',
+    fontFamily: 'Round8Four',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    marginLeft: 10,
+    paddingRight: 90,
   },
 });
 

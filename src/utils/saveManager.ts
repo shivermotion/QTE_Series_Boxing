@@ -229,8 +229,8 @@ export class SaveManager {
         throw new Error('Invalid save data format');
       }
       
-      // Save the imported game state
-      await this.saveGameState(importData.gameState, 'import');
+      // Save the imported game state (treat as manual save for type safety)
+      await this.saveGameState(importData.gameState, 'manual');
       
       // Import save events if available
       if (importData.saveEvents) {

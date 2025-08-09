@@ -1,12 +1,11 @@
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSequence,
-  Easing,
 } from 'react-native-reanimated';
 
 // Types and interfaces
@@ -16,6 +15,7 @@ import { GameScreenProps } from '../types/game';
 import { useGameAudio } from '../hooks/useGameAudio';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { useGameSave } from '../hooks/useGameSave';
+import { useGame } from '../contexts/GameContext';
 
 // Components
 import GameOverScreen from './GameOverScreen';
@@ -47,9 +47,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
   selectedLevel = 1,
   onBackToMenu,
   onChooseLevel,
-  debugMode,
+  debugMode: _debugMode,
 }) => {
-  const levelConfig = getLevelConfig(selectedLevel);
+  // const levelConfig = getLevelConfig(selectedLevel);
 
   // ============================================================================
   // HOOKS
@@ -58,18 +58,15 @@ const GameScreen: React.FC<GameScreenProps> = ({
   const { playGameSound, audioRefs } = useGameAudio();
 
   // Add save system integration
-  const { handleScoreAdd, handlePunch, handleLevelComplete, manualSave } = useGameSave();
+  const { handlePunch, handleLevelComplete } = useGameSave();
 
   const gameLogic = useGameLogic(
     selectedLevel,
     () => {
-      console.log('🎵 Playing QTE failure sound');
       playGameSound(audioRefs.qteFailureSound);
     },
     () => {
-      console.log('🎵 Playing QTE success sound');
       playGameSound(audioRefs.qteSuccessSound);
-
       // Track punch statistics
       handlePunch();
     },
@@ -78,6 +75,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
       animateMissX();
     }
   );
+
+  const { gameState: persisted } = useGame();
 
   // Effect to save when level is completed
   useEffect(() => {
@@ -124,12 +123,12 @@ const GameScreen: React.FC<GameScreenProps> = ({
     );
   };
 
-  const animateAvatar = () => {
-    avatarScaleAnim.value = withSequence(
-      withTiming(1.2, { duration: 150 }),
-      withTiming(1, { duration: 150 })
-    );
-  };
+  // const animateAvatar = () => {
+  //   avatarScaleAnim.value = withSequence(
+  //     withTiming(1.2, { duration: 150 }),
+  //     withTiming(1, { duration: 150 })
+  //   );
+  // };
 
   const animateMissX = () => {
     missXScaleAnim.value = 0;
@@ -157,22 +156,20 @@ const GameScreen: React.FC<GameScreenProps> = ({
   // INPUT HANDLERS
   // ============================================================================
 
-  const handleTap = () => {
-    const now = Date.now();
-    const timeSinceLastTap = now - gameLogic.lastTapTime;
-
-    if (timeSinceLastTap < 300) {
-      gameLogic.setTapCount(0);
-      gameLogic.setLastTapTime(0);
-    } else {
-      gameLogic.setTapCount(1);
-      gameLogic.setLastTapTime(now);
-
-      if (gameLogic.gameState.isSuperComboActive) {
-        gameLogic.processSuperComboInput('swipe', 'up');
-      }
-    }
-  };
+  // const handleTap = () => {
+  //   const now = Date.now();
+  //   const timeSinceLastTap = now - gameLogic.lastTapTime;
+  //   if (timeSinceLastTap < 300) {
+  //     gameLogic.setTapCount(0);
+  //     gameLogic.setLastTapTime(0);
+  //   } else {
+  //     gameLogic.setTapCount(1);
+  //     gameLogic.setLastTapTime(now);
+  //     if (gameLogic.gameState.isSuperComboActive) {
+  //       gameLogic.processSuperComboInput('swipe', 'up');
+  //     }
+  //   }
+  // };
 
   const handleSwipe = (direction: 'left' | 'right' | 'up' | 'down') => {
     if (gameLogic.gameState.isSuperComboActive) {
@@ -267,10 +264,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
   };
 
   const handleSuperModeVideoEnd = () => {
-    console.log('🎬 Super mode video ended, ending super mode');
-    console.log('🎬 Current super mode state:', gameLogic.gameState.isSuperModeActive);
     gameLogic.endSuperMode();
-    console.log('🎬 Called endSuperMode, new state should be false');
   };
 
   // ============================================================================
@@ -328,7 +322,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
             console.log('Failed to continue with gem - no gems or no saved state');
           }
         }}
-        gemsAvailable={gameLogic.gems}
+        gemsAvailable={persisted.gems}
         audioRefs={audioRefs}
       />
     );
@@ -359,7 +353,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
         {/* Game HUD */}
         <GameHUD
           gameState={gameLogic.gameState}
-          levelConfig={levelConfig}
           avatarScaleStyle={avatarScaleStyle}
           getAvatarImage={getAvatarImage}
           onSuperButtonPress={gameLogic.activateSuperMode}
@@ -458,7 +451,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
         <TouchableOpacity
           style={styles.testAudioButton}
           onPress={() => {
-            console.log('Testing audio...');
             playGameSound(audioRefs.qteSuccessSound);
             setTimeout(() => {
               playGameSound(audioRefs.qteFailureSound);
@@ -472,7 +464,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
         <TouchableOpacity
           style={styles.testFeintButton}
           onPress={() => {
-            console.log('🎯 Testing feint generation...');
             // Force spawn a tap prompt to test feints
             gameLogic.spawnPrompt();
           }}

@@ -15,6 +15,9 @@ export const useGameSave = () => {
     updateAudioSettings,
     getLastSaveTime,
     hasSaveData,
+    setGems,
+    snapshotRun,
+    clearSnapshot,
   } = useGame();
 
   const sessionStartTime = useRef<number>(Date.now());
@@ -30,14 +33,22 @@ export const useGameSave = () => {
   }, [incrementStat]);
 
   // Game event handlers with automatic saving
-  const handleLevelComplete = useCallback(async (level: number, score: number, winTime?: number) => {
-    // Update fastest win time if applicable
-    if (winTime && (gameState.statistics.fastestWin === 0 || winTime < gameState.statistics.fastestWin)) {
-      incrementStat('fastestWin', winTime - gameState.statistics.fastestWin);
-    }
-    
-    await completeLevel(level, score);
-  }, [completeLevel, incrementStat, gameState.statistics.fastestWin]);
+  const handleLevelComplete = useCallback(
+    async (level: number, score: number, winTime?: number) => {
+      // Update fastest win time if applicable (store absolute best time)
+      if (
+        typeof winTime === 'number' &&
+        (gameState.statistics.fastestWin === 0 || winTime < gameState.statistics.fastestWin)
+      ) {
+        // Directly set the new fastest time via increment of the delta
+        const delta = winTime - gameState.statistics.fastestWin;
+        incrementStat('fastestWin', delta);
+      }
+
+      await completeLevel(level, score);
+    },
+    [completeLevel, incrementStat, gameState.statistics.fastestWin]
+  );
 
   const handleScoreAdd = useCallback(async (points: number) => {
     await addScore(points);
@@ -54,6 +65,19 @@ export const useGameSave = () => {
   const handlePunch = useCallback(() => {
     incrementStat('totalPunches');
   }, [incrementStat]);
+  // Snapshot API for continues
+  const snapshotForContinue = useCallback((snapshot: NonNullable<typeof gameState.lastRunSnapshot>) => {
+    snapshotRun(snapshot);
+  }, [snapshotRun]);
+
+  const useGemContinue = useCallback(() => {
+    if (gameState.gems <= 0 || !gameState.lastRunSnapshot) return false;
+    setGems(prev => Math.max(0, (prev as number) - 1));
+    clearSnapshot();
+    incrementStat('continuesUsed', 1);
+    return true;
+  }, [gameState.gems, gameState.lastRunSnapshot, setGems, clearSnapshot, incrementStat]);
+
 
   const handleBlock = useCallback(() => {
     incrementStat('totalBlocks');

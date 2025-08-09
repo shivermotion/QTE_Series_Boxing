@@ -10,7 +10,6 @@ import { getLevelConfig } from '../data/gameConfig';
 
 interface GameHUDProps {
   gameState: GameState;
-  opponentConfig: any;
   avatarScaleStyle: any;
   getAvatarImage: (state: 'idle' | 'success' | 'failure' | 'perfect') => any;
   onSuperButtonPress?: () => void;
@@ -18,7 +17,6 @@ interface GameHUDProps {
 
 const GameHUD: React.FC<GameHUDProps> = ({
   gameState,
-  opponentConfig,
   avatarScaleStyle,
   getAvatarImage,
   onSuperButtonPress,

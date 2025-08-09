@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, LogBox } from 'react-native';
+import { View, StyleSheet, LogBox, Text, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -45,7 +45,10 @@ type Screen =
   | 'credits'
   | 'audioDebug'
   | 'uiDebug'
-  | 'gym';
+  | 'gym'
+  | 'tutorial'
+  | 'equipment'
+  | 'playerDetails';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
@@ -136,6 +139,18 @@ function AppContent() {
     setCurrentScreen('gym');
   };
 
+  const handleNavigateToTutorial = () => {
+    setCurrentScreen('tutorial');
+  };
+
+  const handleNavigateToEquipment = () => {
+    setCurrentScreen('equipment');
+  };
+
+  const handleNavigateToPlayerDetails = () => {
+    setCurrentScreen('playerDetails');
+  };
+
   const toggleDebugMode = () => {
     setDebugMode(!debugMode);
   };
@@ -189,7 +204,63 @@ function AppContent() {
           ) : currentScreen === 'audioDebug' ? (
             <AudioDebugScreen onBackToMenu={handleBackToMenu} />
           ) : currentScreen === 'gym' ? (
-            <GymScreen onBack={handleBackToMenu} />
+            <GymScreen
+              onBack={handleBackToMenu}
+              onNavigateToTutorial={handleNavigateToTutorial}
+              onNavigateToEquipment={handleNavigateToEquipment}
+              onNavigateToPlayerDetails={handleNavigateToPlayerDetails}
+            />
+          ) : currentScreen === 'tutorial' ? (
+            <View
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#333',
+              }}
+            >
+              <Text style={{ color: 'white', fontSize: 24 }}>Tutorial Screen</Text>
+              <TouchableOpacity
+                onPress={handleBackToMenu}
+                style={{ marginTop: 20, padding: 10, backgroundColor: 'white' }}
+              >
+                <Text>Back to Menu</Text>
+              </TouchableOpacity>
+            </View>
+          ) : currentScreen === 'equipment' ? (
+            <View
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#333',
+              }}
+            >
+              <Text style={{ color: 'white', fontSize: 24 }}>Equipment Screen</Text>
+              <TouchableOpacity
+                onPress={handleBackToMenu}
+                style={{ marginTop: 20, padding: 10, backgroundColor: 'white' }}
+              >
+                <Text>Back to Menu</Text>
+              </TouchableOpacity>
+            </View>
+          ) : currentScreen === 'playerDetails' ? (
+            <View
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#333',
+              }}
+            >
+              <Text style={{ color: 'white', fontSize: 24 }}>Player Details Screen</Text>
+              <TouchableOpacity
+                onPress={handleBackToMenu}
+                style={{ marginTop: 20, padding: 10, backgroundColor: 'white' }}
+              >
+                <Text>Back to Menu</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <UIDebugScreen onBackToMenu={handleBackToMenu} />
           )}
@@ -201,13 +272,13 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AudioProvider>
-      <TransitionProvider>
-        <GameProvider>
+    <GameProvider>
+      <AudioProvider>
+        <TransitionProvider>
           <AppContent />
-        </GameProvider>
-      </TransitionProvider>
-    </AudioProvider>
+        </TransitionProvider>
+      </AudioProvider>
+    </GameProvider>
   );
 }
 

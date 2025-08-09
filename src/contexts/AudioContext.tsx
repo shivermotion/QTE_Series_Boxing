@@ -1,15 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Audio } from 'expo-av';
-
-interface AudioSettings {
-  masterVolume: number;
-  soundEffectsVolume: number;
-  musicVolume: number;
-  audioEnabled: boolean;
-}
+import { useGame } from './GameContext';
 
 interface AudioContextType {
-  settings: AudioSettings;
+  settings: {
+    masterVolume: number;
+    soundEffectsVolume: number;
+    musicVolume: number;
+    audioEnabled: boolean;
+  };
   updateMasterVolume: (volume: number) => void;
   updateSoundEffectsVolume: (volume: number) => void;
   updateMusicVolume: (volume: number) => void;
@@ -35,30 +34,26 @@ interface AudioProviderProps {
 }
 
 export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
-  const [settings, setSettings] = useState<AudioSettings>({
-    masterVolume: 0.7,
-    soundEffectsVolume: 0.7,
-    musicVolume: 0.7,
-    audioEnabled: true,
-  });
+  const { gameState, updateAudioSettings } = useGame();
+  const settings = gameState.audioSettings;
 
   const [isMainThemePlaying, setIsMainThemePlaying] = useState(false);
   const mainThemeRef = useRef<Audio.Sound | null>(null);
 
   const updateMasterVolume = (volume: number) => {
-    setSettings(prev => ({ ...prev, masterVolume: volume }));
+    updateAudioSettings({ masterVolume: volume });
   };
 
   const updateSoundEffectsVolume = (volume: number) => {
-    setSettings(prev => ({ ...prev, soundEffectsVolume: volume }));
+    updateAudioSettings({ sfxVolume: volume });
   };
 
   const updateMusicVolume = (volume: number) => {
-    setSettings(prev => ({ ...prev, musicVolume: volume }));
+    updateAudioSettings({ musicVolume: volume });
   };
 
   const toggleAudioEnabled = (enabled: boolean) => {
-    setSettings(prev => ({ ...prev, audioEnabled: enabled }));
+    updateAudioSettings({ audioEnabled: enabled });
   };
 
   const getEffectiveVolume = (type: 'master' | 'sfx' | 'music'): number => {
@@ -70,7 +65,7 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       case 'master':
         return masterVol;
       case 'sfx':
-        return masterVol * settings.soundEffectsVolume;
+        return masterVol * settings.sfxVolume;
       case 'music':
         return masterVol * settings.musicVolume;
       default:
@@ -139,7 +134,12 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   }, []);
 
   const value: AudioContextType = {
-    settings,
+    settings: {
+      masterVolume: settings.masterVolume,
+      soundEffectsVolume: settings.sfxVolume,
+      musicVolume: settings.musicVolume,
+      audioEnabled: settings.audioEnabled,
+    },
     updateMasterVolume,
     updateSoundEffectsVolume,
     updateMusicVolume,

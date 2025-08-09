@@ -5,12 +5,21 @@ export interface GameState {
   totalScore: number;
   gamesPlayed: number;
   gamesWon: number;
+  gems: number; // Persisted gems for continues
+  lastRunSnapshot: {
+    level: number;
+    currentRound: number;
+    opponentHP: number;
+    score: number;
+    superMeter: number;
+  } | null;
   
   // Settings
   audioSettings: {
     masterVolume: number;
     musicVolume: number;
     sfxVolume: number;
+    audioEnabled: boolean;
   };
   
   // Game statistics
@@ -21,6 +30,8 @@ export interface GameState {
     bestCombo: number;
     fastestWin: number; // in seconds
     totalPlayTime: number; // in seconds
+    roundsCompleted: number;
+    continuesUsed: number;
   };
   
   // Achievements and unlocks
@@ -44,11 +55,14 @@ export const initialGameState: GameState = {
   totalScore: 0,
   gamesPlayed: 0,
   gamesWon: 0,
+  gems: 3,
+  lastRunSnapshot: null,
   
   audioSettings: {
     masterVolume: 1.0,
     musicVolume: 0.8,
     sfxVolume: 0.9,
+    audioEnabled: true,
   },
   
   statistics: {
@@ -58,6 +72,8 @@ export const initialGameState: GameState = {
     bestCombo: 0,
     fastestWin: 0,
     totalPlayTime: 0,
+    roundsCompleted: 0,
+    continuesUsed: 0,
   },
   
   achievements: [],

@@ -79,6 +79,7 @@ export interface LevelConfig {
       };
     };
   };
+  difficultyScalar?: number; // Derived scalar for difficulty-based adjustments
 }
 
 export const levels: LevelConfig[] = [
@@ -667,12 +668,16 @@ export const getTimingPromptConfig = (levelConfig: LevelConfig, roundNumber: num
 
 export const getRandomPromptInterval = (levelConfig: LevelConfig, roundNumber: number = 1): number => {
   const config = getPromptConfig(levelConfig, 'swipe', roundNumber);
-  return Math.random() * (config.spawnDelay.max - config.spawnDelay.min) + config.spawnDelay.min;
+  const base = Math.random() * (config.spawnDelay.max - config.spawnDelay.min) + config.spawnDelay.min;
+  const scalar = getDifficultyScalar(levelConfig);
+  return Math.max(300, base * scalar);
 };
 
 export const getRandomPromptDuration = (levelConfig: LevelConfig, promptType: 'swipe' | 'tap' | 'timing', roundNumber: number = 1): number => {
   const config = getPromptConfig(levelConfig, promptType, roundNumber);
-  return Math.random() * (config.timeLimit.max - config.timeLimit.min) + config.timeLimit.min;
+  const base = Math.random() * (config.timeLimit.max - config.timeLimit.min) + config.timeLimit.min;
+  const scalar = getDifficultyScalar(levelConfig);
+  return Math.max(500, base * scalar);
 };
 
 export const getRoundHPGoal = (levelConfig: LevelConfig, roundNumber: number): number => {
@@ -681,3 +686,19 @@ export const getRoundHPGoal = (levelConfig: LevelConfig, roundNumber: number): n
   }
   return levelConfig.roundHPGoals[roundNumber - 1] || 0;
 }; 
+
+// Difficulty scaling helpers
+export const getDifficultyScalar = (levelConfig: LevelConfig): number => {
+  switch (levelConfig.difficulty) {
+    case 'easy':
+      return 1.1; // slightly easier (longer durations, longer intervals)
+    case 'medium':
+      return 1.0; // baseline
+    case 'hard':
+      return 0.9; // slightly harder (shorter)
+    case 'expert':
+      return 0.8; // hardest
+    default:
+      return 1.0;
+  }
+};

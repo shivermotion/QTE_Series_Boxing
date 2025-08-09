@@ -18,6 +18,9 @@ interface GameContextType {
   unlockAchievement: (achievementId: string) => void;
   unlockCharacter: (characterId: string) => void;
   incrementStat: (statKey: keyof GameState['statistics'], amount?: number) => void;
+  setGems: (amount: number | ((prev: number) => number)) => void;
+  snapshotRun: (snapshot: NonNullable<GameState['lastRunSnapshot']>) => void;
+  clearSnapshot: () => void;
 
   // Save management
   saveGame: (eventType?: SaveEvent['type']) => Promise<boolean>;
@@ -58,8 +61,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       debouncedSave(gameState);
     }
 
-    // Cleanup to prevent memory leaks
-    return () => debouncedSave.cancel();
+    // Cleanup
+    return () => {};
   }, [gameState, isLoading, debouncedSave]);
 
   const loadGame = async () => {
@@ -82,23 +85,22 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     }));
   }, []);
 
-  const updateAudioSettings = useCallback(
-    (settings: Partial<GameState['audioSettings']>) => {
-      setGameState(prevState => ({
+  const updateAudioSettings = useCallback((settings: Partial<GameState['audioSettings']>) => {
+    setGameState(prevState => {
+      const newState: GameState = {
         ...prevState,
         audioSettings: {
           ...prevState.audioSettings,
           ...settings,
         },
-      }));
-
-      // Save immediately for settings changes
+      };
+      // Save immediately for settings changes using the updated state
       setTimeout(() => {
-        saveManager.saveGameState(gameState, 'settings_change');
+        saveManager.saveGameState(newState, 'settings_change');
       }, 0);
-    },
-    [gameState]
-  );
+      return newState;
+    });
+  }, []);
 
   const updateStatistics = useCallback((stats: Partial<GameState['statistics']>) => {
     setGameState(prevState => ({
@@ -108,6 +110,32 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         ...stats,
       },
     }));
+  }, []);
+
+  const setGems = useCallback((amount: number | ((prev: number) => number)) => {
+    setGameState(prev => {
+      const nextGems =
+        typeof amount === 'function' ? (amount as (p: number) => number)(prev.gems) : amount;
+      const newState = { ...prev, gems: Math.max(0, nextGems) };
+      setTimeout(() => saveManager.saveGameState(newState, 'manual'), 0);
+      return newState;
+    });
+  }, []);
+
+  const snapshotRun = useCallback((snapshot: NonNullable<GameState['lastRunSnapshot']>) => {
+    setGameState(prev => {
+      const newState = { ...prev, lastRunSnapshot: { ...snapshot } };
+      setTimeout(() => saveManager.saveGameState(newState, 'manual'), 0);
+      return newState;
+    });
+  }, []);
+
+  const clearSnapshot = useCallback(() => {
+    setGameState(prev => {
+      const newState = { ...prev, lastRunSnapshot: null };
+      setTimeout(() => saveManager.saveGameState(newState, 'manual'), 0);
+      return newState;
+    });
   }, []);
 
   const completeLevel = useCallback(async (level: number, score: number) => {
@@ -130,20 +158,19 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     });
   }, []);
 
-  const addScore = useCallback(
-    (points: number) => {
-      setGameState(prevState => ({
+  const addScore = useCallback((points: number) => {
+    setGameState(prevState => {
+      const newState: GameState = {
         ...prevState,
         totalScore: prevState.totalScore + points,
-      }));
-
-      // Save immediately for score updates
+      };
+      // Save using updated state (debounced by saveManager for score updates)
       setTimeout(() => {
-        saveManager.saveGameState(gameState, 'score_update');
+        saveManager.saveGameState(newState, 'score_update');
       }, 0);
-    },
-    [gameState]
-  );
+      return newState;
+    });
+  }, []);
 
   const unlockAchievement = useCallback((achievementId: string) => {
     setGameState(prevState => {
@@ -199,7 +226,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   );
 
   const clearGameData = useCallback(async () => {
-    const success = await saveManager.clearGameData();
+    const success = await (async () => {
+      await saveManager.clearGameData();
+      return true;
+    })();
     if (success) {
       setGameState(initialGameState);
     }
@@ -232,6 +262,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     unlockAchievement,
     unlockCharacter,
     incrementStat,
+    setGems,
+    snapshotRun,
+    clearSnapshot,
     saveGame,
     loadGame,
     clearGameData,
