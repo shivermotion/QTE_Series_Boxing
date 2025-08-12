@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
@@ -7,6 +7,15 @@ import Animated, {
   withTiming,
   withSequence,
 } from 'react-native-reanimated';
+import {
+  FilamentView,
+  DefaultLight,
+  Model,
+  Animator,
+  Camera,
+  FilamentScene,
+} from 'react-native-filament';
+import { useSharedValue as useWorkletSharedValue } from 'react-native-worklets-core';
 
 // Types and interfaces
 import { GameScreenProps } from '../types/game';
@@ -37,6 +46,12 @@ import shockedImg from '../../assets/avatar/shocked.jpg';
 import revvedImg from '../../assets/avatar/revved.jpg';
 import eyesClosedImg from '../../assets/avatar/eyes_closed.jpg';
 import elatedImg from '../../assets/avatar/elated.jpg';
+import BoxingPracticeGLB from '../../assets/models/hero_animations/Animation_Boxing_Practice_withSkin.glb';
+import PunchComboGLB from '../../assets/models/hero_animations/Animation_Punch_Combo_withSkin.glb';
+import PunchCombo1GLB from '../../assets/models/hero_animations/Animation_Punch_Combo_1_withSkin.glb';
+import StraightPunchGLB from '../../assets/models/hero_animations/Animation_Boxing_Guard_Prep_Straight_Punch_withSkin.glb';
+import HitReactionGLB from '../../assets/models/hero_animations/Animation_Hit_Reaction_1_withSkin.glb';
+import FacePunchReactionGLB from '../../assets/models/hero_animations/Animation_Face_Punch_Reaction_withSkin.glb';
 
 // ============================================================================
 // MAIN COMPONENT
@@ -64,11 +79,17 @@ const GameScreen: React.FC<GameScreenProps> = ({
     selectedLevel,
     () => {
       playGameSound(audioRefs.qteFailureSound);
+      // Miss → play a hit reaction animation briefly on player
+      const missModel = MISS_MODELS[Math.floor(Math.random() * MISS_MODELS.length)];
+      swapModelTemporarily('player', missModel, 900);
     },
     () => {
       playGameSound(audioRefs.qteSuccessSound);
       // Track punch statistics
       handlePunch();
+      // Success → play a punch animation briefly on opponent
+      const hitModel = HIT_MODELS[Math.floor(Math.random() * HIT_MODELS.length)];
+      swapModelTemporarily('opponent', hitModel, 700);
     },
     () => {
       screenShake();
@@ -110,6 +131,85 @@ const GameScreen: React.FC<GameScreenProps> = ({
     transform: [{ scale: missXScaleAnim.value }],
     opacity: missXOpacityAnim.value,
   }));
+
+  // ============================================================================
+  // 3D MODEL ANIMATION STATE (Filament)
+  // ============================================================================
+
+  // We'll swap entire GLB sources to represent different actions, since hero_animations are clip-per-file
+  const [opponentModel, setOpponentModel] = useState<any>(BoxingPracticeGLB);
+  const [playerModel, setPlayerModel] = useState<any>(BoxingPracticeGLB);
+  const [opponentModelKey, setOpponentModelKey] = useState<number>(0);
+  const [playerModelKey, setPlayerModelKey] = useState<number>(0);
+  const [opponentSceneKey, setOpponentSceneKey] = useState<number>(0);
+  const [playerSceneKey, setPlayerSceneKey] = useState<number>(0);
+  const DEFAULT_MODEL = BoxingPracticeGLB;
+  const HIT_MODELS: any[] = [PunchComboGLB, PunchCombo1GLB, StraightPunchGLB];
+  const MISS_MODELS: any[] = [HitReactionGLB, FacePunchReactionGLB];
+
+  // Debug helpers
+  const getModelName = (m: any): string => {
+    if (m === BoxingPracticeGLB) return 'Boxing_Practice';
+    if (m === PunchComboGLB) return 'Punch_Combo';
+    if (m === PunchCombo1GLB) return 'Punch_Combo_1';
+    if (m === StraightPunchGLB) return 'Straight_Punch';
+    if (m === HitReactionGLB) return 'Hit_Reaction_1';
+    if (m === FacePunchReactionGLB) return 'Face_Punch_Reaction';
+    return 'Unknown_Model';
+  };
+
+  const swapModelTemporarily = (
+    target: 'player' | 'opponent' | 'both',
+    toModel: any,
+    durationMs: number = 700
+  ) => {
+    if (target === 'player' || target === 'both') {
+      console.log(
+        `[GameScreen][player] swap -> ${getModelName(toModel)} (duration=${durationMs}ms)`
+      );
+      setPlayerModel(toModel);
+      setPlayerModelKey(prev => prev + 1); // force remount to clear previous instance
+      setPlayerSceneKey(prev => prev + 1); // force scene remount to clear native graph
+      setTimeout(() => {
+        console.log('[GameScreen][player] revert -> Boxing_Practice');
+        setPlayerModel(DEFAULT_MODEL);
+        setPlayerModelKey(prev => prev + 1);
+        setPlayerSceneKey(prev => prev + 1);
+      }, durationMs);
+    }
+    if (target === 'opponent' || target === 'both') {
+      console.log(
+        `[GameScreen][opponent] swap -> ${getModelName(toModel)} (duration=${durationMs}ms)`
+      );
+      setOpponentModel(toModel);
+      setOpponentModelKey(prev => prev + 1); // force remount to clear previous instance
+      setOpponentSceneKey(prev => prev + 1); // force scene remount to clear native graph
+      setTimeout(() => {
+        console.log('[GameScreen][opponent] revert -> Boxing_Practice');
+        setOpponentModel(DEFAULT_MODEL);
+        setOpponentModelKey(prev => prev + 1);
+        setOpponentSceneKey(prev => prev + 1);
+      }, durationMs);
+    }
+  };
+
+  // Log render state when model or key changes
+  useEffect(() => {
+    console.log(
+      `[GameScreen][opponent] render model=${getModelName(opponentModel)} key=${opponentModelKey}`
+    );
+  }, [opponentModel, opponentModelKey]);
+  useEffect(() => {
+    console.log(
+      `[GameScreen][player] render model=${getModelName(playerModel)} key=${playerModelKey}`
+    );
+  }, [playerModel, playerModelKey]);
+  useEffect(() => {
+    console.log(`[GameScreen][opponent] scene remount key=${opponentSceneKey}`);
+  }, [opponentSceneKey]);
+  useEffect(() => {
+    console.log(`[GameScreen][player] scene remount key=${playerSceneKey}`);
+  }, [playerSceneKey]);
 
   // ============================================================================
   // UTILITY FUNCTIONS
@@ -358,20 +458,42 @@ const GameScreen: React.FC<GameScreenProps> = ({
           onSuperButtonPress={gameLogic.activateSuperMode}
         />
 
-        {/* Opponent 3D Model Area */}
+        {/* Opponent 3D Model Area (Filament) */}
         <View style={styles.opponentModelArea}>
-          <View style={styles.modelPlaceholder}>
-            <Text style={styles.modelPlaceholderText}>OPPONENT 3D MODEL</Text>
-            <Text style={styles.modelPlaceholderSubtext}>Will be placed here</Text>
-          </View>
+          <FilamentScene key={`opponent-scene-${opponentSceneKey}`}>
+            <FilamentView style={{ width: '100%', height: '100%' }}>
+              <DefaultLight />
+              <Model
+                key={`opponent-${opponentModelKey}`}
+                source={opponentModel}
+                translate={[0, 0, 0]}
+                scale={[2.6, 2.6, 2.6]}
+                rotate={[1.5, 0, 0]}
+              >
+                <Animator animationIndex={0} onAnimationsLoaded={() => {}} />
+              </Model>
+              <Camera />
+            </FilamentView>
+          </FilamentScene>
         </View>
 
-        {/* Player 3D Model Area */}
+        {/* Player 3D Model Area (Filament) */}
         <View style={styles.playerModelArea}>
-          <View style={styles.modelPlaceholder}>
-            <Text style={styles.modelPlaceholderText}>PLAYER 3D MODEL</Text>
-            <Text style={styles.modelPlaceholderSubtext}>Will be placed here</Text>
-          </View>
+          <FilamentScene key={`player-scene-${playerSceneKey}`}>
+            <FilamentView style={{ width: '100%', height: '100%' }}>
+              <DefaultLight />
+              <Model
+                key={`player-${playerModelKey}`}
+                source={playerModel}
+                translate={[0, 0, 0]}
+                scale={[2.6, 2.6, 2.6]}
+                rotate={[1.5, 0, 10]}
+              >
+                <Animator animationIndex={0} onAnimationsLoaded={() => {}} />
+              </Model>
+              <Camera />
+            </FilamentView>
+          </FilamentScene>
         </View>
 
         {/* Game Input Area */}
@@ -472,7 +594,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         </TouchableOpacity>
 
         {/* Pause Overlay */}
-        {gameLogic.gameState.isPaused && !gameLogic.isPreRound && !gameLogic.isCooldown && (
+        {/* {gameLogic.gameState.isPaused && !gameLogic.isPreRound && !gameLogic.isCooldown && (
           <View style={styles.pauseOverlay}>
             <Text style={styles.pauseText}>PAUSED</Text>
             <TouchableOpacity
@@ -488,7 +610,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
               <Text style={styles.quitButtonText}>QUIT TO MENU</Text>
             </TouchableOpacity>
           </View>
-        )}
+        )} */}
 
         {/* Miss Animation - Big X */}
         {gameLogic.showMissAnimation && (
@@ -531,8 +653,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
           onComboProgress={gameLogic.handleSuperComboProgress}
         />
 
-        {/* Save Status Indicator */}
-        <SaveStatusIndicator showDetails={true} />
+        {/* Save Status Indicator (debug hidden) */}
+        <SaveStatusIndicator showDetails={false} />
       </Animated.View>
     </GestureHandlerRootView>
   );
@@ -554,6 +676,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 5,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    borderRadius: 12,
   },
   playerModelArea: {
     position: 'absolute',
@@ -564,6 +689,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 5,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    borderRadius: 12,
   },
   modelPlaceholder: {
     width: '100%',
