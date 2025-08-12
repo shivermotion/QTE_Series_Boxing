@@ -104,23 +104,25 @@ export const generateTimingPrompts = (levelConfig: LevelConfig, currentRound: nu
 
     // Use timing configuration; ensure duration reflects tighter endless scaling
     const duration = getRandomPromptDuration(levelConfig, 'timing', currentRound);
-    const perfectWindowDuration = promptConfig.gradeThresholds.perfect;
-    const goodWindowDuration = promptConfig.gradeThresholds.good;
+    const perfectWindowDuration = Math.min(promptConfig.gradeThresholds.perfect, duration);
+    const goodWindowDuration = Math.min(promptConfig.gradeThresholds.good, duration);
     const staggerDelay = timingConfig.staggerDelay;
-    
+
     // Calculate the visual appearance time for this prompt
-    const appearanceTime = Date.now() + (i * staggerDelay);
-    
-    // Calculate timing windows relative to the appearance time (in milliseconds from appearance)
-    // Make timing windows more player-friendly
-    const perfectWindowStart = duration * 0.6; // Start at 60% of duration instead of 87%
-    const perfectWindowEnd = perfectWindowStart + perfectWindowDuration;
-    
-    const goodEarlyStart = perfectWindowStart - goodWindowDuration;
-    const goodEarlyEnd = perfectWindowStart;
-    
-    const goodLateStart = perfectWindowEnd;
-    const goodLateEnd = perfectWindowEnd + goodWindowDuration;
+    const appearanceTime = Date.now() + i * staggerDelay;
+
+    // Define windows near the very end of the countdown so success is tapping late.
+    // Perfect window is [duration - perfect, duration]
+    // Good window is immediately before perfect: [duration - (perfect + good), duration - perfect)
+    const perfectWindowStart = Math.max(0, duration - perfectWindowDuration);
+    const perfectWindowEnd = duration;
+
+    const goodEarlyStart = Math.max(0, duration - (perfectWindowDuration + goodWindowDuration));
+    const goodEarlyEnd = Math.max(0, duration - perfectWindowDuration);
+
+    // No late-good beyond the end
+    const goodLateStart = duration + 1;
+    const goodLateEnd = duration + 1;
 
     prompts.push({
       id: `timing_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
