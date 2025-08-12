@@ -175,24 +175,23 @@ export const useGameLogic = (
         // Get prompt configuration for the specific type
         const promptConfig = getPromptConfig(levelConfig, currentPrompt.type, gameState.currentRound);
         
-        if (timeDiff <= promptConfig.gradeThresholds.perfect) {
-          hitQuality = 'perfect';
-        } else if (timeDiff <= promptConfig.gradeThresholds.good) {
-          hitQuality = 'good';
-        } else {
+        // Collapse into success/miss only: if within max window (good), count as success
+        if (timeDiff <= promptConfig.gradeThresholds.good) {
           hitQuality = 'success';
+        } else {
+          hitQuality = 'miss';
         }
       }
 
       if (hitQuality !== 'miss') {
-        const { points, damage: inputDamage, superGain } = computeOutcome(hitQuality);
+        const { points, damage: inputDamage, superGain } = computeOutcome('success');
         
         setGameState(prev => ({
           ...prev,
           score: prev.score + points,
           opponentHP: Math.max(0, prev.opponentHP - inputDamage),
           superMeter: Math.min(100, prev.superMeter + superGain),
-          avatarState: hitQuality === 'perfect' ? 'perfect' : 'success',
+          avatarState: 'success',
         }));
 
         triggerHaptic('success');
@@ -266,8 +265,7 @@ export const useGameLogic = (
     const successfulTaps = completedRealPrompts.length;
 
     if (successfulTaps === totalRealPrompts) {
-      const hitQuality: HitQuality = 'good';
-      const { points, damage, superGain } = computeOutcome(hitQuality, totalRealPrompts);
+      const { points, damage, superGain } = computeOutcome('success', totalRealPrompts);
       setGameState(prev => ({
         ...prev,
         score: prev.score + points,
@@ -299,7 +297,7 @@ export const useGameLogic = (
   // TIMING PROMPT HANDLING
   // ============================================================================
 
-  const processTimingPrompt = (gridPosition: number, hitQuality: 'perfect' | 'good') => {
+  const processTimingPrompt = (gridPosition: number, _hitQuality?: 'perfect' | 'good') => {
     
     const timingPrompt = activeTimingPrompts.find(
       prompt => prompt.gridPosition === gridPosition && prompt.isActive && !prompt.isCompleted
@@ -320,26 +318,27 @@ export const useGameLogic = (
     const remainingPrompts = updatedPrompts.filter(p => !p.isCompleted);
     
     if (remainingPrompts.length === 0) {
-      handleTimingPromptCompletion(updatedPrompts, Date.now(), hitQuality);
+      handleTimingPromptCompletion(updatedPrompts, Date.now());
     }
   };
 
-  const handleTimingPromptCompletion = (completedPrompts: TimingPrompt[], completionTime: number, lastHitQuality: 'perfect' | 'good') => {
+  const handleTimingPromptCompletion = (completedPrompts: TimingPrompt[], completionTime: number) => {
     const totalPrompts = completedPrompts.length;
     const completedPromptsCount = completedPrompts.filter(p => p.isCompleted).length;
 
     if (completedPromptsCount === totalPrompts) {
-      const { points, damage, superGain } = computeOutcome(lastHitQuality, totalPrompts);
+      const { points, damage, superGain } = computeOutcome('success', totalPrompts);
       setGameState(prev => ({
         ...prev,
         score: prev.score + points,
         opponentHP: Math.max(0, prev.opponentHP - damage),
         superMeter: Math.min(100, prev.superMeter + superGain),
-        avatarState: lastHitQuality === 'perfect' ? 'perfect' : 'success',
+        avatarState: 'success',
       }));
 
       triggerHaptic('success');
       if (onSuccess) onSuccess();
+      incrementEndlessProgress();
     } else {
       handleMiss();
     }

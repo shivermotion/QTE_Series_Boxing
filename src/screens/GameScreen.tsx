@@ -541,9 +541,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
           gameState={gameLogic.gameState}
           onSwipe={handleSwipe}
           onGridTap={handleGridTap}
-          onTimingSuccess={(gridPosition, hitQuality) =>
-            gameLogic.processTimingPrompt(gridPosition, hitQuality)
-          }
+          onTimingSuccess={gridPosition => gameLogic.processTimingPrompt(gridPosition, undefined)}
           onTimingMiss={() => gameLogic.handleMiss()}
           getCurrentPausedDuration={gameLogic.getCurrentPausedDuration}
         />

@@ -19,7 +19,7 @@ interface GameInputAreaProps {
   gameState: any;
   onSwipe: (direction: 'left' | 'right' | 'up' | 'down') => void;
   onGridTap: (gridPosition: number) => void;
-  onTimingSuccess: (gridPosition: number, hitQuality: 'perfect' | 'good') => void;
+  onTimingSuccess: (gridPosition: number) => void;
   onTimingMiss: () => void;
   getCurrentPausedDuration: () => number;
 }
@@ -74,7 +74,7 @@ const GameInputArea: React.FC<GameInputAreaProps> = ({
                 key={prompt.id}
                 prompt={prompt}
                 onMiss={onTimingMiss}
-                onSuccess={hitQuality => onTimingSuccess(prompt.gridPosition, hitQuality)}
+                onSuccess={() => onTimingSuccess(prompt.gridPosition)}
                 isPaused={gameState.isPaused}
                 globalPausedDuration={getCurrentPausedDuration()}
               />
