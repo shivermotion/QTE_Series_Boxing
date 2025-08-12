@@ -714,14 +714,23 @@ export const buildEndlessLevelConfig = (stage: number): LevelConfig => {
   // More aggressive scaling for timing duration to speed up circle shrink
   const scaleTiming = clamp(Math.pow(0.92, Math.max(0, stage - 1)), 0.45, 1);
 
-  // Swipe/tap timings – ease in from level_1-like toward faster
-  const swipeTime = { min: Math.round(3200 * scaleGeneral), max: Math.round(3600 * scaleGeneral) };
-  const swipeGrades = { perfect: Math.round(1000 * scaleGeneral), good: Math.round(1600 * scaleGeneral) };
-  const swipeSpawn = { min: Math.round(2000 * scaleGeneral), max: Math.round(2400 * scaleGeneral) };
+  // Swipe timings – aggressively tighten toward sub-second reaction windows over stages
+  const scaleSwipe = clamp(Math.pow(0.90, Math.max(0, stage - 1)), 0.20, 1); // floor ~20%
+  // Base window ~1200–1500ms, trending toward ~240–300ms at floor
+  const swipeTime = { min: Math.round(1200 * scaleSwipe), max: Math.round(1500 * scaleSwipe) };
+  // Success window (used by logic) – shrink toward ~250ms floor
+  const swipeGoodMs = clamp(Math.round(600 * scaleSwipe), 250, 1200);
+  const swipeGrades = { perfect: swipeGoodMs, good: swipeGoodMs };
+  const swipeSpawn = { min: Math.round(1800 * scaleGeneral), max: Math.round(2200 * scaleGeneral) };
 
-  const tapTime = { min: Math.round(3200 * scaleGeneral), max: Math.round(3600 * scaleGeneral) };
-  const tapGrades = { perfect: Math.round(3000 * scaleGeneral), good: Math.round(3400 * scaleGeneral) };
-  const tapSpawn = { min: Math.round(2000 * scaleGeneral), max: Math.round(2400 * scaleGeneral) };
+  // Tap timings – more lenient than swipe because sets may include multiple taps
+  const scaleTap = clamp(Math.pow(0.95, Math.max(0, stage - 1)), 0.35, 1); // floor ~35%
+  // Base window ~2000–2400ms, trending toward ~700–840ms at floor
+  const tapTime = { min: Math.round(2000 * scaleTap), max: Math.round(2400 * scaleTap) };
+  // Success window – shrink, but keep higher floor (~450ms)
+  const tapGoodMs = clamp(Math.round(900 * scaleTap), 450, 1400);
+  const tapGrades = { perfect: tapGoodMs, good: tapGoodMs };
+  const tapSpawn = { min: Math.round(1800 * scaleGeneral), max: Math.round(2200 * scaleGeneral) };
 
   // Timing prompts – success window starts above average, then shrinks with stage
   const timingTime = { min: Math.round(1800 * scaleTiming), max: Math.round(2200 * scaleTiming) };
