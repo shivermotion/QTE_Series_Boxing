@@ -21,7 +21,8 @@ export const useGameLogic = (
   selectedLevel: number,
   onMiss?: () => void,
   onSuccess?: () => void,
-  onScreenShake?: () => void
+  onScreenShake?: () => void,
+  gameMode: 'arcade' | 'endless' = 'arcade'
 ) => {
   const levelConfig = getLevelConfig(selectedLevel);
 
@@ -62,7 +63,7 @@ export const useGameLogic = (
   const [isInCooldown, setIsInCooldown] = useState(false);
 
   // Pre-round state
-  const [isPreRound, setIsPreRound] = useState(true);
+  const [isPreRound, setIsPreRound] = useState(gameMode === 'arcade');
   const [preRoundText, setPreRoundText] = useState(`ROUND 1`);
   
   // Cooldown state
@@ -484,6 +485,7 @@ export const useGameLogic = (
   // ============================================================================
 
   const activateSuperMode = () => {
+    if (gameMode === 'endless') return; // no super mode in endless
     if (gameState.superMeter < 100) return;
 
     setGameState(prev => ({
@@ -515,10 +517,12 @@ export const useGameLogic = (
   };
 
   const handleSuperComboProgress = (comboDisplay: string[]) => {
+    if (gameMode === 'endless') return;
     setSuperComboDisplay(comboDisplay);
   };
 
   const handleSuperComboComplete = (superMove: SuperMove | null) => {
+    if (gameMode === 'endless') return;
     if (superMove) {
       
       setGameState(prev => ({
@@ -557,6 +561,7 @@ export const useGameLogic = (
   };
 
   const activateSuperCombo = () => {
+    if (gameMode === 'endless') return;
     const sequence = generateSuperComboSequence();
     setSuperComboSequence(sequence);
     setSuperComboIndex(0);
@@ -580,6 +585,7 @@ export const useGameLogic = (
     inputType: 'swipe',
     direction?: 'left' | 'right' | 'up' | 'down'
   ) => {
+    if (gameMode === 'endless') return;
     const currentSuperPrompt = superComboSequence[superComboIndex];
     if (!currentSuperPrompt || !currentSuperPrompt.isActive) return;
 
@@ -772,7 +778,12 @@ export const useGameLogic = (
       ) {
         spawnPrompt();
         setLastPromptTime(now);
-        setPromptInterval(getRandomPromptInterval(levelConfig, gameState.currentRound));
+        // In endless mode, progressively tighten prompt interval to increase difficulty
+        if (gameMode === 'endless') {
+          setPromptInterval(prev => Math.max(400, prev * 0.98));
+        } else {
+          setPromptInterval(getRandomPromptInterval(levelConfig, gameState.currentRound));
+        }
       }
     }, 100);
     return () => clearInterval(timer);

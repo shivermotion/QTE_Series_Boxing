@@ -104,7 +104,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
     () => {
       screenShake();
       animateMissX();
-    }
+    },
+    gameMode
   );
 
   const { gameState: persisted } = useGame();
@@ -489,6 +490,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
           avatarScaleStyle={avatarScaleStyle}
           getAvatarImage={getAvatarImage}
           onSuperButtonPress={gameLogic.activateSuperMode}
+          gameMode={gameMode}
         />
 
         {/* Opponent 3D Model Area (Filament) */}
@@ -673,18 +675,22 @@ const GameScreen: React.FC<GameScreenProps> = ({
           onPreRoundComplete={handlePreRoundComplete}
         />
 
-        {/* Super Mode Overlay */}
-        <SuperModeOverlay
-          isActive={gameLogic.gameState.isSuperModeActive}
-          onVideoEnd={handleSuperModeVideoEnd}
-        />
+        {/* Super Mode Overlay (arcade only) */}
+        {gameMode === 'arcade' && (
+          <SuperModeOverlay
+            isActive={gameLogic.gameState.isSuperModeActive}
+            onVideoEnd={handleSuperModeVideoEnd}
+          />
+        )}
 
-        {/* Super Combo Input */}
-        <SuperComboInput
-          isActive={gameLogic.gameState.isSuperModeActive}
-          onComboComplete={handleSuperComboCompleteWithFinisher}
-          onComboProgress={gameLogic.handleSuperComboProgress}
-        />
+        {/* Super Combo Input (arcade only) */}
+        {gameMode === 'arcade' && (
+          <SuperComboInput
+            isActive={gameLogic.gameState.isSuperModeActive}
+            onComboComplete={handleSuperComboCompleteWithFinisher}
+            onComboProgress={gameLogic.handleSuperComboProgress}
+          />
+        )}
 
         {/* Save Status Indicator (debug hidden) */}
         <SaveStatusIndicator showDetails={false} />
