@@ -4,7 +4,8 @@ import {
   getLevelConfig, 
   getRoundHPGoal, 
   getRandomPromptInterval,
-  getPromptConfig 
+  getPromptConfig,
+  buildEndlessLevelConfig,
 } from '../data/gameConfig';
 import { generatePrompt, generateTapPrompts, generateTimingPrompts, generateSuperComboSequence } from '../utils/promptUtils';
 import { triggerHaptic } from '../utils/hapticUtils';
@@ -24,7 +25,8 @@ export const useGameLogic = (
   onScreenShake?: () => void,
   gameMode: 'arcade' | 'endless' = 'arcade'
 ) => {
-  const levelConfig = getLevelConfig(selectedLevel);
+  const [endlessStage, setEndlessStage] = useState<number>(1);
+  const levelConfig = gameMode === 'endless' ? buildEndlessLevelConfig(endlessStage) : getLevelConfig(selectedLevel);
 
   // Game state
   const [gameState, setGameState] = useState<GameState>({
@@ -63,8 +65,8 @@ export const useGameLogic = (
   const [isInCooldown, setIsInCooldown] = useState(false);
 
   // Pre-round state
-  const [isPreRound, setIsPreRound] = useState(gameMode === 'arcade');
-  const [preRoundText, setPreRoundText] = useState(`ROUND 1`);
+  const [isPreRound, setIsPreRound] = useState(true);
+  const [preRoundText, setPreRoundText] = useState(gameMode === 'endless' ? 'ENDLESS MODE' : `ROUND 1`);
   
   // Cooldown state
   const [isCooldown, setIsCooldown] = useState(false);
@@ -405,18 +407,21 @@ export const useGameLogic = (
 
   const endCooldown = () => {
     setIsCooldown(false);
-    setPreRoundText(`ROUND ${gameState.currentRound}`);
+    setPreRoundText(gameMode === 'endless' ? 'ENDLESS MODE' : `ROUND ${gameState.currentRound}`);
     setIsPreRound(true);
   };
 
   const completeLevel = () => {
-    // Enter post-level state instead of immediately advancing
+    if (gameMode === 'endless') {
+      // Endless: advance stage, tighten overall difficulty, keep playing
+      setEndlessStage(prev => prev + 1);
+      // Brief cooldown between stages
+      startCooldown();
+      return;
+    }
+    // Arcade: Enter post-level
     setIsPostLevel(true);
-    setGameState(prev => ({
-      ...prev,
-      isPaused: true, // Pause the game during post-level
-    }));
-    
+    setGameState(prev => ({ ...prev, isPaused: true }));
     triggerHaptic('heavy');
   };
 
@@ -852,6 +857,7 @@ export const useGameLogic = (
   };
 
   return {
+    endlessStage,
     // State
     gameState,
     setGameState,

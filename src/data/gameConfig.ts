@@ -702,3 +702,77 @@ export const getDifficultyScalar = (levelConfig: LevelConfig): number => {
       return 1.0;
   }
 };
+
+// ============================================================================
+// ENDLESS MODE CONFIG
+// ============================================================================
+
+export const buildEndlessLevelConfig = (stage: number): LevelConfig {
+  const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
+  const scale = clamp(Math.pow(0.96, Math.max(0, stage - 1)), 0.5, 1); // shrink windows/intervals over stages
+
+  // Base prompt timings similar to level 1 but will shrink by stage
+  const swipeTime = { min: Math.round(3500 * scale), max: Math.round(4000 * scale) };
+  const swipeGrades = { perfect: Math.round(1200 * scale), good: Math.round(2000 * scale) };
+  const swipeSpawn = { min: Math.round(2200 * scale), max: Math.round(2600 * scale) };
+
+  const tapTime = { min: Math.round(3500 * scale), max: Math.round(4000 * scale) };
+  const tapGrades = { perfect: Math.round(3500 * scale), good: Math.round(4000 * scale) };
+  const tapSpawn = { min: Math.round(2200 * scale), max: Math.round(2600 * scale) };
+
+  const timingTime = { min: Math.round(3500 * scale), max: Math.round(4000 * scale) };
+  const timingGrades = { perfect: Math.round(1000 * scale), good: Math.round(1200 * scale) };
+  const timingSpawn = { min: Math.round(2200 * scale), max: Math.round(2600 * scale) };
+
+  // Unlock logic by stage
+  const timingEnabled = stage >= 4;
+  const feintsEnabled = stage >= 2;
+
+  // Feint intensity scales with stage
+  const feintProbability = clamp(0.1 + (stage - 2) * 0.1, 0, 0.8);
+  const feintMax = clamp(1 + Math.floor((stage - 2) / 2), 0, 3);
+  const tapsMin = clamp(1 + Math.floor(stage / 3), 1, 3);
+  const tapsMax = clamp(2 + Math.floor(stage / 2), 1, 5);
+  const feintsMin = feintsEnabled ? clamp(Math.floor((stage - 2) / 3), 0, 3) : 0;
+  const feintsMax = feintsEnabled ? feintMax : 0;
+
+  // Timing prompt intensity
+  const timingProbability = timingEnabled ? clamp(0.2 + (stage - 4) * 0.1, 0.2, 0.9) : 0;
+  const timingMaxPrompts = timingEnabled ? clamp(1 + Math.floor(stage / 3), 1, 4) : 0;
+  const timingStagger = clamp(1800 - (stage - 1) * 100, 400, 1800);
+
+  return {
+    id: `endless_stage_${stage}`,
+    name: `Endless Stage ${stage}`,
+    hp: 1, // not used in endless
+    damage: {
+      perfect: 0,
+      good: 0,
+      success: 0,
+      superCombo: 0,
+    },
+    promptConfig: {
+      swipe: { timeLimit: swipeTime, gradeThresholds: swipeGrades, spawnDelay: swipeSpawn },
+      tap: { timeLimit: tapTime, gradeThresholds: tapGrades, spawnDelay: tapSpawn },
+      timing: { timeLimit: timingTime, gradeThresholds: timingGrades, spawnDelay: timingSpawn },
+    },
+    feints: {
+      enabled: feintsEnabled,
+      probability: feintProbability,
+      maxFeints: feintMax,
+      tapPromptConfig: feintsEnabled
+        ? { minTaps: tapsMin, maxTaps: tapsMax, minFeints: feintsMin, maxFeints: feintsMax }
+        : { minTaps: 1, maxTaps: 3, minFeints: 0, maxFeints: 0 },
+    },
+    timingPrompts: {
+      enabled: timingEnabled,
+      probability: timingProbability,
+      maxPrompts: timingMaxPrompts,
+      staggerDelay: timingStagger,
+    },
+    difficulty: 'easy',
+    description: 'Endless mode dynamic configuration',
+    rounds: 1,
+    roundHPGoals: [0],
+  };
+}
