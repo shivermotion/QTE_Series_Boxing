@@ -36,6 +36,11 @@ export const generatePrompt = (levelConfig: LevelConfig, currentRound: number = 
 
   if (type === 'tap') {
     const duration = getRandomPromptDuration(levelConfig, 'tap', currentRound);
+    console.log('🎯 Prompt generated (tap placeholder)', {
+      level: levelConfig.name,
+      round: currentRound,
+      duration,
+    });
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'tap',
@@ -46,6 +51,11 @@ export const generatePrompt = (levelConfig: LevelConfig, currentRound: number = 
     };
   } else if (type === 'timing') {
     const duration = getRandomPromptDuration(levelConfig, 'timing', currentRound);
+    console.log('🎯 Prompt generated (timing placeholder)', {
+      level: levelConfig.name,
+      round: currentRound,
+      duration,
+    });
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'timing',
@@ -58,6 +68,11 @@ export const generatePrompt = (levelConfig: LevelConfig, currentRound: number = 
     const directions: ('left' | 'right' | 'up' | 'down')[] = ['left', 'right', 'up', 'down'];
     const direction = directions[Math.floor(Math.random() * directions.length)];
     const duration = getRandomPromptDuration(levelConfig, 'swipe', currentRound);
+    console.log('🎯 Prompt generated (swipe)', {
+      level: levelConfig.name,
+      round: currentRound,
+      duration,
+    });
 
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -219,6 +234,7 @@ export const generateTapPrompts = (levelConfig: LevelConfig, currentRound: numbe
 const generateTapPromptsWithCounts = (levelConfig: LevelConfig, currentRound: number, numTaps: number, numFeints: number): TapPrompt[] => {
   const totalPrompts = numTaps + numFeints;
   const prompts: TapPrompt[] = [];
+  const durations: number[] = [];
   const usedPositions = new Set<number>();
 
   // Create array of prompt types (taps and feints)
@@ -249,6 +265,7 @@ const generateTapPromptsWithCounts = (levelConfig: LevelConfig, currentRound: nu
 
     const isFeint = promptTypes[i];
     const duration = getRandomPromptDuration(levelConfig, 'tap', currentRound);
+    durations.push(duration);
 
     console.log(`🎯 Prompt ${i}: Position ${position}, Feint: ${isFeint}`);
 
@@ -273,6 +290,10 @@ const generateTapPromptsWithCounts = (levelConfig: LevelConfig, currentRound: nu
   }
   
   console.log('🎯 Final Prompts (validated):', prompts.map(p => ({ pos: p.gridPosition, feint: p.isFeint })));
+  if (durations.length > 0) {
+    const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+    console.log('🎯 Tap prompt durations (ms):', durations, 'avg=', Math.round(avg));
+  }
   return prompts;
 };
 

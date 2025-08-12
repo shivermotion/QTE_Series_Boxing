@@ -90,7 +90,7 @@ export interface TouchState {
   holdStartTime: number;
 }
 
-export type HitQuality = 'perfect' | 'good' | 'success' | 'miss';
+export type HitQuality = 'success' | 'miss';
 export type SwipeDirection = 'left' | 'right' | 'up' | 'down';
 export type InputType = 'tap' | 'swipe' | 'hold-and-flick';
 export type HapticType = 'light' | 'medium' | 'heavy' | 'success' | 'error' | 'warning'; 

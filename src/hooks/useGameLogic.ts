@@ -799,13 +799,17 @@ export const useGameLogic = (
         (now - lastPromptTime > promptInterval || lastPromptTime === 0)
       ) {
         spawnPrompt();
+        const newInterval = (gameMode === 'endless') ? Math.max(400, promptInterval * 0.98) : getRandomPromptInterval(levelConfig, gameState.currentRound);
+        console.log('🎯 Spawn tick', {
+          mode: gameMode,
+          stage: endlessStage,
+          prevInterval: promptInterval,
+          newInterval,
+          deltaSinceLast: lastPromptTime === 0 ? null : now - lastPromptTime,
+        });
         setLastPromptTime(now);
         // In endless mode, progressively tighten prompt interval to increase difficulty
-        if (gameMode === 'endless') {
-          setPromptInterval(prev => Math.max(400, prev * 0.98));
-        } else {
-          setPromptInterval(getRandomPromptInterval(levelConfig, gameState.currentRound));
-        }
+        setPromptInterval(newInterval);
       }
     }, 100);
     return () => clearInterval(timer);
@@ -824,14 +828,11 @@ export const useGameLogic = (
   ]);
 
   // Outcome calculator
-  const computeOutcome = (quality: HitQuality, multiplier: number = 1) => {
-    const points = quality === 'perfect' ? 100 * multiplier : quality === 'good' ? 50 * multiplier : 25 * multiplier;
-    const damage = (quality === 'perfect'
-      ? levelConfig.damage.perfect
-      : quality === 'good'
-      ? levelConfig.damage.good
-      : levelConfig.damage.success) * multiplier;
-    const superGain = (quality === 'perfect' ? 15 : 10) * multiplier;
+  // Collapse scoring to success/miss only. Any non-miss is treated as success.
+  const computeOutcome = (_quality: HitQuality, multiplier: number = 1) => {
+    const points = 25 * multiplier;
+    const damage = levelConfig.damage.success * multiplier;
+    const superGain = 10 * multiplier;
     return { points, damage, superGain };
   };
 
