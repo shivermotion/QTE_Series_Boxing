@@ -723,11 +723,11 @@ export const buildEndlessLevelConfig = (stage: number): LevelConfig => {
   const tapGrades = { perfect: Math.round(3000 * scaleGeneral), good: Math.round(3400 * scaleGeneral) };
   const tapSpawn = { min: Math.round(2000 * scaleGeneral), max: Math.round(2400 * scaleGeneral) };
 
-  // Timing prompts – tighter windows and faster shrink
+  // Timing prompts – success window starts above average, then shrinks with stage
   const timingTime = { min: Math.round(1800 * scaleTiming), max: Math.round(2200 * scaleTiming) };
-  // Keep windows relatively tight and shrink per stage
-  const timingPerfectMs = clamp(Math.round(180 * scaleTiming), 80, 200);
-  const timingGoodMs = clamp(Math.round(320 * scaleTiming), 140, 360);
+  // Start with a success window above average reaction (~250ms), then shrink per stage
+  const timingPerfectMs = clamp(Math.round(280 * scaleTiming), 100, 320);
+  const timingGoodMs = clamp(Math.round(420 * scaleTiming), 160, 480);
   const timingGrades = { perfect: timingPerfectMs, good: timingGoodMs };
   const timingSpawn = { min: Math.round(2000 * scaleGeneral), max: Math.round(2400 * scaleGeneral) };
 
