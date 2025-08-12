@@ -46,12 +46,19 @@ import shockedImg from '../../assets/avatar/shocked.jpg';
 import revvedImg from '../../assets/avatar/revved.jpg';
 import eyesClosedImg from '../../assets/avatar/eyes_closed.jpg';
 import elatedImg from '../../assets/avatar/elated.jpg';
-import BoxingPracticeGLB from '../../assets/models/hero_animations/Animation_Boxing_Practice_withSkin.glb';
+import OpponentIdleGLB from '../../assets/models/hero_animations/Animation_Idle_10_withSkin.glb';
+import PlayerIdleGLB from '../../assets/models/hero_animations_2/Animation_Idle_10_withSkin.glb';
 import PunchComboGLB from '../../assets/models/hero_animations/Animation_Punch_Combo_withSkin.glb';
 import PunchCombo1GLB from '../../assets/models/hero_animations/Animation_Punch_Combo_1_withSkin.glb';
 import StraightPunchGLB from '../../assets/models/hero_animations/Animation_Boxing_Guard_Prep_Straight_Punch_withSkin.glb';
-import HitReactionGLB from '../../assets/models/hero_animations/Animation_Hit_Reaction_1_withSkin.glb';
-import FacePunchReactionGLB from '../../assets/models/hero_animations/Animation_Face_Punch_Reaction_withSkin.glb';
+import OpponentDeadGLB from '../../assets/models/hero_animations/Animation_Dead_withSkin.glb';
+import OpponentKnockDownGLB from '../../assets/models/hero_animations/Animation_Knock_Down_withSkin.glb';
+import OpponentFallDeadGLB from '../../assets/models/hero_animations/Animation_Fall_Dead_from_Abdominal_Injury_withSkin.glb';
+import PlayerFacePunchReactionGLB from '../../assets/models/hero_animations_2/Animation_Face_Punch_Reaction_withSkin.glb';
+import PlayerFacePunchReaction2GLB from '../../assets/models/hero_animations_2/Animation_Face_Punch_Reaction_2_withSkin.glb';
+import PlayerDodge1GLB from '../../assets/models/hero_animations_2/Animation_Stand_Dodge_1_withSkin.glb';
+import PlayerDodge2GLB from '../../assets/models/hero_animations_2/Animation_Stand_Dodge_2_withSkin.glb';
+import PlayerDodge3GLB from '../../assets/models/hero_animations_2/Animation_Stand_Dodge_3_withSkin.glb';
 
 // ============================================================================
 // MAIN COMPONENT
@@ -90,6 +97,9 @@ const GameScreen: React.FC<GameScreenProps> = ({
       // Success → play a punch animation briefly on opponent
       const hitModel = HIT_MODELS[Math.floor(Math.random() * HIT_MODELS.length)];
       swapModelTemporarily('opponent', hitModel, 700);
+      // And have the hero dodge briefly
+      const dodgeModel = DODGE_MODELS[Math.floor(Math.random() * DODGE_MODELS.length)];
+      swapModelTemporarily('player', dodgeModel, 700);
     },
     () => {
       screenShake();
@@ -136,25 +146,39 @@ const GameScreen: React.FC<GameScreenProps> = ({
   // 3D MODEL ANIMATION STATE (Filament)
   // ============================================================================
 
-  // We'll swap entire GLB sources to represent different actions, since hero_animations are clip-per-file
-  const [opponentModel, setOpponentModel] = useState<any>(BoxingPracticeGLB);
-  const [playerModel, setPlayerModel] = useState<any>(BoxingPracticeGLB);
+  // We'll swap entire GLB sources to represent different actions, since animations are clip-per-file
+  // Opponent uses `hero_animations`; Player (hero) uses `hero_animations_2`
+  const [opponentModel, setOpponentModel] = useState<any>(OpponentIdleGLB);
+  const [playerModel, setPlayerModel] = useState<any>(PlayerIdleGLB);
   const [opponentModelKey, setOpponentModelKey] = useState<number>(0);
   const [playerModelKey, setPlayerModelKey] = useState<number>(0);
   const [opponentSceneKey, setOpponentSceneKey] = useState<number>(0);
   const [playerSceneKey, setPlayerSceneKey] = useState<number>(0);
-  const DEFAULT_MODEL = BoxingPracticeGLB;
+  const DEFAULT_OPPONENT_MODEL = OpponentIdleGLB;
+  const DEFAULT_PLAYER_MODEL = PlayerIdleGLB;
+  // Success → opponent plays a hit/punch animation
   const HIT_MODELS: any[] = [PunchComboGLB, PunchCombo1GLB, StraightPunchGLB];
-  const MISS_MODELS: any[] = [HitReactionGLB, FacePunchReactionGLB];
+  // Miss → player plays a face-punch reaction animation (from hero_animations_2)
+  const MISS_MODELS: any[] = [PlayerFacePunchReactionGLB, PlayerFacePunchReaction2GLB];
+  // Success → player also dodges (from hero_animations_2)
+  const DODGE_MODELS: any[] = [PlayerDodge1GLB, PlayerDodge2GLB, PlayerDodge3GLB];
+  // Super combo finishers → opponent falls/knockdown/dead (from hero_animations)
+  const SUPER_FINISH_MODELS: any[] = [OpponentKnockDownGLB, OpponentDeadGLB, OpponentFallDeadGLB];
 
   // Debug helpers
   const getModelName = (m: any): string => {
-    if (m === BoxingPracticeGLB) return 'Boxing_Practice';
+    if (m === OpponentIdleGLB || m === PlayerIdleGLB) return 'Idle_10';
     if (m === PunchComboGLB) return 'Punch_Combo';
     if (m === PunchCombo1GLB) return 'Punch_Combo_1';
     if (m === StraightPunchGLB) return 'Straight_Punch';
-    if (m === HitReactionGLB) return 'Hit_Reaction_1';
-    if (m === FacePunchReactionGLB) return 'Face_Punch_Reaction';
+    if (m === OpponentKnockDownGLB) return 'Knock_Down';
+    if (m === OpponentDeadGLB) return 'Dead';
+    if (m === OpponentFallDeadGLB) return 'Fall_Dead';
+    if (m === PlayerFacePunchReactionGLB) return 'Face_Punch_Reaction';
+    if (m === PlayerFacePunchReaction2GLB) return 'Face_Punch_Reaction_2';
+    if (m === PlayerDodge1GLB) return 'Stand_Dodge_1';
+    if (m === PlayerDodge2GLB) return 'Stand_Dodge_2';
+    if (m === PlayerDodge3GLB) return 'Stand_Dodge_3';
     return 'Unknown_Model';
   };
 
@@ -171,8 +195,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
       setPlayerModelKey(prev => prev + 1); // force remount to clear previous instance
       setPlayerSceneKey(prev => prev + 1); // force scene remount to clear native graph
       setTimeout(() => {
-        console.log('[GameScreen][player] revert -> Boxing_Practice');
-        setPlayerModel(DEFAULT_MODEL);
+        console.log('[GameScreen][player] revert -> Idle');
+        setPlayerModel(DEFAULT_PLAYER_MODEL);
         setPlayerModelKey(prev => prev + 1);
         setPlayerSceneKey(prev => prev + 1);
       }, durationMs);
@@ -185,8 +209,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
       setOpponentModelKey(prev => prev + 1); // force remount to clear previous instance
       setOpponentSceneKey(prev => prev + 1); // force scene remount to clear native graph
       setTimeout(() => {
-        console.log('[GameScreen][opponent] revert -> Boxing_Practice');
-        setOpponentModel(DEFAULT_MODEL);
+        console.log('[GameScreen][opponent] revert -> Idle');
+        setOpponentModel(DEFAULT_OPPONENT_MODEL);
         setOpponentModelKey(prev => prev + 1);
         setOpponentSceneKey(prev => prev + 1);
       }, durationMs);
@@ -365,6 +389,15 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
   const handleSuperModeVideoEnd = () => {
     gameLogic.endSuperMode();
+  };
+
+  // Trigger opponent finisher animation when super combo completes
+  const handleSuperComboCompleteWithFinisher = (superMove: any) => {
+    gameLogic.handleSuperComboComplete(superMove);
+    const finisherModel =
+      SUPER_FINISH_MODELS[Math.floor(Math.random() * SUPER_FINISH_MODELS.length)];
+    // Play a longer finisher animation before reverting to idle
+    swapModelTemporarily('opponent', finisherModel, 1600);
   };
 
   // ============================================================================
@@ -594,7 +627,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         </TouchableOpacity>
 
         {/* Pause Overlay */}
-        {/* {gameLogic.gameState.isPaused && !gameLogic.isPreRound && !gameLogic.isCooldown && (
+        {gameLogic.gameState.isPaused && !gameLogic.isPreRound && !gameLogic.isCooldown && (
           <View style={styles.pauseOverlay}>
             <Text style={styles.pauseText}>PAUSED</Text>
             <TouchableOpacity
@@ -610,7 +643,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
               <Text style={styles.quitButtonText}>QUIT TO MENU</Text>
             </TouchableOpacity>
           </View>
-        )} */}
+        )}
 
         {/* Miss Animation - Big X */}
         {gameLogic.showMissAnimation && (
@@ -649,7 +682,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         {/* Super Combo Input */}
         <SuperComboInput
           isActive={gameLogic.gameState.isSuperModeActive}
-          onComboComplete={gameLogic.handleSuperComboComplete}
+          onComboComplete={handleSuperComboCompleteWithFinisher}
           onComboProgress={gameLogic.handleSuperComboProgress}
         />
 
