@@ -707,22 +707,29 @@ export const getDifficultyScalar = (levelConfig: LevelConfig): number => {
 // ENDLESS MODE CONFIG
 // ============================================================================
 
-export const buildEndlessLevelConfig = (stage: number): LevelConfig {
+export const buildEndlessLevelConfig = (stage: number): LevelConfig => {
   const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val));
-  const scale = clamp(Math.pow(0.96, Math.max(0, stage - 1)), 0.5, 1); // shrink windows/intervals over stages
+  // General scaling for spawn intervals and swipe/tap durations
+  const scaleGeneral = clamp(Math.pow(0.96, Math.max(0, stage - 1)), 0.55, 1);
+  // More aggressive scaling for timing duration to speed up circle shrink
+  const scaleTiming = clamp(Math.pow(0.92, Math.max(0, stage - 1)), 0.45, 1);
 
-  // Base prompt timings similar to level 1 but will shrink by stage
-  const swipeTime = { min: Math.round(3500 * scale), max: Math.round(4000 * scale) };
-  const swipeGrades = { perfect: Math.round(1200 * scale), good: Math.round(2000 * scale) };
-  const swipeSpawn = { min: Math.round(2200 * scale), max: Math.round(2600 * scale) };
+  // Swipe/tap timings – ease in from level_1-like toward faster
+  const swipeTime = { min: Math.round(3200 * scaleGeneral), max: Math.round(3600 * scaleGeneral) };
+  const swipeGrades = { perfect: Math.round(1000 * scaleGeneral), good: Math.round(1600 * scaleGeneral) };
+  const swipeSpawn = { min: Math.round(2000 * scaleGeneral), max: Math.round(2400 * scaleGeneral) };
 
-  const tapTime = { min: Math.round(3500 * scale), max: Math.round(4000 * scale) };
-  const tapGrades = { perfect: Math.round(3500 * scale), good: Math.round(4000 * scale) };
-  const tapSpawn = { min: Math.round(2200 * scale), max: Math.round(2600 * scale) };
+  const tapTime = { min: Math.round(3200 * scaleGeneral), max: Math.round(3600 * scaleGeneral) };
+  const tapGrades = { perfect: Math.round(3000 * scaleGeneral), good: Math.round(3400 * scaleGeneral) };
+  const tapSpawn = { min: Math.round(2000 * scaleGeneral), max: Math.round(2400 * scaleGeneral) };
 
-  const timingTime = { min: Math.round(3500 * scale), max: Math.round(4000 * scale) };
-  const timingGrades = { perfect: Math.round(1000 * scale), good: Math.round(1200 * scale) };
-  const timingSpawn = { min: Math.round(2200 * scale), max: Math.round(2600 * scale) };
+  // Timing prompts – tighter windows and faster shrink
+  const timingTime = { min: Math.round(1800 * scaleTiming), max: Math.round(2200 * scaleTiming) };
+  // Keep windows relatively tight and shrink per stage
+  const timingPerfectMs = clamp(Math.round(180 * scaleTiming), 80, 200);
+  const timingGoodMs = clamp(Math.round(320 * scaleTiming), 140, 360);
+  const timingGrades = { perfect: timingPerfectMs, good: timingGoodMs };
+  const timingSpawn = { min: Math.round(2000 * scaleGeneral), max: Math.round(2400 * scaleGeneral) };
 
   // Unlock logic by stage
   const timingEnabled = stage >= 4;

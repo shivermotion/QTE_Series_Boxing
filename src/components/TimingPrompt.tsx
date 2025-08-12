@@ -25,7 +25,6 @@ interface TimingPromptProps {
 const CIRCLE_SIZE = 60;
 const RING_THICKNESS = 6;
 const MAX_RING_DISTANCE = 80; // Maximum distance ring starts from circle
-const PERFECT_WINDOW_DURATION = 300; // 300ms perfect timing window for timing prompts
 
 // Grid layout for 3x3 grid within the 400x400 input area
 const GRID_POSITIONS = [

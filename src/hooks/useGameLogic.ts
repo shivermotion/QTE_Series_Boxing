@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { GameState, Prompt, TapPrompt, TimingPrompt, HitQuality } from '../types/game';
 import { 
   getLevelConfig, 
@@ -26,7 +26,10 @@ export const useGameLogic = (
   gameMode: 'arcade' | 'endless' = 'arcade'
 ) => {
   const [endlessStage, setEndlessStage] = useState<number>(1);
-  const levelConfig = gameMode === 'endless' ? buildEndlessLevelConfig(endlessStage) : getLevelConfig(selectedLevel);
+  const levelConfig = useMemo(
+    () => (gameMode === 'endless' ? buildEndlessLevelConfig(endlessStage) : getLevelConfig(selectedLevel)),
+    [gameMode, endlessStage, selectedLevel]
+  );
 
   // Game state
   const [gameState, setGameState] = useState<GameState>({
@@ -54,6 +57,19 @@ export const useGameLogic = (
   const [superComboIndex, setSuperComboIndex] = useState(0);
   const [lastPromptTime, setLastPromptTime] = useState(0);
   const [promptInterval, setPromptInterval] = useState(getRandomPromptInterval(levelConfig, 1));
+  const [endlessSuccesses, setEndlessSuccesses] = useState<number>(0);
+
+  const incrementEndlessProgress = () => {
+    if (gameMode !== 'endless') return;
+    setEndlessSuccesses(prev => {
+      const next = prev + 1;
+      if (next >= 10) {
+        setEndlessStage(s => s + 1);
+        return 0;
+      }
+      return next;
+    });
+  };
 
   // UI state
   const [isGameOver, setIsGameOver] = useState(false);
@@ -181,6 +197,7 @@ export const useGameLogic = (
 
         triggerHaptic('success');
         if (onSuccess) onSuccess();
+        incrementEndlessProgress();
       }
     } else {
       handleMiss();
@@ -261,6 +278,7 @@ export const useGameLogic = (
 
       triggerHaptic('success');
       if (onSuccess) onSuccess();
+      incrementEndlessProgress();
     } else {
       handleMiss();
     }

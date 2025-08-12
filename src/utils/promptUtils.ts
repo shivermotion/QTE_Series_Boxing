@@ -102,7 +102,7 @@ export const generateTimingPrompts = (levelConfig: LevelConfig, currentRound: nu
 
     usedPositions.add(position);
 
-    // Use hero's timing configuration
+    // Use timing configuration; ensure duration reflects tighter endless scaling
     const duration = getRandomPromptDuration(levelConfig, 'timing', currentRound);
     const perfectWindowDuration = promptConfig.gradeThresholds.perfect;
     const goodWindowDuration = promptConfig.gradeThresholds.good;
