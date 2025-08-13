@@ -119,10 +119,11 @@ export const useGameLogic = (
     if (gameState.isSuperComboActive || gameState.isSuperModeActive) return;
 
     // Check if any prompts are currently active
+    // For timing prompts, consider any pending (not completed) prompts as active
     const hasActivePrompts = 
       currentPrompt?.isActive || 
       activeTapPrompts.some(p => p.isActive && !p.isCompleted) ||
-      activeTimingPrompts.some(p => p.isActive && !p.isCompleted);
+      activeTimingPrompts.some(p => !p.isCompleted);
 
     if (hasActivePrompts) return;
 
@@ -174,9 +175,11 @@ export const useGameLogic = (
       if (currentPrompt.type === 'swipe' || currentPrompt.type === 'timing' || currentPrompt.type === 'tap') {
         // Get prompt configuration for the specific type
         const promptConfig = getPromptConfig(levelConfig, currentPrompt.type, gameState.currentRound);
+        // Add a small grace window for swipes to avoid race conditions around expiry
+        const graceMs = currentPrompt.type === 'swipe' ? 60 : 0;
         
         // Collapse into success/miss only: if within max window (good), count as success
-        if (timeDiff <= promptConfig.gradeThresholds.good) {
+        if (timeDiff <= promptConfig.gradeThresholds.good + graceMs) {
           hitQuality = 'success';
         } else {
           hitQuality = 'miss';
@@ -812,7 +815,7 @@ export const useGameLogic = (
       const hasActivePrompts =
         currentPrompt?.isActive ||
         activeTapPrompts.some(p => p.isActive && !p.isCompleted) ||
-        activeTimingPrompts.some(p => p.isActive && !p.isCompleted);
+        activeTimingPrompts.some(p => !p.isCompleted);
       if (
         !hasActivePrompts &&
         !gameState.isSuperComboActive &&

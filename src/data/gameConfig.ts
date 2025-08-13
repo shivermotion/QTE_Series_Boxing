@@ -716,10 +716,10 @@ export const buildEndlessLevelConfig = (stage: number): LevelConfig => {
 
   // Swipe timings – aggressively tighten toward sub-second reaction windows over stages
   const scaleSwipe = clamp(Math.pow(0.90, Math.max(0, stage - 1)), 0.20, 1); // floor ~20%
-  // Base window ~1200–1500ms, trending toward ~240–300ms at floor
+  // Base window ~1200–1500ms, trending toward ~240–300ms at floor (overall time to respond)
   const swipeTime = { min: Math.round(1200 * scaleSwipe), max: Math.round(1500 * scaleSwipe) };
-  // Success window (used by logic) – shrink toward ~250ms floor
-  const swipeGoodMs = clamp(Math.round(600 * scaleSwipe), 250, 1200);
+  // Success window (absolute ms from start). Start lenient (~1200ms) and shrink toward ~250ms floor
+  const swipeGoodMs = clamp(Math.round(1200 * scaleSwipe), 250, 1500);
   const swipeGrades = { perfect: swipeGoodMs, good: swipeGoodMs };
   const swipeSpawn = { min: Math.round(1800 * scaleGeneral), max: Math.round(2200 * scaleGeneral) };
 
