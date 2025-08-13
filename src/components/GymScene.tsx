@@ -14,6 +14,7 @@ import { useSharedValue } from 'react-native-worklets-core';
 import { runOnJS } from 'react-native-reanimated';
 import PunchingBagModel from '../../assets/models/punching_bag.glb';
 import LockerModel from '../../assets/models/locker.glb';
+import ClipboardModel from '../../assets/models/clipboard.glb';
 // import { useGame } from '../contexts/GameContext';
 
 const SingleModelScene: React.FC<{
@@ -198,6 +199,14 @@ const GymScene: React.FC<GymSceneProps> = ({
         containerStyle={styles.topLeft}
         sceneLabel="Locker"
       />
+      <SingleModelScene
+        source={ClipboardModel}
+        translate={[-3.5, 0, 2]}
+        rotate={[0, -Math.PI / 3, 0]}
+        scale={[3, 3, 3]}
+        containerStyle={styles.bottomRight}
+        sceneLabel="Clipboard"
+      />
       {/* Hero image in the center */}
       <Animated.View style={[styles.heroContainer, heroJitterStyle]}>
         <Image
@@ -288,6 +297,14 @@ const styles = StyleSheet.create({
     top: '50%',
     transform: [{ translateY: -160 }], // half of height to center vertically
     zIndex: 5,
+  },
+  bottomRight: {
+    position: 'absolute',
+    right: 40,
+    bottom: 40,
+    width: 220,
+    height: 260,
+    zIndex: 4,
   },
   heroContainer: {
     position: 'absolute',
