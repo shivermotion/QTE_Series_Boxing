@@ -185,7 +185,7 @@ export const useGameLogic = (
 
       if (hitQuality !== 'miss') {
         const { points, damage: inputDamage, superGain } = computeOutcome('success');
-        
+        const prevScoreSnapshot = gameState.score;
         setGameState(prev => ({
           ...prev,
           score: prev.score + points,
@@ -193,6 +193,12 @@ export const useGameLogic = (
           superMeter: Math.min(100, prev.superMeter + superGain),
           avatarState: 'success',
         }));
+        console.log('🎯 Score update', {
+          type: currentPrompt.type,
+          points,
+          prevScore: prevScoreSnapshot,
+          nextScore: prevScoreSnapshot + points,
+        });
 
         triggerHaptic('success');
         if (onSuccess) onSuccess();
@@ -266,6 +272,7 @@ export const useGameLogic = (
 
     if (successfulTaps === totalRealPrompts) {
       const { points, damage, superGain } = computeOutcome('success', totalRealPrompts);
+      const prevScoreSnapshot = gameState.score;
       setGameState(prev => ({
         ...prev,
         score: prev.score + points,
@@ -273,6 +280,12 @@ export const useGameLogic = (
         superMeter: Math.min(100, prev.superMeter + superGain),
         avatarState: 'success',
       }));
+      console.log('🎯 Score update (tap)', {
+        totalRealPrompts,
+        points,
+        prevScore: prevScoreSnapshot,
+        nextScore: prevScoreSnapshot + points,
+      });
 
       triggerHaptic('success');
       if (onSuccess) onSuccess();
@@ -328,6 +341,7 @@ export const useGameLogic = (
 
     if (completedPromptsCount === totalPrompts) {
       const { points, damage, superGain } = computeOutcome('success', totalPrompts);
+      const prevScoreSnapshot = gameState.score;
       setGameState(prev => ({
         ...prev,
         score: prev.score + points,
@@ -335,6 +349,12 @@ export const useGameLogic = (
         superMeter: Math.min(100, prev.superMeter + superGain),
         avatarState: 'success',
       }));
+      console.log('🎯 Score update (timing)', {
+        totalPrompts,
+        points,
+        prevScore: prevScoreSnapshot,
+        nextScore: prevScoreSnapshot + points,
+      });
 
       triggerHaptic('success');
       if (onSuccess) onSuccess();
