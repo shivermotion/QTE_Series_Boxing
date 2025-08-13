@@ -724,11 +724,14 @@ export const buildEndlessLevelConfig = (stage: number): LevelConfig => {
   const swipeSpawn = { min: Math.round(1800 * scaleGeneral), max: Math.round(2200 * scaleGeneral) };
 
   // Tap timings – more lenient than swipe because sets may include multiple taps
-  const scaleTap = clamp(Math.pow(0.95, Math.max(0, stage - 1)), 0.35, 1); // floor ~35%
-  // Base window ~2000–2400ms, trending toward ~700–840ms at floor
-  const tapTime = { min: Math.round(2000 * scaleTap), max: Math.round(2400 * scaleTap) };
-  // Success window – shrink, but keep higher floor (~450ms)
-  const tapGoodMs = clamp(Math.round(900 * scaleTap), 450, 1400);
+  const scaleTap = clamp(Math.pow(0.95, Math.max(0, stage - 1)), 0.5, 1); // gentler tightening, floor ~50%
+  // Keep overall tap time generous; never below ~1600–2000ms
+  const tapTime = {
+    min: Math.max(1600, Math.round(2200 * scaleTap)),
+    max: Math.max(2000, Math.round(2600 * scaleTap)),
+  };
+  // Success window – keep a high floor (~1000ms). Start around ~1400ms and tighten slowly.
+  const tapGoodMs = clamp(Math.round(1400 * scaleTap), 1000, 1600);
   const tapGrades = { perfect: tapGoodMs, good: tapGoodMs };
   const tapSpawn = { min: Math.round(1800 * scaleGeneral), max: Math.round(2200 * scaleGeneral) };
 
