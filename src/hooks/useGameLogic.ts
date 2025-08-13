@@ -179,7 +179,7 @@ export const useGameLogic = (
         const graceMs = currentPrompt.type === 'swipe' ? 60 : 0;
         
         // Collapse into success/miss only: if within max window (good), count as success
-        if (timeDiff <= promptConfig.gradeThresholds.good + graceMs) {
+        if (timeDiff <= promptConfig.gradeThresholds.success + graceMs) {
           hitQuality = 'success';
         } else {
           hitQuality = 'miss';

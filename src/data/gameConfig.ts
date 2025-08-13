@@ -8,8 +8,7 @@ export interface PromptConfig {
     max: number; // Maximum time limit in milliseconds
   };
   gradeThresholds: {
-    perfect: number; // Perfect grade threshold in milliseconds
-    good: number; // Good grade threshold in milliseconds
+    success: number; // Single success window in milliseconds
   };
   spawnDelay: {
     min: number; // Minimum time between prompts
@@ -23,8 +22,6 @@ export interface LevelConfig {
   name: string;
   hp: number;
   damage: {
-    perfect: number;
-    good: number;
     success: number; // Damage for successful inputs that aren't perfect or good
     superCombo: number;
   };
@@ -74,7 +71,7 @@ export interface LevelConfig {
         probability: number; 
         maxPrompts: number;
         duration?: { min: number; max: number };
-        gradeThresholds?: { perfect: number; good: number };
+        gradeThresholds?: { success: number };
         staggerDelay?: number;
       };
     };
@@ -91,25 +88,23 @@ export const levels: LevelConfig[] = [
     name: 'Street Brawler',
     hp: 2000,
     damage: {
-      perfect: 30,
-      good: 15,
       success: 10,
       superCombo: 90,
     },
     promptConfig: {
       swipe: {
         timeLimit: { min: 3500, max: 4000 },
-        gradeThresholds: { perfect: 1200, good: 2000 }, // Very generous
+        gradeThresholds: { success: 1300 }, // Harder but forgiving start
         spawnDelay: { min: 2200, max: 2600 }, // Slow
       },
       tap: {
         timeLimit: { min: 3500, max: 4000 },
-        gradeThresholds: { perfect: 3500, good: 4000 },
+        gradeThresholds: { success: 2200 },
         spawnDelay: { min: 2200, max: 2600 },
       },
       timing: {
-        timeLimit: { min: 3500, max: 4000 },
-        gradeThresholds: { perfect: 1000, good: 1200 },
+        timeLimit: { min: 2600, max: 3000 },
+        gradeThresholds: { success: 420 },
         spawnDelay: { min: 2200, max: 2600 },
       },
     },
@@ -134,6 +129,19 @@ export const levels: LevelConfig[] = [
     description: 'A local street fighter with basic skills. Learn the basics with swipe prompts only.',
     rounds: 2,
     roundHPGoals: [1200, 0],
+    roundScaling: {
+      2: {
+        promptIntervals: { min: 2025, max: 2390 },
+        timingPrompts: {
+          enabled: false,
+          probability: 0,
+          maxPrompts: 0,
+          duration: { min: 2445, max: 2820 },
+          gradeThresholds: { success: 391 },
+          staggerDelay: 2000,
+        },
+      },
+    },
   },
 
   // ============================================================================
@@ -144,25 +152,23 @@ export const levels: LevelConfig[] = [
     name: 'Gym Rat',
     hp: 2200,
     damage: {
-      perfect: 40,
-      good: 20,
       success: 15,
       superCombo: 120,
     },
     promptConfig: {
       swipe: {
         timeLimit: { min: 3000, max: 3500 },
-        gradeThresholds: { perfect: 800, good: 1500 },
+        gradeThresholds: { success: 1200 },
         spawnDelay: { min: 2000, max: 2400 },
       },
       tap: {
         timeLimit: { min: 3000, max: 3500 },
-        gradeThresholds: { perfect: 3000, good: 3500 },
+        gradeThresholds: { success: 2050 },
         spawnDelay: { min: 2000, max: 2400 },
       },
       timing: {
-        timeLimit: { min: 3000, max: 3500 },
-        gradeThresholds: { perfect: 800, good: 1000 },
+        timeLimit: { min: 2400, max: 3000 },
+        gradeThresholds: { success: 385 },
         spawnDelay: { min: 2000, max: 2400 },
       },
     },
@@ -187,6 +193,19 @@ export const levels: LevelConfig[] = [
     description: 'A fitness enthusiast who hits harder than expected. Learn tap prompts.',
     rounds: 2,
     roundHPGoals: [1320, 0],
+    roundScaling: {
+      2: {
+        promptIntervals: { min: 1840, max: 2210 },
+        timingPrompts: {
+          enabled: false,
+          probability: 0,
+          maxPrompts: 0,
+          duration: { min: 2255, max: 2820 },
+          gradeThresholds: { success: 358 },
+          staggerDelay: 1800,
+        },
+      },
+    },
   },
 
   // ============================================================================
@@ -197,25 +216,23 @@ export const levels: LevelConfig[] = [
     name: 'Amateur Boxer',
     hp: 2400,
     damage: {
-      perfect: 50,
-      good: 25,
       success: 20,
       superCombo: 150,
     },
     promptConfig: {
       swipe: {
         timeLimit: { min: 2800, max: 3200 },
-        gradeThresholds: { perfect: 700, good: 1200 },
+        gradeThresholds: { success: 1100 },
         spawnDelay: { min: 1800, max: 2200 },
       },
       tap: {
         timeLimit: { min: 2800, max: 3200 },
-        gradeThresholds: { perfect: 2800, good: 3200 },
+        gradeThresholds: { success: 1900 },
         spawnDelay: { min: 1800, max: 2200 },
       },
       timing: {
-        timeLimit: { min: 2500, max: 3000 },
-        gradeThresholds: { perfect: 600, good: 800 },
+        timeLimit: { min: 2200, max: 2800 },
+        gradeThresholds: { success: 360 },
         spawnDelay: { min: 1800, max: 2200 },
       },
     },
@@ -240,6 +257,19 @@ export const levels: LevelConfig[] = [
     description: 'A trained amateur with proper technique. Master timing prompts.',
     rounds: 2,
     roundHPGoals: [1440, 0],
+    roundScaling: {
+      2: {
+        promptIntervals: { min: 1655, max: 2025 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.3,
+          maxPrompts: 3,
+          duration: { min: 2070, max: 2630 },
+          gradeThresholds: { success: 335 },
+          staggerDelay: 1600,
+        },
+      },
+    },
   },
 
   // ============================================================================
@@ -250,25 +280,23 @@ export const levels: LevelConfig[] = [
     name: 'Club Champion',
     hp: 2600,
     damage: {
-      perfect: 60,
-      good: 30,
       success: 25,
       superCombo: 180,
     },
     promptConfig: {
       swipe: {
         timeLimit: { min: 2500, max: 3000 },
-        gradeThresholds: { perfect: 600, good: 1000 },
+        gradeThresholds: { success: 1000 },
         spawnDelay: { min: 1600, max: 2000 },
       },
       tap: {
         timeLimit: { min: 2500, max: 3000 },
-        gradeThresholds: { perfect: 2500, good: 3000 },
+        gradeThresholds: { success: 1800 },
         spawnDelay: { min: 1600, max: 2000 },
       },
       timing: {
-        timeLimit: { min: 2200, max: 2700 },
-        gradeThresholds: { perfect: 500, good: 700 },
+        timeLimit: { min: 2100, max: 2600 },
+        gradeThresholds: { success: 335 },
         spawnDelay: { min: 1600, max: 2000 },
       },
     },
@@ -293,6 +321,30 @@ export const levels: LevelConfig[] = [
     description: 'A local boxing club champion with experience. Beware of feints.',
     rounds: 3,
     roundHPGoals: [1560, 780, 0],
+    roundScaling: {
+      2: {
+        promptIntervals: { min: 1475, max: 1840 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.4,
+          maxPrompts: 3,
+          duration: { min: 1975, max: 2445 },
+          gradeThresholds: { success: 312 },
+          staggerDelay: 1400,
+        },
+      },
+      3: {
+        promptIntervals: { min: 1355, max: 1695 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.4,
+          maxPrompts: 3,
+          duration: { min: 1855, max: 2300 },
+          gradeThresholds: { success: 290 },
+          staggerDelay: 1400,
+        },
+      },
+    },
   },
 
   // ============================================================================
@@ -303,25 +355,23 @@ export const levels: LevelConfig[] = [
     name: 'Underground Fighter',
     hp: 2800,
     damage: {
-      perfect: 70,
-      good: 35,
       success: 30,
       superCombo: 210,
     },
     promptConfig: {
       swipe: {
         timeLimit: { min: 2200, max: 2700 },
-        gradeThresholds: { perfect: 500, good: 900 },
+        gradeThresholds: { success: 900 },
         spawnDelay: { min: 1400, max: 1800 },
       },
       tap: {
         timeLimit: { min: 2200, max: 2700 },
-        gradeThresholds: { perfect: 2200, good: 2700 },
+        gradeThresholds: { success: 1650 },
         spawnDelay: { min: 1400, max: 1800 },
       },
       timing: {
-        timeLimit: { min: 2000, max: 2500 },
-        gradeThresholds: { perfect: 400, good: 600 },
+        timeLimit: { min: 2000, max: 2400 },
+        gradeThresholds: { success: 310 },
         spawnDelay: { min: 1400, max: 1800 },
       },
     },
@@ -346,6 +396,30 @@ export const levels: LevelConfig[] = [
     description: 'A dangerous underground fighter with no rules.',
     rounds: 3,
     roundHPGoals: [1680, 840, 0],
+    roundScaling: {
+      2: {
+        promptIntervals: { min: 1290, max: 1660 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.5,
+          maxPrompts: 3,
+          duration: { min: 1880, max: 2255 },
+          gradeThresholds: { success: 288 },
+          staggerDelay: 1200,
+        },
+      },
+      3: {
+        promptIntervals: { min: 1180, max: 1525 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.5,
+          maxPrompts: 3,
+          duration: { min: 1770, max: 2120 },
+          gradeThresholds: { success: 268 },
+          staggerDelay: 1200,
+        },
+      },
+    },
   },
 
   // ============================================================================
@@ -356,25 +430,23 @@ export const levels: LevelConfig[] = [
     name: 'Regional Champ',
     hp: 3000,
     damage: {
-      perfect: 80,
-      good: 40,
       success: 35,
       superCombo: 240,
     },
     promptConfig: {
       swipe: {
         timeLimit: { min: 2000, max: 2500 },
-        gradeThresholds: { perfect: 400, good: 800 },
+        gradeThresholds: { success: 800 },
         spawnDelay: { min: 1200, max: 1600 },
       },
       tap: {
         timeLimit: { min: 2000, max: 2500 },
-        gradeThresholds: { perfect: 2000, good: 2500 },
+        gradeThresholds: { success: 1550 },
         spawnDelay: { min: 1200, max: 1600 },
       },
       timing: {
-        timeLimit: { min: 1800, max: 2200 },
-        gradeThresholds: { perfect: 300, good: 500 },
+        timeLimit: { min: 1900, max: 2200 },
+        gradeThresholds: { success: 290 },
         spawnDelay: { min: 1200, max: 1600 },
       },
     },
@@ -399,6 +471,30 @@ export const levels: LevelConfig[] = [
     description: 'A regional champion with a solid record.',
     rounds: 3,
     roundHPGoals: [1800, 900, 0],
+    roundScaling: {
+      2: {
+        promptIntervals: { min: 1105, max: 1470 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.6,
+          maxPrompts: 3,
+          duration: { min: 1785, max: 2070 },
+          gradeThresholds: { success: 270 },
+          staggerDelay: 1000,
+        },
+      },
+      3: {
+        promptIntervals: { min: 1015, max: 1350 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.6,
+          maxPrompts: 3,
+          duration: { min: 1680, max: 1945 },
+          gradeThresholds: { success: 250 },
+          staggerDelay: 1000,
+        },
+      },
+    },
   },
 
   // ============================================================================
@@ -409,25 +505,23 @@ export const levels: LevelConfig[] = [
     name: 'Shadow Boxer',
     hp: 3200,
     damage: {
-      perfect: 90,
-      good: 45,
       success: 40,
       superCombo: 270,
     },
     promptConfig: {
       swipe: {
         timeLimit: { min: 1800, max: 2300 },
-        gradeThresholds: { perfect: 300, good: 600 },
+        gradeThresholds: { success: 700 },
         spawnDelay: { min: 1000, max: 1400 },
       },
       tap: {
         timeLimit: { min: 1800, max: 2300 },
-        gradeThresholds: { perfect: 1800, good: 2300 },
+        gradeThresholds: { success: 1350 },
         spawnDelay: { min: 1000, max: 1400 },
       },
       timing: {
-        timeLimit: { min: 1600, max: 2000 },
-        gradeThresholds: { perfect: 250, good: 400 },
+        timeLimit: { min: 1700, max: 2000 },
+        gradeThresholds: { success: 270 },
         spawnDelay: { min: 1000, max: 1400 },
       },
     },
@@ -452,6 +546,30 @@ export const levels: LevelConfig[] = [
     description: 'A mysterious fighter with unpredictable moves.',
     rounds: 3,
     roundHPGoals: [1920, 960, 0],
+    roundScaling: {
+      2: {
+        promptIntervals: { min: 920, max: 1290 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.7,
+          maxPrompts: 3,
+          duration: { min: 1600, max: 1880 },
+          gradeThresholds: { success: 251 },
+          staggerDelay: 800,
+        },
+      },
+      3: {
+        promptIntervals: { min: 845, max: 1185 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.7,
+          maxPrompts: 3,
+          duration: { min: 1500, max: 1770 },
+          gradeThresholds: { success: 234 },
+          staggerDelay: 800,
+        },
+      },
+    },
   },
 
   // ============================================================================
@@ -462,25 +580,23 @@ export const levels: LevelConfig[] = [
     name: 'Elite Contender',
     hp: 3400,
     damage: {
-      perfect: 100,
-      good: 50,
       success: 45,
       superCombo: 300,
     },
     promptConfig: {
       swipe: {
         timeLimit: { min: 1600, max: 2100 },
-        gradeThresholds: { perfect: 250, good: 500 },
+        gradeThresholds: { success: 600 },
         spawnDelay: { min: 800, max: 1200 },
       },
       tap: {
         timeLimit: { min: 1600, max: 2100 },
-        gradeThresholds: { perfect: 1600, good: 2100 },
+        gradeThresholds: { success: 1250 },
         spawnDelay: { min: 800, max: 1200 },
       },
       timing: {
-        timeLimit: { min: 1400, max: 1800 },
-        gradeThresholds: { perfect: 200, good: 300 },
+        timeLimit: { min: 1500, max: 1800 },
+        gradeThresholds: { success: 240 },
         spawnDelay: { min: 800, max: 1200 },
       },
     },
@@ -505,6 +621,30 @@ export const levels: LevelConfig[] = [
     description: 'An elite fighter with championship aspirations.',
     rounds: 3,
     roundHPGoals: [2040, 1020, 0],
+    roundScaling: {
+      2: {
+        promptIntervals: { min: 735, max: 1105 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.8,
+          maxPrompts: 3,
+          duration: { min: 1410, max: 1690 },
+          gradeThresholds: { success: 223 },
+          staggerDelay: 600,
+        },
+      },
+      3: {
+        promptIntervals: { min: 675, max: 1015 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.8,
+          maxPrompts: 3,
+          duration: { min: 1325, max: 1590 },
+          gradeThresholds: { success: 208 },
+          staggerDelay: 600,
+        },
+      },
+    },
   },
 
   // ============================================================================
@@ -515,26 +655,24 @@ export const levels: LevelConfig[] = [
     name: 'Legendary Warrior',
     hp: 3600,
     damage: {
-      perfect: 110,
-      good: 55,
       success: 50,
       superCombo: 330,
     },
     promptConfig: {
       swipe: {
         timeLimit: { min: 1400, max: 1900 },
-        gradeThresholds: { perfect: 200, good: 400 },
-        spawnDelay: { min: 600, max: 1000 },
+        gradeThresholds: { success: 500 },
+        spawnDelay: { min: 700, max: 1000 },
       },
       tap: {
         timeLimit: { min: 1400, max: 1900 },
-        gradeThresholds: { perfect: 1400, good: 1900 },
-        spawnDelay: { min: 600, max: 1000 },
+        gradeThresholds: { success: 1150 },
+        spawnDelay: { min: 700, max: 1000 },
       },
       timing: {
-        timeLimit: { min: 1200, max: 1600 },
-        gradeThresholds: { perfect: 150, good: 250 },
-        spawnDelay: { min: 600, max: 1000 },
+        timeLimit: { min: 1300, max: 1600 },
+        gradeThresholds: { success: 200 },
+        spawnDelay: { min: 700, max: 1000 },
       },
     },
     feints: {
@@ -558,6 +696,41 @@ export const levels: LevelConfig[] = [
     description: 'A legendary fighter with decades of experience.',
     rounds: 4,
     roundHPGoals: [2160, 1440, 720, 0],
+    roundScaling: {
+      2: {
+        promptIntervals: { min: 645, max: 920 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.9,
+          maxPrompts: 3,
+          duration: { min: 1220, max: 1505 },
+          gradeThresholds: { success: 186 },
+          staggerDelay: 400,
+        },
+      },
+      3: {
+        promptIntervals: { min: 595, max: 845 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.9,
+          maxPrompts: 3,
+          duration: { min: 1150, max: 1415 },
+          gradeThresholds: { success: 173 },
+          staggerDelay: 400,
+        },
+      },
+      4: {
+        promptIntervals: { min: 545, max: 780 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.9,
+          maxPrompts: 3,
+          duration: { min: 1080, max: 1330 },
+          gradeThresholds: { success: 161 },
+          staggerDelay: 400,
+        },
+      },
+    },
   },
 
   // ============================================================================
@@ -568,26 +741,24 @@ export const levels: LevelConfig[] = [
     name: 'The Undefeated',
     hp: 4000, // Maximum HP
     damage: {
-      perfect: 120,
-      good: 60,
       success: 55,
       superCombo: 360,
     },
     promptConfig: {
       swipe: {
         timeLimit: { min: 1000, max: 1500 },
-        gradeThresholds: { perfect: 150, good: 300 }, // Extremely tight
-        spawnDelay: { min: 400, max: 800 }, // Very fast
+        gradeThresholds: { success: 280 },
+        spawnDelay: { min: 700, max: 1000 },
       },
       tap: {
         timeLimit: { min: 1200, max: 2000 },
-        gradeThresholds: { perfect: 1200, good: 1700 },
-        spawnDelay: { min: 400, max: 800 },
+        gradeThresholds: { success: 1100 },
+        spawnDelay: { min: 700, max: 1000 },
       },
       timing: {
-        timeLimit: { min: 1000, max: 1400 },
-        gradeThresholds: { perfect: 100, good: 150 }, // Nearly impossible
-        spawnDelay: { min: 400, max: 800 },
+        timeLimit: { min: 1200, max: 1400 },
+        gradeThresholds: { success: 160 },
+        spawnDelay: { min: 700, max: 1000 },
       },
     },
     feints: {
@@ -611,6 +782,41 @@ export const levels: LevelConfig[] = [
     description: 'The ultimate challenge - an undefeated champion with inhuman reflexes. Nearly impossible to beat.',
     rounds: 4,
     roundHPGoals: [2400, 1600, 800, 0],
+    roundScaling: {
+      2: {
+        promptIntervals: { min: 645, max: 920 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.95,
+          maxPrompts: 5,
+          duration: { min: 1130, max: 1315 },
+          gradeThresholds: { success: 149 },
+          staggerDelay: 200,
+        },
+      },
+      3: {
+        promptIntervals: { min: 595, max: 845 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.95,
+          maxPrompts: 5,
+          duration: { min: 1060, max: 1235 },
+          gradeThresholds: { success: 138 },
+          staggerDelay: 200,
+        },
+      },
+      4: {
+        promptIntervals: { min: 545, max: 780 },
+        timingPrompts: {
+          enabled: true,
+          probability: 0.95,
+          maxPrompts: 5,
+          duration: { min: 995, max: 1160 },
+          gradeThresholds: { success: 128 },
+          staggerDelay: 200,
+        },
+      },
+    },
   },
 ];
 
@@ -720,7 +926,7 @@ export const buildEndlessLevelConfig = (stage: number): LevelConfig => {
   const swipeTime = { min: Math.round(1200 * scaleSwipe), max: Math.round(1500 * scaleSwipe) };
   // Success window (absolute ms from start). Start lenient (~1200ms) and shrink toward ~250ms floor
   const swipeGoodMs = clamp(Math.round(1200 * scaleSwipe), 250, 1500);
-  const swipeGrades = { perfect: swipeGoodMs, good: swipeGoodMs };
+  const swipeGrades = { success: swipeGoodMs };
   const swipeSpawn = { min: Math.round(1800 * scaleGeneral), max: Math.round(2200 * scaleGeneral) };
 
   // Tap timings – more lenient than swipe because sets may include multiple taps
@@ -732,7 +938,7 @@ export const buildEndlessLevelConfig = (stage: number): LevelConfig => {
   };
   // Success window – keep a high floor (~1000ms). Start around ~1400ms and tighten slowly.
   const tapGoodMs = clamp(Math.round(1400 * scaleTap), 1000, 1600);
-  const tapGrades = { perfect: tapGoodMs, good: tapGoodMs };
+  const tapGrades = { success: tapGoodMs };
   const tapSpawn = { min: Math.round(1800 * scaleGeneral), max: Math.round(2200 * scaleGeneral) };
 
   // Timing prompts – success window starts above average, then shrinks with stage
@@ -740,7 +946,7 @@ export const buildEndlessLevelConfig = (stage: number): LevelConfig => {
   // Start with a success window above average reaction (~250ms), then shrink per stage
   const timingPerfectMs = clamp(Math.round(280 * scaleTiming), 100, 320);
   const timingGoodMs = clamp(Math.round(420 * scaleTiming), 160, 480);
-  const timingGrades = { perfect: timingPerfectMs, good: timingGoodMs };
+  const timingGrades = { success: timingGoodMs };
   const timingSpawn = { min: Math.round(2000 * scaleGeneral), max: Math.round(2400 * scaleGeneral) };
 
   // Unlock logic by stage
@@ -765,8 +971,6 @@ export const buildEndlessLevelConfig = (stage: number): LevelConfig => {
     name: `Endless Stage ${stage}`,
     hp: 1, // not used in endless
     damage: {
-      perfect: 0,
-      good: 0,
       success: 0,
       superCombo: 0,
     },

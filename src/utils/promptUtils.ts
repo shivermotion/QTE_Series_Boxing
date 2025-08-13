@@ -119,8 +119,7 @@ export const generateTimingPrompts = (levelConfig: LevelConfig, currentRound: nu
 
     // Use timing configuration; ensure duration reflects tighter endless scaling
     const duration = getRandomPromptDuration(levelConfig, 'timing', currentRound);
-    const perfectWindowDuration = Math.min(promptConfig.gradeThresholds.perfect, duration);
-    const goodWindowDuration = Math.min(promptConfig.gradeThresholds.good, duration);
+    const successWindowDuration = Math.min(promptConfig.gradeThresholds.success, duration);
     const staggerDelay = timingConfig.staggerDelay;
 
     // Calculate the visual appearance time for this prompt
@@ -129,11 +128,11 @@ export const generateTimingPrompts = (levelConfig: LevelConfig, currentRound: nu
     // Define windows near the very end of the countdown so success is tapping late.
     // Perfect window is [duration - perfect, duration]
     // Good window is immediately before perfect: [duration - (perfect + good), duration - perfect)
-    const perfectWindowStart = Math.max(0, duration - perfectWindowDuration);
+    const perfectWindowStart = Math.max(0, duration - successWindowDuration);
     const perfectWindowEnd = duration;
 
-    const goodEarlyStart = Math.max(0, duration - (perfectWindowDuration + goodWindowDuration));
-    const goodEarlyEnd = Math.max(0, duration - perfectWindowDuration);
+    const goodEarlyStart = Math.max(0, duration - successWindowDuration);
+    const goodEarlyEnd = Math.max(0, duration - successWindowDuration);
 
     // No late-good beyond the end
     const goodLateStart = duration + 1;
