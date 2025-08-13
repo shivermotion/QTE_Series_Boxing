@@ -96,6 +96,7 @@ export const useGameLogic = (
   // Input state
   const [lastTapTime, setLastTapTime] = useState(0);
   const [tapCount, setTapCount] = useState(0);
+  const [currentCombo, setCurrentCombo] = useState(0);
 
   // Pause tracking
   const pauseStartTime = useRef<number | null>(null);
@@ -204,6 +205,16 @@ export const useGameLogic = (
         });
 
         triggerHaptic('success');
+        // Combo tracking on any success
+        setCurrentCombo(prev => {
+          const next = prev + 1;
+          try {
+            const { useGameSave } = require('../hooks/useGameSave');
+            const saver = useGameSave();
+            saver.handleCombo?.(next);
+          } catch {}
+          return next;
+        });
         if (onSuccess) onSuccess();
         incrementEndlessProgress();
       }
@@ -291,6 +302,16 @@ export const useGameLogic = (
       });
 
       triggerHaptic('success');
+      // Combo increases by the number of prompts cleared
+      setCurrentCombo(prev => {
+        const next = prev + totalRealPrompts;
+        try {
+          const { useGameSave } = require('../hooks/useGameSave');
+          const saver = useGameSave();
+          saver.handleCombo?.(next);
+        } catch {}
+        return next;
+      });
       if (onSuccess) onSuccess();
       incrementEndlessProgress();
     } else {
@@ -360,6 +381,16 @@ export const useGameLogic = (
       });
 
       triggerHaptic('success');
+      // Combo increases by total prompts cleared
+      setCurrentCombo(prev => {
+        const next = prev + totalPrompts;
+        try {
+          const { useGameSave } = require('../hooks/useGameSave');
+          const saver = useGameSave();
+          saver.handleCombo?.(next);
+        } catch {}
+        return next;
+      });
       if (onSuccess) onSuccess();
       incrementEndlessProgress();
     } else {
@@ -384,6 +415,13 @@ export const useGameLogic = (
     }));
 
     triggerHaptic('error');
+    // Reset combo and increment totalMisses
+    setCurrentCombo(0);
+    try {
+      const { useGame } = require('../contexts/GameContext');
+      const g = useGame();
+      g.incrementStat('totalMisses', 1);
+    } catch {}
     if (onMiss) onMiss();
     if (onScreenShake) onScreenShake();
     setShowMissAnimation(true);

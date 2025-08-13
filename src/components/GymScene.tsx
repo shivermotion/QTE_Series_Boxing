@@ -14,6 +14,7 @@ import { useSharedValue } from 'react-native-worklets-core';
 import { runOnJS } from 'react-native-reanimated';
 import PunchingBagModel from '../../assets/models/punching_bag.glb';
 import LockerModel from '../../assets/models/locker.glb';
+// import { useGame } from '../contexts/GameContext';
 
 const SingleModelScene: React.FC<{
   source: any;
@@ -169,6 +170,8 @@ const GymScene: React.FC<GymSceneProps> = ({
     }
   };
 
+  // Player details moved to dedicated screen
+
   return (
     <View style={styles.container}>
       {/* Background paper texture */}
@@ -249,6 +252,7 @@ const GymScene: React.FC<GymSceneProps> = ({
       <View style={styles.playerDetailsTextContainer}>
         <Text style={styles.playerDetailsText}>player details</Text>
       </View>
+      {/* Player details moved to dedicated screen */}
       {/* Touchable thirds */}
       <TouchableOpacity style={styles.topThird} onPress={handleTopThirdTap} />
       <TouchableOpacity style={styles.middleThird} onPress={handleMiddleThirdTap} />
@@ -397,6 +401,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 5,
     textAlign: 'right',
   },
+
   topThird: {
     position: 'absolute',
     top: 0,

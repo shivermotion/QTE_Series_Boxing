@@ -25,8 +25,7 @@ export interface GameState {
   // Game statistics
   statistics: {
     totalPunches: number;
-    totalBlocks: number;
-    totalDodges: number;
+    totalMisses: number;
     bestCombo: number;
     fastestWin: number; // in seconds
     totalPlayTime: number; // in seconds
@@ -67,8 +66,7 @@ export const initialGameState: GameState = {
   
   statistics: {
     totalPunches: 0,
-    totalBlocks: 0,
-    totalDodges: 0,
+    totalMisses: 0,
     bestCombo: 0,
     fastestWin: 0,
     totalPlayTime: 0,

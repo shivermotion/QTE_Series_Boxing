@@ -105,28 +105,12 @@ const MainMenu: React.FC<MainMenuProps> = ({
   const { getEffectiveVolume, startMainTheme, isMainThemePlaying } = useAudio();
   const { startTransition, setTargetScreen } = useTransition();
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const [fadeInComplete, setFadeInComplete] = React.useState(false);
-
-  const [menuAreaReady, setMenuAreaReady] = React.useState(false);
+  const [menuAreaReady, setMenuAreaReady] = React.useState(true);
 
   const punchSoundRef = React.useRef<Audio.Sound | null>(null);
   const bellSoundRef = React.useRef<Audio.Sound | null>(null);
 
   React.useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1500,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      setFadeInComplete(true);
-    });
-  }, [fadeAnim]);
-
-  React.useEffect(() => {
-    if (!fadeInComplete) return;
-
     const loadPunch = async () => {
       try {
         const punch = new Audio.Sound();
@@ -159,7 +143,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
         bellSoundRef.current.unloadAsync();
       }
     };
-  }, [fadeInComplete, getEffectiveVolume]);
+  }, [getEffectiveVolume]);
 
   const playPunchSound = async () => {
     try {
@@ -187,24 +171,19 @@ const MainMenu: React.FC<MainMenuProps> = ({
     }
   };
 
+  // Menu is ready immediately (no fade-in)
   useEffect(() => {
-    if (fadeInComplete) {
-      const timer = setTimeout(() => {
-        setMenuAreaReady(true);
-      }, 500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [fadeInComplete]);
+    setMenuAreaReady(true);
+  }, []);
 
   useEffect(() => {
-    if (fadeInComplete && !isMainThemePlaying) {
+    if (!isMainThemePlaying) {
       startMainTheme();
     }
-  }, [fadeInComplete, isMainThemePlaying, startMainTheme]);
+  }, [isMainThemePlaying, startMainTheme]);
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+    <View style={styles.container}>
       <View style={styles.background} />
 
       <View style={[styles.contentContainer, { zIndex: 6 }]}>
@@ -309,7 +288,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
           </View>
         )}
       </View>
-    </Animated.View>
+    </View>
   );
 };
 

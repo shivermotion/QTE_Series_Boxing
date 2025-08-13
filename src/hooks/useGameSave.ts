@@ -79,13 +79,9 @@ export const useGameSave = () => {
   }, [gameState.gems, gameState.lastRunSnapshot, setGems, clearSnapshot, incrementStat]);
 
 
-  const handleBlock = useCallback(() => {
-    incrementStat('totalBlocks');
-  }, [incrementStat]);
-
-  const handleDodge = useCallback(() => {
-    incrementStat('totalDodges');
-  }, [incrementStat]);
+  // Removed block/dodge tracking per spec
+  const handleBlock = useCallback(() => {}, []);
+  const handleDodge = useCallback(() => {}, []);
 
   const handleCombo = useCallback((comboCount: number) => {
     if (comboCount > gameState.statistics.bestCombo) {

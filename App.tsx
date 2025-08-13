@@ -22,6 +22,9 @@ import SplashScreenComponent from './src/screens/SplashScreen';
 import CutsceneScreen from './src/screens/CutsceneScreen';
 import GymScreen from './src/screens/GymScreen';
 import { cutscenes } from './src/data/cutscenes';
+import PlayerDetailsScreen from './src/screens/PlayerDetailsScreen';
+import TutorialScreen from './src/screens/TutorialScreen';
+import EquipmentScreen from './src/screens/EquipmentScreen';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -139,6 +142,10 @@ function AppContent() {
     setCurrentScreen('gym');
   };
 
+  const handleBackToGym = () => {
+    setCurrentScreen('gym');
+  };
+
   const handleNavigateToTutorial = () => {
     setCurrentScreen('tutorial');
   };
@@ -211,56 +218,11 @@ function AppContent() {
               onNavigateToPlayerDetails={handleNavigateToPlayerDetails}
             />
           ) : currentScreen === 'tutorial' ? (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#333',
-              }}
-            >
-              <Text style={{ color: 'white', fontSize: 24 }}>Tutorial Screen</Text>
-              <TouchableOpacity
-                onPress={handleBackToMenu}
-                style={{ marginTop: 20, padding: 10, backgroundColor: 'white' }}
-              >
-                <Text>Back to Menu</Text>
-              </TouchableOpacity>
-            </View>
+            <TutorialScreen onBack={handleBackToMenu} />
           ) : currentScreen === 'equipment' ? (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#333',
-              }}
-            >
-              <Text style={{ color: 'white', fontSize: 24 }}>Equipment Screen</Text>
-              <TouchableOpacity
-                onPress={handleBackToMenu}
-                style={{ marginTop: 20, padding: 10, backgroundColor: 'white' }}
-              >
-                <Text>Back to Menu</Text>
-              </TouchableOpacity>
-            </View>
+            <EquipmentScreen onBack={handleBackToMenu} />
           ) : currentScreen === 'playerDetails' ? (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#333',
-              }}
-            >
-              <Text style={{ color: 'white', fontSize: 24 }}>Player Details Screen</Text>
-              <TouchableOpacity
-                onPress={handleBackToMenu}
-                style={{ marginTop: 20, padding: 10, backgroundColor: 'white' }}
-              >
-                <Text>Back to Menu</Text>
-              </TouchableOpacity>
-            </View>
+            <PlayerDetailsScreen onBack={handleBackToGym} />
           ) : (
             <UIDebugScreen onBackToMenu={handleBackToMenu} />
           )}

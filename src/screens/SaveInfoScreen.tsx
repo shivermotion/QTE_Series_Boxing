@@ -305,15 +305,9 @@ const SaveInfoScreen: React.FC<SaveInfoScreenProps> = ({ onBack }) => {
               </Text>
             </View>
             <View style={styles.statsRow}>
-              <Text style={styles.statsLabel}>Total Blocks:</Text>
+              <Text style={styles.statsLabel}>Total Misses:</Text>
               <Text style={styles.statsValue}>
-                {gameState.statistics.totalBlocks.toLocaleString()}
-              </Text>
-            </View>
-            <View style={styles.statsRow}>
-              <Text style={styles.statsLabel}>Total Dodges:</Text>
-              <Text style={styles.statsValue}>
-                {gameState.statistics.totalDodges.toLocaleString()}
+                {gameState.statistics.totalMisses.toLocaleString()}
               </Text>
             </View>
             <View style={styles.statsRow}>
