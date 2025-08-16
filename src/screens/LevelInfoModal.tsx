@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -22,10 +22,50 @@ interface LevelInfoModalProps {
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Character name mapping for each level
+const getCharacterNameForLevel = (level: number) => {
+  const characterNames = [
+    'Henry Hitchens', // Level 1
+    'Cyborg Boxer', // Level 2
+    'Rigoberto Hazuki', // Level 3
+    'Oronzo Hazuki', // Level 4
+    'Moai Man', // Level 5
+    'King', // Level 6
+    'Henry Hitchens', // Level 7 (reuse)
+    'Cyborg Boxer', // Level 8 (reuse)
+    'Rigoberto Hazuki', // Level 9 (reuse)
+    'Oronzo Hazuki', // Level 10 (reuse)
+  ];
+
+  return characterNames[(level - 1) % characterNames.length];
+};
+
+// Character modal image mapping for each level
+const getCharacterModalImageForLevel = (level: number) => {
+  const characterModalImages = [
+    require('../../assets/character_menu/henry_hitchens_modal.png'), // Level 1
+    require('../../assets/character_menu/cyborg_boxer_modal.png'), // Level 2
+    require('../../assets/character_menu/rigoberto_hazuki_modal.png'), // Level 3
+    require('../../assets/character_menu/oronzo_hazuki_modal.png'), // Level 4
+    require('../../assets/character_menu/moai_man_modal.png'), // Level 5
+    require('../../assets/character_menu/king_modal.png'), // Level 6
+    require('../../assets/character_menu/henry_hitchens_modal.png'), // Level 7 (reuse)
+    require('../../assets/character_menu/cyborg_boxer_modal.png'), // Level 8 (reuse)
+    require('../../assets/character_menu/rigoberto_hazuki_modal.png'), // Level 9 (reuse)
+    require('../../assets/character_menu/oronzo_hazuki_modal.png'), // Level 10 (reuse)
+  ];
+
+  return characterModalImages[(level - 1) % characterModalImages.length];
+};
+
 const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose, onReady }) => {
   const modalOpacity = useRef(new Animated.Value(0)).current;
   const modalScale = useRef(new Animated.Value(0.8)).current;
   const contentTranslateY = useRef(new Animated.Value(50)).current;
+
+  // Shatter animation state
+  const [showShatter, setShowShatter] = useState(false);
+  const shatterOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
@@ -164,8 +204,45 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
     return images[(level - 1) % images.length];
   };
 
+  const handleReadyPress = () => {
+    // Show shatter animation
+    setShowShatter(true);
+    shatterOpacity.setValue(0);
+
+    // Animate shatter in
+    Animated.timing(shatterOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      // After shatter animation completes, call onReady
+      setTimeout(() => {
+        setShowShatter(false);
+        onReady();
+      }, 1000); // Wait 1 second for shatter effect
+    });
+  };
+
   return (
     <Modal visible={visible} transparent={true} animationType="none" onRequestClose={onClose}>
+      {/* Shatter animation overlay */}
+      {showShatter && (
+        <Animated.View
+          style={[
+            styles.shatterOverlay,
+            {
+              opacity: shatterOpacity,
+            },
+          ]}
+        >
+          <Image
+            source={require('../../assets/video/shatter.gif')}
+            style={styles.shatterGif}
+            resizeMode="cover"
+          />
+        </Animated.View>
+      )}
+
       <Animated.View
         style={[
           styles.overlay,
@@ -188,10 +265,13 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
               activeOpacity={1}
               onPress={() => {}} // Prevent closing when touching modal content
             >
-              <LinearGradient
-                colors={['#1a1a1a', '#2a2a2a', '#1a1a1a']}
-                style={styles.modalContent}
-              >
+              <View style={styles.modalContent}>
+                {/* Paper texture background */}
+                <Image
+                  source={require('../../assets/transition_screen/paper_texture.png')}
+                  style={styles.paperTexture}
+                  resizeMode="cover"
+                />
                 {/* Close button */}
                 <TouchableOpacity style={styles.closeButton} onPress={onClose}>
                   <Text style={styles.closeButtonText}>×</Text>
@@ -203,10 +283,10 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
                   <Text style={styles.chapterName}>{getChapterName(level)}</Text>
                 </View>
 
-                {/* Level image */}
+                {/* Character modal image */}
                 <View style={styles.imageContainer}>
                   <Image
-                    source={getLevelImage(level)}
+                    source={getCharacterModalImageForLevel(level)}
                     style={styles.levelImage}
                     resizeMode="cover"
                   />
@@ -217,17 +297,23 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
                 <View style={styles.difficultySection}>
                   <View style={styles.difficultyHeader}>
                     <Text style={styles.difficultyLabel}>Difficulty</Text>
-                    <Text style={styles.vsText}>VS {getLevelConfig(level).name}</Text>
+                    <Text style={styles.vsText}>VS {getCharacterNameForLevel(level)}</Text>
                   </View>
-                  <View style={styles.starsContainer}>
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <Text
-                        key={i}
-                        style={[styles.star, { opacity: i < getDifficultyStars(level) ? 1 : 0.3 }]}
-                      >
-                        ⭐
-                      </Text>
-                    ))}
+                  <View style={styles.starsPillContainer}>
+                    <View style={styles.starsPillBackground} />
+                    <View style={styles.starsContainer}>
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <Image
+                          key={i}
+                          source={require('../../assets/ui/star.png')}
+                          style={[
+                            styles.star,
+                            { opacity: i < getDifficultyStars(level) ? 1 : 0.3 },
+                          ]}
+                          resizeMode="contain"
+                        />
+                      ))}
+                    </View>
                   </View>
                 </View>
 
@@ -247,7 +333,11 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
                 </View>
 
                 {/* Ready button */}
-                <TouchableOpacity style={styles.readyButton} onPress={onReady} activeOpacity={0.8}>
+                <TouchableOpacity
+                  style={styles.readyButton}
+                  onPress={handleReadyPress}
+                  activeOpacity={0.8}
+                >
                   <LinearGradient
                     colors={['#ff4444', '#ff6666', '#ff4444']}
                     style={styles.readyButtonGradient}
@@ -255,7 +345,7 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
                     <Text style={styles.readyButtonText}>Ready?</Text>
                   </LinearGradient>
                 </TouchableOpacity>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           </Animated.View>
         </TouchableOpacity>
@@ -285,6 +375,16 @@ const styles = StyleSheet.create({
   modalContent: {
     padding: 20,
     borderRadius: 20,
+    backgroundColor: '#ffffff',
+    position: 'relative',
+  },
+  paperTexture: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
   },
   closeButton: {
     position: 'absolute',
@@ -293,13 +393,13 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
   closeButtonText: {
-    color: '#ffffff',
+    color: '#000000',
     fontSize: 20,
     fontWeight: 'bold',
   },
@@ -310,19 +410,19 @@ const styles = StyleSheet.create({
   levelNumber: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#ffffff',
-    textShadowColor: '#000000',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
+    color: '#000000',
+    textShadowColor: '#ffffff',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   chapterName: {
     fontSize: 18,
-    color: '#cccccc',
+    color: '#333333',
     textAlign: 'center',
     marginTop: 5,
-    textShadowColor: '#000000',
+    textShadowColor: '#ffffff',
     textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 1,
   },
   imageContainer: {
     height: 150,
@@ -341,7 +441,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   difficultySection: {
     marginBottom: 15,
@@ -355,7 +455,7 @@ const styles = StyleSheet.create({
   difficultyLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#000000',
   },
   vsText: {
     fontSize: 16,
@@ -384,16 +484,32 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     minWidth: 60,
   },
+  starsPillContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+  },
+  starsPillBackground: {
+    position: 'absolute',
+    width: '100%',
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#000000',
+    zIndex: 1,
+  },
   starsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    alignItems: 'center',
     width: '100%',
-    paddingVertical: 5,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    zIndex: 2,
   },
   star: {
-    fontSize: 32,
-    flex: 1,
-    textAlign: 'center',
+    width: 28,
+    height: 28,
   },
   storySection: {
     marginBottom: 15,
@@ -401,12 +517,12 @@ const styles = StyleSheet.create({
   storyLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#000000',
     marginBottom: 10,
   },
   storyText: {
     fontSize: 14,
-    color: '#cccccc',
+    color: '#333333',
     lineHeight: 20,
     textAlign: 'justify',
   },
@@ -471,6 +587,18 @@ const styles = StyleSheet.create({
     textShadowColor: '#000000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  shatterOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  shatterGif: {
+    width: '100%',
+    height: '100%',
   },
 });
 

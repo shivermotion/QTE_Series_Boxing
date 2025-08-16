@@ -10,18 +10,18 @@ import { getLevelConfig } from '../data/gameConfig';
 
 interface GameHUDProps {
   gameState: GameState;
-  opponentConfig: any;
   avatarScaleStyle: any;
   getAvatarImage: (state: 'idle' | 'success' | 'failure' | 'perfect') => any;
   onSuperButtonPress?: () => void;
+  gameMode?: 'arcade' | 'endless';
 }
 
 const GameHUD: React.FC<GameHUDProps> = ({
   gameState,
-  opponentConfig,
   avatarScaleStyle,
   getAvatarImage,
   onSuperButtonPress,
+  gameMode = 'arcade',
 }) => {
   // Animation for breathing glow effect
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -51,56 +51,58 @@ const GameHUD: React.FC<GameHUDProps> = ({
   return (
     <>
       {/* Top HUD - Opponent */}
-      <View style={styles.topHud}>
-        <View style={styles.opponentRow}>
-          <View style={styles.opponentContainer}>
-            <View style={styles.opponentTopRow}>
-              <Text style={styles.opponentLabel}>OPPONENT</Text>
-              <View style={styles.gameInfoInline}>
-                <Text style={styles.roundTextInline}>ROUND {gameState.currentRound}</Text>
-                <Text style={styles.levelTextInline}>LEVEL {gameState.level}</Text>
+      {gameMode === 'arcade' && (
+        <View style={styles.topHud}>
+          <View style={styles.opponentRow}>
+            <View style={styles.opponentContainer}>
+              <View style={styles.opponentTopRow}>
+                <Text style={styles.opponentLabel}>OPPONENT</Text>
+                <View style={styles.gameInfoInline}>
+                  <Text style={styles.roundTextInline}>ROUND {gameState.currentRound}</Text>
+                  <Text style={styles.levelTextInline}>LEVEL {gameState.level}</Text>
+                </View>
+              </View>
+              <View style={styles.hpBar}>
+                <LinearGradient
+                  colors={['#ef4444', '#dc2626']} // Light red to dark red gradient
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[
+                    styles.hpFill,
+                    {
+                      width: `${(gameState.opponentHP / levelConfig.hp) * 100}%`,
+                      alignSelf: 'flex-end', // Anchor to right side
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.hpBorder,
+                    {
+                      width: `${(gameState.opponentHP / levelConfig.hp) * 100}%`,
+                      alignSelf: 'flex-end', // Anchor to right side
+                    },
+                  ]}
+                />
               </View>
             </View>
-            <View style={styles.hpBar}>
-              <LinearGradient
-                colors={['#ef4444', '#dc2626']} // Light red to dark red gradient
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[
-                  styles.hpFill,
-                  {
-                    width: `${(gameState.opponentHP / levelConfig.hp) * 100}%`,
-                    alignSelf: 'flex-end', // Anchor to right side
-                  },
-                ]}
-              />
-              <View
-                style={[
-                  styles.hpBorder,
-                  {
-                    width: `${(gameState.opponentHP / levelConfig.hp) * 100}%`,
-                    alignSelf: 'flex-end', // Anchor to right side
-                  },
-                ]}
+            <View style={styles.avatarContainer}>
+              <Animated.Image
+                source={getAvatarImage(gameState.avatarState)}
+                style={[styles.avatar, avatarScaleStyle]}
               />
             </View>
           </View>
-          <View style={styles.avatarContainer}>
-            <Animated.Image
-              source={getAvatarImage(gameState.avatarState)}
-              style={[styles.avatar, avatarScaleStyle]}
-            />
-          </View>
         </View>
-      </View>
+      )}
 
       {/* Bottom HUD - Player */}
       <View style={styles.bottomHud}>
         <View style={styles.playerRow}>
           <TouchableOpacity
             style={styles.playerAvatarContainer}
-            onPress={gameState.superMeter >= 100 ? onSuperButtonPress : undefined}
-            activeOpacity={gameState.superMeter >= 100 ? 0.8 : 1}
+            onPress={gameMode === 'arcade' && gameState.superMeter >= 100 ? onSuperButtonPress : undefined}
+            activeOpacity={gameMode === 'arcade' && gameState.superMeter >= 100 ? 0.8 : 1}
           >
             <Animated.Image
               source={getAvatarImage(gameState.avatarState)}
@@ -109,7 +111,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
                 avatarScaleStyle,
                 {
                   borderWidth: 4,
-                  borderColor: gameState.superMeter >= 100 ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+                   borderColor: gameMode === 'arcade' && gameState.superMeter >= 100 ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
                   // Match the irregular shape from the avatar style
                   borderTopLeftRadius: 30,
                   borderTopRightRadius: 12,
@@ -138,52 +140,54 @@ const GameHUD: React.FC<GameHUDProps> = ({
               </View>
             </View>
 
-            {/* Super Meter */}
-            <View style={styles.superMeterContainer}>
-              <View style={styles.superMeterBar}>
-                {/* Glow effect underneath the meter - only left, top, bottom edges animate */}
-                <Animated.View
-                  style={[
-                    styles.superMeterGlow,
-                    {
-                      width: `${Math.max(gameState.superMeter, 5)}%`,
-                      opacity: glowAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.3, 0.8],
-                      }),
-                      transform: [
-                        {
-                          scaleX: glowAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [1.0, 1.05],
-                          }),
-                        },
-                        {
-                          scaleY: glowAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [1.0, 1.1],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                />
-                <LinearGradient
-                  colors={['#1e3a8a', '#3b82f6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.superMeterFill, { width: `${gameState.superMeter}%` }]}
-                />
-                <Animated.View
-                  style={[
-                    styles.superMeterBorder,
-                    {
-                      width: `${Math.max(gameState.superMeter, 5)}%`,
-                    },
-                  ]}
-                />
+            {/* Super Meter (arcade only) */}
+            {gameMode === 'arcade' && (
+              <View style={styles.superMeterContainer}>
+                <View style={styles.superMeterBar}>
+                  {/* Glow effect underneath the meter - only left, top, bottom edges animate */}
+                  <Animated.View
+                    style={[
+                      styles.superMeterGlow,
+                      {
+                        width: `${Math.max(gameState.superMeter, 5)}%`,
+                        opacity: glowAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.3, 0.8],
+                        }),
+                        transform: [
+                          {
+                            scaleX: glowAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [1.0, 1.05],
+                            }),
+                          },
+                          {
+                            scaleY: glowAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [1.0, 1.1],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  />
+                  <LinearGradient
+                    colors={['#1e3a8a', '#3b82f6']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.superMeterFill, { width: `${gameState.superMeter}%` }]}
+                  />
+                  <Animated.View
+                    style={[
+                      styles.superMeterBorder,
+                      {
+                        width: `${Math.max(gameState.superMeter, 5)}%`,
+                      },
+                    ]}
+                  />
+                </View>
               </View>
-            </View>
+            )}
           </View>
         </View>
       </View>

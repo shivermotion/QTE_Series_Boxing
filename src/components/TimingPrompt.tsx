@@ -16,7 +16,7 @@ import { TimingPrompt as TimingPromptType } from '../types/game';
 interface TimingPromptProps {
   prompt: TimingPromptType;
   onMiss: () => void;
-  onSuccess: (hitQuality: 'perfect' | 'good') => void;
+  onSuccess: () => void;
   isPaused: boolean;
   globalPausedDuration: number;
 }
@@ -25,7 +25,7 @@ interface TimingPromptProps {
 const CIRCLE_SIZE = 60;
 const RING_THICKNESS = 6;
 const MAX_RING_DISTANCE = 80; // Maximum distance ring starts from circle
-const PERFECT_WINDOW_DURATION = 300; // 300ms perfect timing window for timing prompts
+const SUCCESS_TOLERANCE_MS = 160; // Early grace period before the nominal success window
 
 // Grid layout for 3x3 grid within the 400x400 input area
 const GRID_POSITIONS = [
@@ -203,16 +203,27 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({
 
   const circleStyle = useAnimatedStyle(() => {
     'worklet';
-    // Simple circle style - no green border
+    // Derive elapsed time from ring distance (linear shrink)
+    const totalTravel = MAX_RING_DISTANCE - RING_THICKNESS;
+    const elapsedRatio = Math.min(
+      1,
+      Math.max(0, (MAX_RING_DISTANCE - ringDistance.value) / totalTravel)
+    );
+    const elapsedMs = elapsedRatio * animationDuration;
+
+    const successStart = Math.max(0, prompt.perfectWindowStart - SUCCESS_TOLERANCE_MS);
+    const successEnd = prompt.perfectWindowEnd;
+    const isInSuccessWindow = elapsedMs >= successStart && elapsedMs <= successEnd;
+
     return {
       width: CIRCLE_SIZE,
       height: CIRCLE_SIZE,
       borderRadius: CIRCLE_SIZE / 2,
-      backgroundColor: '#ff4444',
-      borderWidth: 0, // No border
+      backgroundColor: isInSuccessWindow ? '#22c55e' : '#ff4444',
+      borderWidth: 0,
       transform: [{ scale: circleScale.value }],
     };
-  }, []);
+  }, [animationDuration, prompt.perfectWindowStart, prompt.perfectWindowEnd]);
 
   const handleTap = () => {
     if (hasTriggeredMiss.current || isPaused) return;
@@ -238,48 +249,21 @@ const TimingPrompt: React.FC<TimingPromptProps> = ({
         isPaused,
       });
 
-      // Multi-tier timing window check - use original timing windows
-      if (
-        actualTimeSinceStart >= prompt.perfectWindowStart &&
-        actualTimeSinceStart <= prompt.perfectWindowEnd
-      ) {
-        // Perfect timing
-        console.log('🎯 PERFECT TIMING!');
+      // Single success window near the end of the countdown
+      const successStart = Math.max(0, prompt.perfectWindowStart - SUCCESS_TOLERANCE_MS);
+      const successEnd = prompt.perfectWindowEnd;
+      if (actualTimeSinceStart >= successStart && actualTimeSinceStart <= successEnd) {
         hasTriggeredMiss.current = true;
-        hasCompletedSuccessfully.current = true; // Mark as completed successfully
-        cancelAnimation(ringDistance); // Stop the ring animation
-        setShowSuccess(true); // Show success feedback
-        onSuccess('perfect');
-      } else if (
-        actualTimeSinceStart >= prompt.goodEarlyStart &&
-        actualTimeSinceStart < prompt.goodEarlyEnd
-      ) {
-        // Good timing (early)
-        console.log('🎯 GOOD TIMING (early)!');
-        hasTriggeredMiss.current = true;
-        hasCompletedSuccessfully.current = true; // Mark as completed successfully
-        cancelAnimation(ringDistance); // Stop the ring animation
-        setShowSuccess(true); // Show success feedback
-        onSuccess('good');
-      } else if (
-        actualTimeSinceStart >= prompt.goodLateStart &&
-        actualTimeSinceStart <= prompt.goodLateEnd
-      ) {
-        // Good timing (late)
-        console.log('🎯 GOOD TIMING (late)!');
-        hasTriggeredMiss.current = true;
-        hasCompletedSuccessfully.current = true; // Mark as completed successfully
-        cancelAnimation(ringDistance); // Stop the ring animation
-        setShowSuccess(true); // Show success feedback
-        onSuccess('good');
-      } else if (actualTimeSinceStart < prompt.goodEarlyStart) {
-        // Early miss (too early)
-        console.log('🎯 EARLY MISS (too early)');
+        hasCompletedSuccessfully.current = true;
+        cancelAnimation(ringDistance);
+        setShowSuccess(true);
+        onSuccess();
+      } else if (actualTimeSinceStart < successStart) {
+        // Too early
         hasTriggeredMiss.current = true;
         onMiss();
       } else {
-        // Late miss (too late)
-        console.log('🎯 LATE MISS (too late)');
+        // Too late
         hasTriggeredMiss.current = true;
         onMiss();
       }

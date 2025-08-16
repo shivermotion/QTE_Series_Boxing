@@ -36,6 +36,11 @@ export const generatePrompt = (levelConfig: LevelConfig, currentRound: number = 
 
   if (type === 'tap') {
     const duration = getRandomPromptDuration(levelConfig, 'tap', currentRound);
+    console.log('🎯 Prompt generated (tap placeholder)', {
+      level: levelConfig.name,
+      round: currentRound,
+      duration,
+    });
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'tap',
@@ -46,6 +51,11 @@ export const generatePrompt = (levelConfig: LevelConfig, currentRound: number = 
     };
   } else if (type === 'timing') {
     const duration = getRandomPromptDuration(levelConfig, 'timing', currentRound);
+    console.log('🎯 Prompt generated (timing placeholder)', {
+      level: levelConfig.name,
+      round: currentRound,
+      duration,
+    });
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'timing',
@@ -58,6 +68,11 @@ export const generatePrompt = (levelConfig: LevelConfig, currentRound: number = 
     const directions: ('left' | 'right' | 'up' | 'down')[] = ['left', 'right', 'up', 'down'];
     const direction = directions[Math.floor(Math.random() * directions.length)];
     const duration = getRandomPromptDuration(levelConfig, 'swipe', currentRound);
+    console.log('🎯 Prompt generated (swipe)', {
+      level: levelConfig.name,
+      round: currentRound,
+      duration,
+    });
 
     return {
       id: `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -102,25 +117,26 @@ export const generateTimingPrompts = (levelConfig: LevelConfig, currentRound: nu
 
     usedPositions.add(position);
 
-    // Use hero's timing configuration
+    // Use timing configuration; ensure duration reflects tighter endless scaling
     const duration = getRandomPromptDuration(levelConfig, 'timing', currentRound);
-    const perfectWindowDuration = promptConfig.gradeThresholds.perfect;
-    const goodWindowDuration = promptConfig.gradeThresholds.good;
+    const successWindowDuration = Math.min(promptConfig.gradeThresholds.success, duration);
     const staggerDelay = timingConfig.staggerDelay;
-    
+
     // Calculate the visual appearance time for this prompt
-    const appearanceTime = Date.now() + (i * staggerDelay);
-    
-    // Calculate timing windows relative to the appearance time (in milliseconds from appearance)
-    // Make timing windows more player-friendly
-    const perfectWindowStart = duration * 0.6; // Start at 60% of duration instead of 87%
-    const perfectWindowEnd = perfectWindowStart + perfectWindowDuration;
-    
-    const goodEarlyStart = perfectWindowStart - goodWindowDuration;
-    const goodEarlyEnd = perfectWindowStart;
-    
-    const goodLateStart = perfectWindowEnd;
-    const goodLateEnd = perfectWindowEnd + goodWindowDuration;
+    const appearanceTime = Date.now() + i * staggerDelay;
+
+    // Define windows near the very end of the countdown so success is tapping late.
+    // Perfect window is [duration - perfect, duration]
+    // Good window is immediately before perfect: [duration - (perfect + good), duration - perfect)
+    const perfectWindowStart = Math.max(0, duration - successWindowDuration);
+    const perfectWindowEnd = duration;
+
+    const goodEarlyStart = Math.max(0, duration - successWindowDuration);
+    const goodEarlyEnd = Math.max(0, duration - successWindowDuration);
+
+    // No late-good beyond the end
+    const goodLateStart = duration + 1;
+    const goodLateEnd = duration + 1;
 
     prompts.push({
       id: `timing_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`,
@@ -217,6 +233,7 @@ export const generateTapPrompts = (levelConfig: LevelConfig, currentRound: numbe
 const generateTapPromptsWithCounts = (levelConfig: LevelConfig, currentRound: number, numTaps: number, numFeints: number): TapPrompt[] => {
   const totalPrompts = numTaps + numFeints;
   const prompts: TapPrompt[] = [];
+  const durations: number[] = [];
   const usedPositions = new Set<number>();
 
   // Create array of prompt types (taps and feints)
@@ -247,6 +264,7 @@ const generateTapPromptsWithCounts = (levelConfig: LevelConfig, currentRound: nu
 
     const isFeint = promptTypes[i];
     const duration = getRandomPromptDuration(levelConfig, 'tap', currentRound);
+    durations.push(duration);
 
     console.log(`🎯 Prompt ${i}: Position ${position}, Feint: ${isFeint}`);
 
@@ -271,6 +289,10 @@ const generateTapPromptsWithCounts = (levelConfig: LevelConfig, currentRound: nu
   }
   
   console.log('🎯 Final Prompts (validated):', prompts.map(p => ({ pos: p.gridPosition, feint: p.isFeint })));
+  if (durations.length > 0) {
+    const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+    console.log('🎯 Tap prompt durations (ms):', durations, 'avg=', Math.round(avg));
+  }
   return prompts;
 };
 

@@ -1,13 +1,21 @@
-import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSequence,
-  Easing,
 } from 'react-native-reanimated';
+import {
+  FilamentView,
+  DefaultLight,
+  Model,
+  Animator,
+  Camera,
+  FilamentScene,
+} from 'react-native-filament';
+import { useSharedValue as useWorkletSharedValue } from 'react-native-worklets-core';
 
 // Types and interfaces
 import { GameScreenProps } from '../types/game';
@@ -15,6 +23,8 @@ import { GameScreenProps } from '../types/game';
 // Hooks
 import { useGameAudio } from '../hooks/useGameAudio';
 import { useGameLogic } from '../hooks/useGameLogic';
+import { useGameSave } from '../hooks/useGameSave';
+import { useGame } from '../contexts/GameContext';
 
 // Components
 import GameOverScreen from './GameOverScreen';
@@ -25,6 +35,7 @@ import PreRoundDisplay from '../components/PreRoundDisplay';
 import CooldownDisplay from '../components/CooldownDisplay';
 import SuperModeOverlay from '../components/SuperModeOverlay';
 import SuperComboInput from '../components/SuperComboInput';
+import SaveStatusIndicator from '../components/SaveStatusIndicator';
 
 // Data
 import { getLevelConfig, getRoundHPGoal, getRandomPromptInterval } from '../data/gameConfig';
@@ -35,6 +46,19 @@ import shockedImg from '../../assets/avatar/shocked.jpg';
 import revvedImg from '../../assets/avatar/revved.jpg';
 import eyesClosedImg from '../../assets/avatar/eyes_closed.jpg';
 import elatedImg from '../../assets/avatar/elated.jpg';
+import OpponentIdleGLB from '../../assets/models/hero_animations/Animation_Idle_10_withSkin.glb';
+import PlayerIdleGLB from '../../assets/models/hero_animations_2/Animation_Idle_10_withSkin.glb';
+import PunchComboGLB from '../../assets/models/hero_animations/Animation_Punch_Combo_withSkin.glb';
+import PunchCombo1GLB from '../../assets/models/hero_animations/Animation_Punch_Combo_1_withSkin.glb';
+import StraightPunchGLB from '../../assets/models/hero_animations/Animation_Boxing_Guard_Prep_Straight_Punch_withSkin.glb';
+import OpponentDeadGLB from '../../assets/models/hero_animations/Animation_Dead_withSkin.glb';
+import OpponentKnockDownGLB from '../../assets/models/hero_animations/Animation_Knock_Down_withSkin.glb';
+import OpponentFallDeadGLB from '../../assets/models/hero_animations/Animation_Fall_Dead_from_Abdominal_Injury_withSkin.glb';
+import PlayerFacePunchReactionGLB from '../../assets/models/hero_animations_2/Animation_Face_Punch_Reaction_withSkin.glb';
+import PlayerFacePunchReaction2GLB from '../../assets/models/hero_animations_2/Animation_Face_Punch_Reaction_2_withSkin.glb';
+import PlayerDodge1GLB from '../../assets/models/hero_animations_2/Animation_Stand_Dodge_1_withSkin.glb';
+import PlayerDodge2GLB from '../../assets/models/hero_animations_2/Animation_Stand_Dodge_2_withSkin.glb';
+import PlayerDodge3GLB from '../../assets/models/hero_animations_2/Animation_Stand_Dodge_3_withSkin.glb';
 
 // ============================================================================
 // MAIN COMPONENT
@@ -45,30 +69,53 @@ const GameScreen: React.FC<GameScreenProps> = ({
   selectedLevel = 1,
   onBackToMenu,
   onChooseLevel,
-  debugMode,
+  debugMode: _debugMode,
 }) => {
-  const levelConfig = getLevelConfig(selectedLevel);
+  // const levelConfig = getLevelConfig(selectedLevel);
 
   // ============================================================================
   // HOOKS
   // ============================================================================
 
   const { playGameSound, audioRefs } = useGameAudio();
+
+  // Add save system integration
+  const { handlePunch, handleLevelComplete } = useGameSave();
+
   const gameLogic = useGameLogic(
     selectedLevel,
     () => {
-      console.log('🎵 Playing QTE failure sound');
       playGameSound(audioRefs.qteFailureSound);
+      // Miss → play a hit reaction animation briefly on player
+      const missModel = MISS_MODELS[Math.floor(Math.random() * MISS_MODELS.length)];
+      swapModelTemporarily('player', missModel, 900);
     },
     () => {
-      console.log('🎵 Playing QTE success sound');
       playGameSound(audioRefs.qteSuccessSound);
+      // Track punch statistics
+      handlePunch();
+      // Success → play a punch animation briefly on opponent
+      const hitModel = HIT_MODELS[Math.floor(Math.random() * HIT_MODELS.length)];
+      swapModelTemporarily('opponent', hitModel, 700);
+      // And have the hero dodge briefly
+      const dodgeModel = DODGE_MODELS[Math.floor(Math.random() * DODGE_MODELS.length)];
+      swapModelTemporarily('player', dodgeModel, 700);
     },
     () => {
       screenShake();
       animateMissX();
-    }
+    },
+    gameMode
   );
+
+  const { gameState: persisted } = useGame();
+
+  // Effect to save when level is completed
+  useEffect(() => {
+    if (gameLogic?.isPostLevel) {
+      handleLevelComplete(selectedLevel, gameLogic.gameState.score);
+    }
+  }, [gameLogic?.isPostLevel, selectedLevel, gameLogic?.gameState?.score, handleLevelComplete]);
 
   // ============================================================================
   // ANIMATION VALUES
@@ -97,6 +144,99 @@ const GameScreen: React.FC<GameScreenProps> = ({
   }));
 
   // ============================================================================
+  // 3D MODEL ANIMATION STATE (Filament)
+  // ============================================================================
+
+  // We'll swap entire GLB sources to represent different actions, since animations are clip-per-file
+  // Opponent uses `hero_animations`; Player (hero) uses `hero_animations_2`
+  const [opponentModel, setOpponentModel] = useState<any>(OpponentIdleGLB);
+  const [playerModel, setPlayerModel] = useState<any>(PlayerIdleGLB);
+  const [opponentModelKey, setOpponentModelKey] = useState<number>(0);
+  const [playerModelKey, setPlayerModelKey] = useState<number>(0);
+  const [opponentSceneKey, setOpponentSceneKey] = useState<number>(0);
+  const [playerSceneKey, setPlayerSceneKey] = useState<number>(0);
+  const DEFAULT_OPPONENT_MODEL = OpponentIdleGLB;
+  const DEFAULT_PLAYER_MODEL = PlayerIdleGLB;
+  // Success → opponent plays a hit/punch animation
+  const HIT_MODELS: any[] = [PunchComboGLB, PunchCombo1GLB, StraightPunchGLB];
+  // Miss → player plays a face-punch reaction animation (from hero_animations_2)
+  const MISS_MODELS: any[] = [PlayerFacePunchReactionGLB, PlayerFacePunchReaction2GLB];
+  // Success → player also dodges (from hero_animations_2)
+  const DODGE_MODELS: any[] = [PlayerDodge1GLB, PlayerDodge2GLB, PlayerDodge3GLB];
+  // Super combo finishers → opponent falls/knockdown/dead (from hero_animations)
+  const SUPER_FINISH_MODELS: any[] = [OpponentKnockDownGLB, OpponentDeadGLB, OpponentFallDeadGLB];
+
+  // Debug helpers
+  const getModelName = (m: any): string => {
+    if (m === OpponentIdleGLB || m === PlayerIdleGLB) return 'Idle_10';
+    if (m === PunchComboGLB) return 'Punch_Combo';
+    if (m === PunchCombo1GLB) return 'Punch_Combo_1';
+    if (m === StraightPunchGLB) return 'Straight_Punch';
+    if (m === OpponentKnockDownGLB) return 'Knock_Down';
+    if (m === OpponentDeadGLB) return 'Dead';
+    if (m === OpponentFallDeadGLB) return 'Fall_Dead';
+    if (m === PlayerFacePunchReactionGLB) return 'Face_Punch_Reaction';
+    if (m === PlayerFacePunchReaction2GLB) return 'Face_Punch_Reaction_2';
+    if (m === PlayerDodge1GLB) return 'Stand_Dodge_1';
+    if (m === PlayerDodge2GLB) return 'Stand_Dodge_2';
+    if (m === PlayerDodge3GLB) return 'Stand_Dodge_3';
+    return 'Unknown_Model';
+  };
+
+  const swapModelTemporarily = (
+    target: 'player' | 'opponent' | 'both',
+    toModel: any,
+    durationMs: number = 700
+  ) => {
+    if (target === 'player' || target === 'both') {
+      console.log(
+        `[GameScreen][player] swap -> ${getModelName(toModel)} (duration=${durationMs}ms)`
+      );
+      setPlayerModel(toModel);
+      setPlayerModelKey(prev => prev + 1); // force remount to clear previous instance
+      setPlayerSceneKey(prev => prev + 1); // force scene remount to clear native graph
+      setTimeout(() => {
+        console.log('[GameScreen][player] revert -> Idle');
+        setPlayerModel(DEFAULT_PLAYER_MODEL);
+        setPlayerModelKey(prev => prev + 1);
+        setPlayerSceneKey(prev => prev + 1);
+      }, durationMs);
+    }
+    if (target === 'opponent' || target === 'both') {
+      console.log(
+        `[GameScreen][opponent] swap -> ${getModelName(toModel)} (duration=${durationMs}ms)`
+      );
+      setOpponentModel(toModel);
+      setOpponentModelKey(prev => prev + 1); // force remount to clear previous instance
+      setOpponentSceneKey(prev => prev + 1); // force scene remount to clear native graph
+      setTimeout(() => {
+        console.log('[GameScreen][opponent] revert -> Idle');
+        setOpponentModel(DEFAULT_OPPONENT_MODEL);
+        setOpponentModelKey(prev => prev + 1);
+        setOpponentSceneKey(prev => prev + 1);
+      }, durationMs);
+    }
+  };
+
+  // Log render state when model or key changes
+  useEffect(() => {
+    console.log(
+      `[GameScreen][opponent] render model=${getModelName(opponentModel)} key=${opponentModelKey}`
+    );
+  }, [opponentModel, opponentModelKey]);
+  useEffect(() => {
+    console.log(
+      `[GameScreen][player] render model=${getModelName(playerModel)} key=${playerModelKey}`
+    );
+  }, [playerModel, playerModelKey]);
+  useEffect(() => {
+    console.log(`[GameScreen][opponent] scene remount key=${opponentSceneKey}`);
+  }, [opponentSceneKey]);
+  useEffect(() => {
+    console.log(`[GameScreen][player] scene remount key=${playerSceneKey}`);
+  }, [playerSceneKey]);
+
+  // ============================================================================
   // UTILITY FUNCTIONS
   // ============================================================================
 
@@ -108,12 +248,12 @@ const GameScreen: React.FC<GameScreenProps> = ({
     );
   };
 
-  const animateAvatar = () => {
-    avatarScaleAnim.value = withSequence(
-      withTiming(1.2, { duration: 150 }),
-      withTiming(1, { duration: 150 })
-    );
-  };
+  // const animateAvatar = () => {
+  //   avatarScaleAnim.value = withSequence(
+  //     withTiming(1.2, { duration: 150 }),
+  //     withTiming(1, { duration: 150 })
+  //   );
+  // };
 
   const animateMissX = () => {
     missXScaleAnim.value = 0;
@@ -141,22 +281,20 @@ const GameScreen: React.FC<GameScreenProps> = ({
   // INPUT HANDLERS
   // ============================================================================
 
-  const handleTap = () => {
-    const now = Date.now();
-    const timeSinceLastTap = now - gameLogic.lastTapTime;
-
-    if (timeSinceLastTap < 300) {
-      gameLogic.setTapCount(0);
-      gameLogic.setLastTapTime(0);
-    } else {
-      gameLogic.setTapCount(1);
-      gameLogic.setLastTapTime(now);
-
-      if (gameLogic.gameState.isSuperComboActive) {
-        gameLogic.processSuperComboInput('swipe', 'up');
-      }
-    }
-  };
+  // const handleTap = () => {
+  //   const now = Date.now();
+  //   const timeSinceLastTap = now - gameLogic.lastTapTime;
+  //   if (timeSinceLastTap < 300) {
+  //     gameLogic.setTapCount(0);
+  //     gameLogic.setLastTapTime(0);
+  //   } else {
+  //     gameLogic.setTapCount(1);
+  //     gameLogic.setLastTapTime(now);
+  //     if (gameLogic.gameState.isSuperComboActive) {
+  //       gameLogic.processSuperComboInput('swipe', 'up');
+  //     }
+  //   }
+  // };
 
   const handleSwipe = (direction: 'left' | 'right' | 'up' | 'down') => {
     if (gameLogic.gameState.isSuperComboActive) {
@@ -251,10 +389,16 @@ const GameScreen: React.FC<GameScreenProps> = ({
   };
 
   const handleSuperModeVideoEnd = () => {
-    console.log('🎬 Super mode video ended, ending super mode');
-    console.log('🎬 Current super mode state:', gameLogic.gameState.isSuperModeActive);
     gameLogic.endSuperMode();
-    console.log('🎬 Called endSuperMode, new state should be false');
+  };
+
+  // Trigger opponent finisher animation when super combo completes
+  const handleSuperComboCompleteWithFinisher = (superMove: any) => {
+    gameLogic.handleSuperComboComplete(superMove);
+    const finisherModel =
+      SUPER_FINISH_MODELS[Math.floor(Math.random() * SUPER_FINISH_MODELS.length)];
+    // Play a longer finisher animation before reverting to idle
+    swapModelTemporarily('opponent', finisherModel, 1600);
   };
 
   // ============================================================================
@@ -312,7 +456,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
             console.log('Failed to continue with gem - no gems or no saved state');
           }
         }}
-        gemsAvailable={gameLogic.gems}
+        gemsAvailable={persisted.gems}
         audioRefs={audioRefs}
       />
     );
@@ -343,26 +487,48 @@ const GameScreen: React.FC<GameScreenProps> = ({
         {/* Game HUD */}
         <GameHUD
           gameState={gameLogic.gameState}
-          levelConfig={levelConfig}
           avatarScaleStyle={avatarScaleStyle}
           getAvatarImage={getAvatarImage}
           onSuperButtonPress={gameLogic.activateSuperMode}
+          gameMode={gameMode}
         />
 
-        {/* Opponent 3D Model Area */}
+        {/* Opponent 3D Model Area (Filament) */}
         <View style={styles.opponentModelArea}>
-          <View style={styles.modelPlaceholder}>
-            <Text style={styles.modelPlaceholderText}>OPPONENT 3D MODEL</Text>
-            <Text style={styles.modelPlaceholderSubtext}>Will be placed here</Text>
-          </View>
+          <FilamentScene key={`opponent-scene-${opponentSceneKey}`}>
+            <FilamentView style={{ width: '100%', height: '100%' }}>
+              <DefaultLight />
+              <Model
+                key={`opponent-${opponentModelKey}`}
+                source={opponentModel}
+                translate={[0, 0, 0]}
+                scale={[2.6, 2.6, 2.6]}
+                rotate={[1.5, 0, 0]}
+              >
+                <Animator animationIndex={0} onAnimationsLoaded={() => {}} />
+              </Model>
+              <Camera />
+            </FilamentView>
+          </FilamentScene>
         </View>
 
-        {/* Player 3D Model Area */}
+        {/* Player 3D Model Area (Filament) */}
         <View style={styles.playerModelArea}>
-          <View style={styles.modelPlaceholder}>
-            <Text style={styles.modelPlaceholderText}>PLAYER 3D MODEL</Text>
-            <Text style={styles.modelPlaceholderSubtext}>Will be placed here</Text>
-          </View>
+          <FilamentScene key={`player-scene-${playerSceneKey}`}>
+            <FilamentView style={{ width: '100%', height: '100%' }}>
+              <DefaultLight />
+              <Model
+                key={`player-${playerModelKey}`}
+                source={playerModel}
+                translate={[0, 0, 0]}
+                scale={[2.6, 2.6, 2.6]}
+                rotate={[1.5, 0, 10]}
+              >
+                <Animator animationIndex={0} onAnimationsLoaded={() => {}} />
+              </Model>
+              <Camera />
+            </FilamentView>
+          </FilamentScene>
         </View>
 
         {/* Game Input Area */}
@@ -375,9 +541,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
           gameState={gameLogic.gameState}
           onSwipe={handleSwipe}
           onGridTap={handleGridTap}
-          onTimingSuccess={(gridPosition, hitQuality) =>
-            gameLogic.processTimingPrompt(gridPosition, hitQuality)
-          }
+          onTimingSuccess={gridPosition => gameLogic.processTimingPrompt(gridPosition, undefined)}
           onTimingMiss={() => gameLogic.handleMiss()}
           getCurrentPausedDuration={gameLogic.getCurrentPausedDuration}
         />
@@ -442,7 +606,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
         <TouchableOpacity
           style={styles.testAudioButton}
           onPress={() => {
-            console.log('Testing audio...');
             playGameSound(audioRefs.qteSuccessSound);
             setTimeout(() => {
               playGameSound(audioRefs.qteFailureSound);
@@ -456,7 +619,6 @@ const GameScreen: React.FC<GameScreenProps> = ({
         <TouchableOpacity
           style={styles.testFeintButton}
           onPress={() => {
-            console.log('🎯 Testing feint generation...');
             // Force spawn a tap prompt to test feints
             gameLogic.spawnPrompt();
           }}
@@ -511,18 +673,25 @@ const GameScreen: React.FC<GameScreenProps> = ({
           onPreRoundComplete={handlePreRoundComplete}
         />
 
-        {/* Super Mode Overlay */}
-        <SuperModeOverlay
-          isActive={gameLogic.gameState.isSuperModeActive}
-          onVideoEnd={handleSuperModeVideoEnd}
-        />
+        {/* Super Mode Overlay (arcade only) */}
+        {gameMode === 'arcade' && (
+          <SuperModeOverlay
+            isActive={gameLogic.gameState.isSuperModeActive}
+            onVideoEnd={handleSuperModeVideoEnd}
+          />
+        )}
 
-        {/* Super Combo Input */}
-        <SuperComboInput
-          isActive={gameLogic.gameState.isSuperModeActive}
-          onComboComplete={gameLogic.handleSuperComboComplete}
-          onComboProgress={gameLogic.handleSuperComboProgress}
-        />
+        {/* Super Combo Input (arcade only) */}
+        {gameMode === 'arcade' && (
+          <SuperComboInput
+            isActive={gameLogic.gameState.isSuperModeActive}
+            onComboComplete={handleSuperComboCompleteWithFinisher}
+            onComboProgress={gameLogic.handleSuperComboProgress}
+          />
+        )}
+
+        {/* Save Status Indicator (debug hidden) */}
+        <SaveStatusIndicator showDetails={false} />
       </Animated.View>
     </GestureHandlerRootView>
   );
@@ -544,6 +713,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 5,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    borderRadius: 12,
   },
   playerModelArea: {
     position: 'absolute',
@@ -554,6 +726,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 5,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    borderRadius: 12,
   },
   modelPlaceholder: {
     width: '100%',

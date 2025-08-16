@@ -5,6 +5,17 @@ import * as Haptics from 'expo-haptics';
 import * as Font from 'expo-font';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudio } from '../contexts/AudioContext';
+import {
+  FilamentView,
+  DefaultLight,
+  Model,
+  Animator,
+  Camera,
+  FilamentScene,
+} from 'react-native-filament';
+import IdleGLB from '../../assets/models/hero_animations_2/Animation_Idle_10_withSkin.glb';
+import KnockDownGLB from '../../assets/models/hero_animations_2/Animation_Knock_Down_withSkin.glb';
+import DeadGLB from '../../assets/models/hero_animations_2/Animation_Dead_withSkin.glb';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -36,6 +47,11 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
     null
   );
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [modelSource, setModelSource] = useState<any>(IdleGLB);
+  const [modelKey, setModelKey] = useState<number>(0);
+  const [sceneKey, setSceneKey] = useState<number>(0);
+  const [modelTranslate, setModelTranslate] = useState<[number, number, number]>([0, -1.5, 0]);
+  const [hasPlayedKO, setHasPlayedKO] = useState<boolean>(false);
 
   const countdownAnim = useRef(new Animated.Value(1)).current;
   const scoreAnim = useRef(new Animated.Value(0)).current;
@@ -83,6 +99,32 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
     };
     loadFonts();
   }, []);
+
+  // Swap model to KO sequence when game over displays (play once)
+  useEffect(() => {
+    if (showGameOver && !hasPlayedKO) {
+      // Play knockdown, then dead idle
+      setModelSource(KnockDownGLB);
+      setModelKey(prev => prev + 1);
+      setSceneKey(prev => prev + 1);
+      setModelTranslate([-0.6, -1.5, 0]);
+      const t = setTimeout(() => {
+        setModelSource(DeadGLB);
+        setModelKey(prev => prev + 1);
+        setSceneKey(prev => prev + 1);
+        setModelTranslate([0, -1.5, 0]);
+      }, 1200);
+      setHasPlayedKO(true);
+      return () => clearTimeout(t);
+    } else if (!showGameOver) {
+      // While counting down, keep idle
+      setModelSource(IdleGLB);
+      setModelKey(prev => prev + 1);
+      setSceneKey(prev => prev + 1);
+      setModelTranslate([0, -1.5, 0]);
+      setHasPlayedKO(false);
+    }
+  }, [showGameOver, hasPlayedKO]);
 
   // Play countdown sound based on number
   const playCountdownSound = async (number: number, audioRefs: any) => {
@@ -430,13 +472,24 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
         {/* Countdown Display - Only visible during countdown */}
         {!showGameOver && <View style={styles.countdownContainer}>{renderCountdownNumber()}</View>}
 
-        {/* 3D Character Animation Placeholder */}
+        {/* 3D Character Animation */}
         <View style={styles.character3DContainer}>
-          <View style={styles.character3DPlaceholder}>
-            <Text style={styles.character3DText}>3D CHARACTER</Text>
-            <Text style={styles.character3DSubtext}>
-              {!showGameOver ? 'Countdown Animation' : 'Game Over Animation'}
-            </Text>
+          <View style={styles.character3DFrame}>
+            <FilamentScene key={`go-scene-${sceneKey}`}>
+              <FilamentView style={{ width: '100%', height: '100%' }}>
+                <DefaultLight />
+                <Model
+                  key={`go-model-${modelKey}`}
+                  source={modelSource}
+                  translate={modelTranslate}
+                  scale={[2.6, 2.6, 2.6]}
+                  rotate={[0, 0, 0]}
+                >
+                  <Animator animationIndex={0} onAnimationsLoaded={() => {}} />
+                </Model>
+                <Camera />
+              </FilamentView>
+            </FilamentScene>
           </View>
         </View>
 
@@ -613,16 +666,14 @@ const styles = StyleSheet.create({
     minHeight: 300,
     maxHeight: '60%',
   },
-  character3DPlaceholder: {
+  character3DFrame: {
     width: screenWidth - 60, // Full width minus safe padding
     height: '100%',
-    backgroundColor: 'rgba(255, 0, 0, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     borderWidth: 2,
-    borderColor: '#ff0000',
-    borderStyle: 'dashed',
+    borderColor: '#ffffff',
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
   },
   character3DText: {
     color: '#ff0000',

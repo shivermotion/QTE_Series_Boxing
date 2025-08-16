@@ -1,21 +1,30 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, LogBox } from 'react-native';
+import { View, StyleSheet, LogBox, Text, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { AudioProvider } from './src/contexts/AudioContext';
+import { TransitionProvider } from './src/contexts/TransitionContext';
+import { GameProvider } from './src/contexts/GameContext';
+import TransitionWrapper from './src/components/TransitionWrapper';
 import MainMenu from './src/screens/MainMenu';
+import TapToStartScreen from './src/screens/TapToStartScreen';
 import ChooseLevelScreen from './src/screens/ChooseLevelScreen';
 import GameScreen from './src/screens/GameScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import SaveInfoScreen from './src/screens/SaveInfoScreen';
 import CreditsScreen from './src/screens/CreditsScreen';
 import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
 import SplashScreenComponent from './src/screens/SplashScreen';
 import CutsceneScreen from './src/screens/CutsceneScreen';
+import GymScreen from './src/screens/GymScreen';
 import { cutscenes } from './src/data/cutscenes';
+import PlayerDetailsScreen from './src/screens/PlayerDetailsScreen';
+import TutorialScreen from './src/screens/TutorialScreen';
+import EquipmentScreen from './src/screens/EquipmentScreen';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -29,14 +38,20 @@ LogBox.ignoreLogs([
 type GameMode = 'arcade' | 'endless';
 type Screen =
   | 'splash'
+  | 'tapToStart'
   | 'menu'
   | 'chooseLevel'
   | 'cutscene'
   | 'game'
   | 'settings'
+  | 'saveInfo'
   | 'credits'
   | 'audioDebug'
-  | 'uiDebug';
+  | 'uiDebug'
+  | 'gym'
+  | 'tutorial'
+  | 'equipment'
+  | 'playerDetails';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
@@ -49,6 +64,7 @@ function AppContent() {
     BOXING: require('./assets/fonts/boxing/BOXING.ttf'),
     'BOXING-Striped': require('./assets/fonts/boxing/BOXING_striped.ttf'),
     DigitalStrip: require('./assets/fonts/digital_strip/digistrip.ttf'),
+    Round8Four: require('./assets/fonts/round-8-font-1754003737-0/round8-four.otf'),
   });
 
   // Handle font loading
@@ -65,6 +81,10 @@ function AppContent() {
   }
 
   const handleSplashFinish = () => {
+    setCurrentScreen('tapToStart');
+  };
+
+  const handleTapToStartComplete = () => {
     setCurrentScreen('menu');
   };
 
@@ -102,12 +122,40 @@ function AppContent() {
     setCurrentScreen('credits');
   };
 
+  const handleReturnToTitle = () => {
+    setCurrentScreen('tapToStart');
+  };
+
   const handleOpenAudioDebug = () => {
     setCurrentScreen('audioDebug');
   };
 
   const handleOpenUIDebug = () => {
     setCurrentScreen('uiDebug');
+  };
+
+  const handleOpenSaveInfo = () => {
+    setCurrentScreen('saveInfo');
+  };
+
+  const handleOpenGym = () => {
+    setCurrentScreen('gym');
+  };
+
+  const handleBackToGym = () => {
+    setCurrentScreen('gym');
+  };
+
+  const handleNavigateToTutorial = () => {
+    setCurrentScreen('tutorial');
+  };
+
+  const handleNavigateToEquipment = () => {
+    setCurrentScreen('equipment');
+  };
+
+  const handleNavigateToPlayerDetails = () => {
+    setCurrentScreen('playerDetails');
   };
 
   const toggleDebugMode = () => {
@@ -118,42 +166,67 @@ function AppContent() {
     <SafeAreaProvider>
       <GestureHandlerRootView style={styles.container}>
         <StatusBar style="light" />
-
-        {currentScreen === 'splash' ? (
-          <SplashScreenComponent onFinish={handleSplashFinish} />
-        ) : currentScreen === 'menu' ? (
-          <MainMenu
-            onStartGame={handleStartGame}
-            onOpenSettings={handleOpenSettings}
-            onOpenAudioDebug={handleOpenAudioDebug}
-            onOpenUIDebug={handleOpenUIDebug}
-            debugMode={debugMode}
-            onToggleDebugMode={toggleDebugMode}
-          />
-        ) : currentScreen === 'chooseLevel' ? (
-          <ChooseLevelScreen onSelectLevel={handleSelectLevel} onBack={handleBackFromLevelSelect} />
-        ) : currentScreen === 'cutscene' ? (
-          <CutsceneScreen
-            images={(cutscenes as any)[`level${selectedLevel}`]?.cutscene || []}
-            onFinish={handleCutsceneFinish}
-          />
-        ) : currentScreen === 'game' ? (
-          <GameScreen
-            gameMode={gameMode}
-            selectedLevel={selectedLevel}
-            onBackToMenu={handleBackToMenu}
-            onChooseLevel={() => setCurrentScreen('chooseLevel')}
-            debugMode={debugMode}
-          />
-        ) : currentScreen === 'settings' ? (
-          <SettingsScreen onBackToMenu={handleBackToMenu} onOpenCredits={handleOpenCredits} />
-        ) : currentScreen === 'credits' ? (
-          <CreditsScreen onBackToMenu={handleBackToMenu} />
-        ) : currentScreen === 'audioDebug' ? (
-          <AudioDebugScreen onBackToMenu={handleBackToMenu} />
-        ) : (
-          <UIDebugScreen onBackToMenu={handleBackToMenu} />
-        )}
+        <TransitionWrapper>
+          {currentScreen === 'splash' ? (
+            <SplashScreenComponent onFinish={handleSplashFinish} />
+          ) : currentScreen === 'tapToStart' ? (
+            <TapToStartScreen onComplete={handleTapToStartComplete} />
+          ) : currentScreen === 'menu' ? (
+            <MainMenu
+              onStartGame={handleStartGame}
+              onOpenSettings={handleOpenSettings}
+              onOpenChooseLevel={() => setCurrentScreen('chooseLevel')}
+              onOpenGym={handleOpenGym}
+              onToggleDebugMode={toggleDebugMode}
+            />
+          ) : currentScreen === 'chooseLevel' ? (
+            <ChooseLevelScreen
+              onSelectLevel={handleSelectLevel}
+              onBack={handleBackFromLevelSelect}
+            />
+          ) : currentScreen === 'cutscene' ? (
+            <CutsceneScreen
+              images={(cutscenes as any)[`level${selectedLevel}`]?.cutscene || []}
+              onFinish={handleCutsceneFinish}
+            />
+          ) : currentScreen === 'game' ? (
+            <GameScreen
+              gameMode={gameMode}
+              selectedLevel={selectedLevel}
+              onBackToMenu={handleBackToMenu}
+              onChooseLevel={() => setCurrentScreen('chooseLevel')}
+              debugMode={debugMode}
+            />
+          ) : currentScreen === 'settings' ? (
+            <SettingsScreen
+              onBackToMenu={handleBackToMenu}
+              onOpenCredits={handleOpenCredits}
+              onReturnToTitle={handleReturnToTitle}
+              onOpenSaveInfo={handleOpenSaveInfo}
+            />
+          ) : currentScreen === 'saveInfo' ? (
+            <SaveInfoScreen onBack={handleBackToMenu} />
+          ) : currentScreen === 'credits' ? (
+            <CreditsScreen onBackToMenu={handleBackToMenu} />
+          ) : currentScreen === 'audioDebug' ? (
+            <AudioDebugScreen onBackToMenu={handleBackToMenu} />
+          ) : currentScreen === 'gym' ? (
+            <GymScreen
+              onBack={handleBackToMenu}
+              onNavigateToTutorial={handleNavigateToTutorial}
+              onNavigateToEquipment={handleNavigateToEquipment}
+              onNavigateToPlayerDetails={handleNavigateToPlayerDetails}
+            />
+          ) : currentScreen === 'tutorial' ? (
+            <TutorialScreen onBack={handleBackToMenu} />
+          ) : currentScreen === 'equipment' ? (
+            <EquipmentScreen onBack={handleBackToMenu} />
+          ) : currentScreen === 'playerDetails' ? (
+            <PlayerDetailsScreen onBack={handleBackToGym} />
+          ) : (
+            <UIDebugScreen onBackToMenu={handleBackToMenu} />
+          )}
+        </TransitionWrapper>
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );
@@ -161,9 +234,13 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AudioProvider>
-      <AppContent />
-    </AudioProvider>
+    <GameProvider>
+      <AudioProvider>
+        <TransitionProvider>
+          <AppContent />
+        </TransitionProvider>
+      </AudioProvider>
+    </GameProvider>
   );
 }
 

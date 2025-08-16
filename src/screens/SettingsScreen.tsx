@@ -3,14 +3,22 @@ import { View, Text, TouchableOpacity, StyleSheet, Switch, ScrollView } from 're
 import Slider from '@react-native-community/slider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudio } from '../contexts/AudioContext';
+import { useGameSave } from '../hooks/useGameSave';
 import { Audio } from 'expo-av';
 
 interface SettingsScreenProps {
   onBackToMenu: () => void;
   onOpenCredits: () => void;
+  onReturnToTitle: () => void;
+  onOpenSaveInfo: () => void;
 }
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCredits }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({
+  onBackToMenu,
+  onOpenCredits,
+  onReturnToTitle,
+  onOpenSaveInfo,
+}) => {
   const insets = useSafeAreaInsets();
 
   const {
@@ -21,6 +29,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCre
     toggleAudioEnabled,
     getEffectiveVolume,
   } = useAudio();
+  const { handleAudioSettingChange } = useGameSave();
 
   const bellSoundRef = useRef<Audio.Sound | null>(null);
 
@@ -69,7 +78,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCre
           <Slider
             style={styles.slider}
             value={settings.masterVolume}
-            onValueChange={updateMasterVolume}
+            onValueChange={value => {
+              updateMasterVolume(value);
+              handleAudioSettingChange({ masterVolume: value });
+            }}
             minimumValue={0}
             maximumValue={1}
             step={0.05}
@@ -89,7 +101,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCre
             <Slider
               style={styles.slider}
               value={settings.soundEffectsVolume}
-              onValueChange={updateSoundEffectsVolume}
+              onValueChange={value => {
+                updateSoundEffectsVolume(value);
+                handleAudioSettingChange({ sfxVolume: value });
+              }}
               minimumValue={0}
               maximumValue={1}
               step={0.05}
@@ -106,7 +121,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCre
           <Slider
             style={styles.slider}
             value={settings.musicVolume}
-            onValueChange={updateMusicVolume}
+            onValueChange={value => {
+              updateMusicVolume(value);
+              handleAudioSettingChange({ musicVolume: value });
+            }}
             minimumValue={0}
             maximumValue={1}
             step={0.05}
@@ -119,7 +137,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCre
             <Text style={styles.settingLabel}>Audio Enabled</Text>
             <Switch
               value={settings.audioEnabled}
-              onValueChange={toggleAudioEnabled}
+              onValueChange={value => {
+                toggleAudioEnabled(value);
+                // Persisting audioEnabled is not part of GameState.audioSettings; skip save here
+              }}
               trackColor={{ false: '#767577', true: '#ff00ff' }}
               thumbColor={settings.audioEnabled ? '#00ffff' : '#f4f3f4'}
             />
@@ -139,6 +160,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCre
               thumbColor={'#00ffff'}
             />
           </View>
+        </View>
+
+        {/* Save Information Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Save Information</Text>
+          <TouchableOpacity style={styles.saveInfoButton} onPress={onOpenSaveInfo}>
+            <Text style={styles.saveInfoButtonText}>View Save Details</Text>
+          </TouchableOpacity>
         </View>
 
         {/* About Section */}
@@ -172,6 +201,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onOpenCre
           </Text>
           <TouchableOpacity style={styles.watchCreditsButton} onPress={onOpenCredits}>
             <Text style={styles.watchCreditsButtonText}>Watch Credits</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.returnToTitleButton} onPress={onReturnToTitle}>
+            <Text style={styles.returnToTitleButtonText}>Return to Title Screen</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -301,6 +336,38 @@ const styles = StyleSheet.create({
   watchCreditsButtonText: {
     color: 'white',
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  returnToTitleButton: {
+    backgroundColor: '#ff8800',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#ff00ff',
+  },
+  returnToTitleButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  saveInfoButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#45a049',
+  },
+  saveInfoButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

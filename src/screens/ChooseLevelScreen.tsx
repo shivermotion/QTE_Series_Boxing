@@ -8,18 +8,8 @@ import {
   Animated,
   Easing,
   Dimensions,
-  ScrollView,
+  Image,
 } from 'react-native';
-import {
-  Canvas,
-  Path as SkiaPath,
-  LinearGradient,
-  vec,
-  Group,
-  Skia,
-  Paint,
-  useClock,
-} from '@shopify/react-native-skia';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { useAudio } from '../contexts/AudioContext';
@@ -33,290 +23,50 @@ interface ChooseLevelScreenProps {
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// Animated Level Button Component
-interface AnimatedLevelButtonProps {
-  level: number;
-  onPress: (level: number) => void;
-  delay: number;
-  onPressIn: () => void;
-  isSelected: boolean;
-  onSelect: (level: number) => void;
-  backgroundImage: any;
-  isScrolling: boolean;
-}
+// Character mapping for each level
+const getCharacterForLevel = (level: number) => {
+  const characters = [
+    require('../../assets/characters/henry_hitchens .png'), // Level 1
+    require('../../assets/characters/cyborg_boxer.png'), // Level 2
+    require('../../assets/characters/rigoberto_hazuki.png'), // Level 3
+    require('../../assets/characters/oronzo_hazuki.png'), // Level 4
+    require('../../assets/characters/moai_man.png'), // Level 5
+    require('../../assets/characters/king.png'), // Level 6
+    require('../../assets/characters/henry_hitchens .png'), // Level 7 (reuse)
+    require('../../assets/characters/cyborg_boxer.png'), // Level 8 (reuse)
+    require('../../assets/characters/rigoberto_hazuki.png'), // Level 9 (reuse)
+    require('../../assets/characters/oronzo_hazuki.png'), // Level 10 (reuse)
+  ];
 
-const AnimatedLevelButton: React.FC<AnimatedLevelButtonProps> = ({
-  level,
-  onPress,
-  delay,
-  onPressIn,
-  isSelected,
-  onSelect,
-  backgroundImage,
-  isScrolling,
-}) => {
-  const buttonScale = useRef(new Animated.Value(1)).current;
-  const buttonOpacity = useRef(new Animated.Value(1)).current;
-  const buttonTranslateX = useRef(new Animated.Value(-screenWidth * 1.5)).current;
-  const buttonGlow = useRef(new Animated.Value(0)).current;
-  const buttonSelectionScale = useRef(new Animated.Value(1)).current;
-  const buttonBlinkOpacity = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    // Staggered entrance animation with snap-to-position effect
-    Animated.sequence([
-      Animated.delay(delay),
-      Animated.timing(buttonTranslateX, {
-        toValue: 0,
-        duration: 400,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Continuous glow effect
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(buttonGlow, {
-          toValue: 1,
-          duration: 2000 + level * 200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: false,
-        }),
-        Animated.timing(buttonGlow, {
-          toValue: 0,
-          duration: 2000 + level * 200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: false,
-        }),
-      ])
-    ).start();
-  }, [buttonTranslateX, buttonGlow, delay, level]);
-
-  // Handle selection state changes
-  useEffect(() => {
-    if (isSelected) {
-      // Start classic retro blinking animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(buttonBlinkOpacity, {
-            toValue: 0.2,
-            duration: 150,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(buttonBlinkOpacity, {
-            toValue: 1,
-            duration: 150,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      // Return to normal state when deselected
-      Animated.timing(buttonBlinkOpacity, {
-        toValue: 1,
-        duration: 150,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isSelected, buttonBlinkOpacity]);
-
-  const [pressStartTime, setPressStartTime] = React.useState<number | null>(null);
-  const [wasScrollingDuringPress, setWasScrollingDuringPress] = React.useState(false);
-
-  const handlePressIn = () => {
-    if (isScrolling) {
-      console.log('🚫 Button press blocked during scroll');
-      return;
-    }
-    console.log('✅ Button press started - level', level);
-    setPressStartTime(Date.now());
-    setWasScrollingDuringPress(false);
-    onPressIn();
-  };
-
-  // Monitor scrolling during press
-  React.useEffect(() => {
-    if (pressStartTime && isScrolling) {
-      setWasScrollingDuringPress(true);
-    }
-  }, [isScrolling, pressStartTime]);
-
-  const handlePressOut = () => {
-    if (!pressStartTime) {
-      console.log('🚫 No press start time - ignoring press out');
-      return;
-    }
-
-    const pressDuration = Date.now() - pressStartTime;
-
-    if (isScrolling || wasScrollingDuringPress) {
-      console.log('🚫 Button press out blocked - scrolling detected during press');
-      setPressStartTime(null);
-      return;
-    }
-
-    // Only trigger if press was deliberate (not too short, not too long)
-    if (pressDuration < 50 || pressDuration > 1000) {
-      console.log('🚫 Press duration invalid:', pressDuration, 'ms');
-      setPressStartTime(null);
-      return;
-    }
-
-    console.log(
-      '✅ Button press completed - selecting level',
-      level,
-      'duration:',
-      pressDuration,
-      'ms'
-    );
-    onSelect(level);
-    setPressStartTime(null);
-
-    Animated.sequence([
-      Animated.timing(buttonScale, {
-        toValue: 0.95,
-        duration: 100,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(buttonScale, {
-        toValue: 1,
-        duration: 100,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const handleLongPress = () => {
-    if (isScrolling) {
-      console.log('🚫 Long press blocked during scroll');
-      return;
-    }
-    console.log('✅ Long press detected - selecting level', level);
-    onSelect(level);
-  };
-
-  const getLevelColor = (level: number) => {
-    const colors = [
-      '#ff4444',
-      '#ff8844',
-      '#ffcc44',
-      '#ffff44',
-      '#ccff44',
-      '#88ff44',
-      '#44ff44',
-      '#44ff88',
-      '#44ffcc',
-      '#44ffff',
-    ];
-    return colors[(level - 1) % colors.length];
-  };
-
-  const getLevelDifficulty = (level: number) => {
-    try {
-      const levelConfig = getLevelConfig(level);
-      return levelConfig.difficulty.charAt(0).toUpperCase() + levelConfig.difficulty.slice(1);
-    } catch (error) {
-      // Fallback to hardcoded values if levelConfig not found
-      if (level <= 3) return 'Easy';
-      if (level <= 6) return 'Medium';
-      if (level <= 8) return 'Hard';
-      return 'Expert';
-    }
-  };
-
-  const getChapterTitle = (level: number) => {
-    try {
-      const levelConfig = getLevelConfig(level);
-      return levelConfig.name;
-    } catch (error) {
-      // Fallback to hardcoded values if levelConfig not found
-      const titles = [
-        'The Beginning',
-        'Rising Star',
-        'Local Champion',
-        'City Contender',
-        'Regional Power',
-        'State Champion',
-        'National Glory',
-        'World Stage',
-        'Legend Status',
-        'Ultimate Champion',
-      ];
-      return titles[(level - 1) % titles.length];
-    }
-  };
-
-  const getLevelNumber = (level: number) => {
-    return `Chapter ${level}`;
-  };
-
-  const getLevelDescription = (level: number) => {
-    return getChapterTitle(level);
-  };
-
-  const [currentGlow, setCurrentGlow] = React.useState(0);
-
-  React.useEffect(() => {
-    const id = buttonGlow.addListener(({ value }) => setCurrentGlow(value));
-    return () => buttonGlow.removeListener(id);
-  }, [buttonGlow]);
-
-  return (
-    <Animated.View
-      style={{
-        transform: [{ translateX: buttonTranslateX }],
-        opacity: Animated.multiply(buttonOpacity, buttonBlinkOpacity),
-      }}
-    >
-      <TouchableOpacity
-        style={styles.levelButtonContainer}
-        onPress={() => onPress(level)}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onLongPress={handleLongPress}
-        delayLongPress={300}
-        activeOpacity={1}
-      >
-        <ImageBackground
-          source={backgroundImage}
-          style={styles.levelButtonBackground}
-          resizeMode="cover"
-        >
-          <View style={styles.levelButtonOverlay}>
-            <Text style={styles.levelNumber}>{getLevelNumber(level)}</Text>
-            <Text style={styles.chapterTitle}>{getLevelDescription(level)}</Text>
-            <Text style={styles.levelDifficulty}>{getLevelDifficulty(level)}</Text>
-            <View style={styles.levelStars}>
-              {[...Array(Math.min(level, 5))].map((_, i) => (
-                <Text key={i} style={styles.star}>
-                  ⭐
-                </Text>
-              ))}
-            </View>
-          </View>
-        </ImageBackground>
-      </TouchableOpacity>
-    </Animated.View>
-  );
+  return characters[(level - 1) % characters.length];
 };
 
-// Animated Back Button
-const AnimatedBackButton: React.FC<{ onPress: () => void; onPressIn: () => void }> = ({
+interface AnimatedButtonProps {
+  onPress: () => void;
+  style?: any;
+  children: React.ReactNode;
+  delay?: number;
+  instant?: boolean;
+}
+
+const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   onPress,
-  onPressIn,
+  style,
+  children,
+  delay = 0,
+  instant = false,
 }) => {
-  const buttonScale = useRef(new Animated.Value(0)).current;
-  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const buttonScale = useRef(new Animated.Value(instant ? 1 : 0.8)).current;
+  const buttonOpacity = useRef(new Animated.Value(instant ? 1 : 0)).current;
 
   useEffect(() => {
+    if (instant) {
+      buttonScale.setValue(1);
+      buttonOpacity.setValue(1);
+      return;
+    }
     Animated.sequence([
-      Animated.delay(1000),
+      Animated.delay(delay),
       Animated.parallel([
         Animated.timing(buttonOpacity, {
           toValue: 1,
@@ -332,24 +82,24 @@ const AnimatedBackButton: React.FC<{ onPress: () => void; onPressIn: () => void 
         }),
       ]),
     ]).start();
-  }, [buttonOpacity, buttonScale]);
+  }, [buttonOpacity, buttonScale, delay, instant]);
 
   const handlePressIn = () => {
-    onPressIn();
-    Animated.sequence([
-      Animated.timing(buttonScale, {
-        toValue: 0.95,
-        duration: 100,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(buttonScale, {
-        toValue: 1,
-        duration: 100,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start();
+    Animated.timing(buttonScale, {
+      toValue: 0.95,
+      duration: 100,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(buttonScale, {
+      toValue: 1,
+      duration: 100,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
   };
 
   return (
@@ -360,110 +110,78 @@ const AnimatedBackButton: React.FC<{ onPress: () => void; onPressIn: () => void 
       }}
     >
       <TouchableOpacity
-        style={styles.backButton}
+        style={style}
         onPress={onPress}
         onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         activeOpacity={1}
       >
-        <Text style={styles.backButtonText}>← Back</Text>
+        {children}
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
-// Floating Particles Effect
-const FloatingParticles = () => {
-  const clock = useClock();
-  const [particles, setParticles] = React.useState(
-    Array.from({ length: 20 }, () => ({
-      x: Math.random() * screenWidth,
-      y: Math.random() * screenHeight,
-      size: 2 + Math.random() * 4,
-      speed: 0.5 + Math.random() * 1.5,
-      opacity: 0.3 + Math.random() * 0.7,
-    }))
-  );
+const getLevelDifficulty = (level: number) => {
+  try {
+    const levelConfig = getLevelConfig(level);
+    return levelConfig.difficulty.charAt(0).toUpperCase() + levelConfig.difficulty.slice(1);
+  } catch (error) {
+    if (level <= 3) return 'Easy';
+    if (level <= 6) return 'Medium';
+    if (level <= 8) return 'Hard';
+    return 'Expert';
+  }
+};
 
-  React.useEffect(() => {
-    let running = true;
-    function animate() {
-      if (!running) return;
-      setParticles(prev =>
-        prev.map(particle => ({
-          ...particle,
-          y: (particle.y - particle.speed) % (screenHeight + 50),
-        }))
-      );
-      requestAnimationFrame(animate);
-    }
-    animate();
-    return () => {
-      running = false;
-    };
-  }, []);
-
-  return (
-    <Canvas style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      <Group>
-        {particles.map((particle, i) => (
-          <SkiaPath
-            key={i}
-            path={Skia.Path.Make().addCircle(particle.x, particle.y, particle.size)}
-            style="fill"
-            opacity={particle.opacity}
-            color="rgba(255, 255, 255, 0.6)"
-          />
-        ))}
-      </Group>
-    </Canvas>
-  );
+const getChapterTitle = (level: number) => {
+  try {
+    const levelConfig = getLevelConfig(level);
+    return levelConfig.name;
+  } catch (error) {
+    const titles = [
+      'The Beginning',
+      'Rising Star',
+      'Local Champion',
+      'City Contender',
+      'Regional Power',
+      'State Champion',
+      'National Glory',
+      'World Stage',
+      'Legend Status',
+      'Ultimate Champion',
+    ];
+    return titles[(level - 1) % titles.length];
+  }
 };
 
 const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, onBack }) => {
   const { getEffectiveVolume } = useAudio();
   const insets = useSafeAreaInsets();
 
-  // Screen entrance animation
-  const screenOpacity = useRef(new Animated.Value(0)).current;
-  const screenScale = useRef(new Animated.Value(0.9)).current;
-
-  // Selection state
-  const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
+  const [currentLevel, setCurrentLevel] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
-  const [isScrolling, setIsScrolling] = useState(false);
-  const [scrollLocked, setScrollLocked] = useState(false);
 
-  // Audio references
+  // Animation values for navigation buttons
+  const leftButtonScale = useRef(new Animated.Value(1)).current;
+  const rightButtonScale = useRef(new Animated.Value(1)).current;
+  const leftButtonOpacity = useRef(new Animated.Value(1)).current;
+  const rightButtonOpacity = useRef(new Animated.Value(1)).current;
+
+  // Animation for character image sliding in from right
+  const characterImageTranslateX = useRef(new Animated.Value(screenWidth)).current;
+
+  // Animation for character name image sliding down from top
+  const characterNameTranslateY = useRef(new Animated.Value(-screenHeight)).current;
+
   const buttonSoundRef = useRef<Audio.Sound | null>(null);
-  const selectSoundRef = useRef<Audio.Sound | null>(null);
 
   useEffect(() => {
-    // Screen entrance animation
-    Animated.parallel([
-      Animated.timing(screenOpacity, {
-        toValue: 1,
-        duration: 800,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(screenScale, {
-        toValue: 1,
-        duration: 800,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Preload sounds
     const loadSounds = async () => {
       try {
         const buttonSound = new Audio.Sound();
         await buttonSound.loadAsync(require('../../assets/audio/punch_1.mp3'));
         buttonSoundRef.current = buttonSound;
-
-        const selectSound = new Audio.Sound();
-        await selectSound.loadAsync(require('../../assets/audio/boxing_bell_1.mp3'));
-        selectSoundRef.current = selectSound;
       } catch (e) {
         console.log('Error loading sounds:', e);
       }
@@ -472,9 +190,8 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
 
     return () => {
       if (buttonSoundRef.current) buttonSoundRef.current.unloadAsync();
-      if (selectSoundRef.current) selectSoundRef.current.unloadAsync();
     };
-  }, [screenOpacity, screenScale]);
+  }, []);
 
   const playButtonSound = async () => {
     try {
@@ -488,57 +205,118 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
     }
   };
 
-  const playSelectSound = async () => {
-    try {
-      if (selectSoundRef.current) {
-        const effectiveVolume = getEffectiveVolume('sfx');
-        await selectSoundRef.current.setVolumeAsync(effectiveVolume);
-        await selectSoundRef.current.replayAsync();
-      }
-    } catch (e) {
-      console.log('Error playing select sound:', e);
-    }
+  const handleLeftArrow = async () => {
+    await playButtonSound();
+    setCurrentLevel(prev => Math.max(1, prev - 1));
   };
 
-  // Replace handleLevelSelect with just selection logic
-  const handleLevelSelect = (level: number) => {
-    if (isScrolling) {
-      console.log('🚫 Button press blocked - scrolling in progress');
-      return;
-    }
-    console.log('✅ Button press allowed - selecting level', level);
-    setSelectedLevel(level);
+  const handleRightArrow = async () => {
+    await playButtonSound();
+    setCurrentLevel(prev => Math.min(10, prev + 1));
   };
 
-  // Open modal when a level is selected
+  // Debug logging for character mapping
   useEffect(() => {
-    if (selectedLevel !== null) {
-      // Give time for selection animation (e.g., 350ms)
-      const timer = setTimeout(() => setModalVisible(true), 350);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedLevel]);
+    console.log(`🎯 Level ${currentLevel}: Character image changed`);
+  }, [currentLevel]);
+
+  // Animate navigation buttons based on current level
+  useEffect(() => {
+    const animateButton = (
+      scaleValue: Animated.Value,
+      opacityValue: Animated.Value,
+      shouldAnimate: boolean
+    ) => {
+      if (shouldAnimate) {
+        // Pulsing animation
+        Animated.loop(
+          Animated.sequence([
+            Animated.parallel([
+              Animated.timing(scaleValue, {
+                toValue: 1.1,
+                duration: 800,
+                easing: Easing.inOut(Easing.ease),
+                useNativeDriver: true,
+              }),
+              Animated.timing(opacityValue, {
+                toValue: 0.7,
+                duration: 800,
+                easing: Easing.inOut(Easing.ease),
+                useNativeDriver: true,
+              }),
+            ]),
+            Animated.parallel([
+              Animated.timing(scaleValue, {
+                toValue: 1,
+                duration: 800,
+                easing: Easing.inOut(Easing.ease),
+                useNativeDriver: true,
+              }),
+              Animated.timing(opacityValue, {
+                toValue: 1,
+                duration: 800,
+                easing: Easing.inOut(Easing.ease),
+                useNativeDriver: true,
+              }),
+            ]),
+          ])
+        ).start();
+      } else {
+        // Stop animation and reset to normal
+        scaleValue.stopAnimation();
+        opacityValue.stopAnimation();
+        scaleValue.setValue(1);
+        opacityValue.setValue(1);
+      }
+    };
+
+    // Animate right button if there are more levels to go
+    animateButton(rightButtonScale, rightButtonOpacity, currentLevel < 10);
+
+    // Animate left button if there are previous levels to go
+    animateButton(leftButtonScale, leftButtonOpacity, currentLevel > 1);
+  }, [currentLevel, leftButtonScale, leftButtonOpacity, rightButtonScale, rightButtonOpacity]);
+
+  // Animate character image when level changes
+  useEffect(() => {
+    // Start offscreen
+    characterImageTranslateX.setValue(screenWidth);
+
+    // Slide in from right
+    Animated.timing(characterImageTranslateX, {
+      toValue: 0,
+      duration: 800,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [currentLevel, characterImageTranslateX]);
+
+  // Animate character name image sliding down
+  useEffect(() => {
+    // Start offscreen at top
+    characterNameTranslateY.setValue(-screenHeight);
+
+    // Slide down to center
+    Animated.timing(characterNameTranslateY, {
+      toValue: 0,
+      duration: 1000,
+      easing: Easing.out(Easing.back(1.2)),
+      useNativeDriver: true,
+    }).start();
+  }, [currentLevel, characterNameTranslateY]);
+
+  const handleSelect = async () => {
+    await playButtonSound();
+    setModalVisible(true);
+  };
 
   const handleModalClose = () => {
     setModalVisible(false);
-    setSelectedLevel(null);
   };
 
   const handleReady = async () => {
-    if (selectedLevel) {
-      await playSelectSound();
-      setModalVisible(false);
-      onSelectLevel(selectedLevel);
-    }
-  };
-
-  const getLevelBackgroundImage = (level: number) => {
-    const images = [
-      require('../../assets/level_select/image (3).jpg'),
-      require('../../assets/level_select/image (13).jpg'),
-      require('../../assets/level_select/knockout.png'),
-    ];
-    return images[(level - 1) % images.length];
+    setModalVisible(false);
+    onSelectLevel(currentLevel);
   };
 
   const handleBack = async () => {
@@ -547,249 +325,396 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
   };
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          opacity: screenOpacity,
-          transform: [{ scale: screenScale }],
-        },
-      ]}
-    >
-      <ImageBackground
-        source={require('../../assets/main_menu/boxing_ring.jpg')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        {/* Floating particles */}
-        <FloatingParticles />
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      {/* Main body area with background */}
+      <TouchableOpacity style={styles.bodyArea} onPress={handleSelect} activeOpacity={0.9}>
+        {/* Background GIF */}
+        <Image
+          source={require('../../assets/video/world_black.gif')}
+          style={styles.backgroundGif}
+          resizeMode="contain"
+        />
 
-        {/* Dark overlay */}
-        <View style={styles.overlay} />
+        {/* Paper texture overlay */}
+        <Image
+          source={require('../../assets/transition_screen/paper_texture.png')}
+          style={styles.paperTexture}
+          resizeMode="cover"
+        />
 
-        {/* Content */}
-        <View style={[styles.contentContainer, { paddingTop: insets.top + 20 }]}>
-          {/* Back button */}
-          <AnimatedBackButton onPress={handleBack} onPressIn={playButtonSound} />
+        {/* Paper border overlay */}
+        <Image
+          source={require('../../assets/level_select/paper_border.png')}
+          style={styles.paperBorder}
+          resizeMode="cover"
+        />
 
-          {/* Title */}
-          <View style={styles.titleContainer}>
-            <Text style={styles.title}>Choose Your Level</Text>
-            <Text style={styles.subtitle}>Select the challenge that awaits you</Text>
-          </View>
+        {/* Character name image that slides down from top */}
+        <Animated.View
+          style={[
+            styles.characterNameContainer,
+            {
+              transform: [{ translateY: characterNameTranslateY }],
+            },
+          ]}
+        >
+          <Image
+            source={require('../../assets/level_select/character_name.png')}
+            style={styles.characterNameImage}
+            resizeMode="contain"
+          />
+        </Animated.View>
 
-          {/* Level buttons */}
-          <ScrollView
-            style={styles.scrollContainer}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={true}
-            scrollEnabled={!scrollLocked}
-            nestedScrollEnabled={true}
-            keyboardShouldPersistTaps="never"
-            onTouchStart={() => {
-              console.log('📱 Touch started on ScrollView');
-              setIsScrolling(false);
-            }}
-            onTouchMove={() => {
-              console.log('📱 Touch moving - scrolling detected');
-              setIsScrolling(true);
-              // Mark that scrolling occurred during any active button press
-              if (selectedLevel !== null) {
-                setSelectedLevel(null);
-              }
-            }}
-            onTouchEnd={() => {
-              console.log('📱 Touch ended on ScrollView');
-              // Longer delay to prevent accidental button presses after scroll
-              setTimeout(() => setIsScrolling(false), 500);
-            }}
-          >
-            {/* Main Campaign Section */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.levelGrid}>
-                {Array.from({ length: 10 }, (_, i) => (
-                  <AnimatedLevelButton
-                    key={i + 1}
-                    level={i + 1}
-                    onPress={handleLevelSelect}
-                    delay={500 + i * 400}
-                    onPressIn={playButtonSound}
-                    isSelected={selectedLevel === i + 1}
-                    onSelect={setSelectedLevel}
-                    backgroundImage={getLevelBackgroundImage(i + 1)}
-                    isScrolling={isScrolling}
-                  />
-                ))}
+        {/* Character image that slides in from right */}
+        <Animated.View
+          style={[
+            styles.characterImageContainer,
+            {
+              transform: [{ translateX: characterImageTranslateX }],
+            },
+          ]}
+        >
+          <Image
+            source={getCharacterForLevel(currentLevel)}
+            style={styles.heroImage}
+            resizeMode="contain"
+          />
+        </Animated.View>
+
+        {/* HUD at bottom of body - Hidden for now */}
+        {/* <View style={styles.hudContainer}>
+          <View style={styles.hudContent}>
+            <Text style={styles.hudChapterTitle}>{getChapterTitle(currentLevel)}</Text>
+            <Text style={styles.hudOpponentName}>Opponent Name</Text>
+            <Text style={styles.hudDifficulty}>{getLevelDifficulty(currentLevel)}</Text>
+            <View style={styles.hudMetersSection}>
+              <View style={styles.meterPlaceholder}>
+                <Text style={styles.meterPlaceholderText}>Power Meter</Text>
+              </View>
+              <View style={styles.meterPlaceholder}>
+                <Text style={styles.meterPlaceholderText}>Speed Meter</Text>
               </View>
             </View>
-          </ScrollView>
-        </View>
-      </ImageBackground>
+          </View>
+        </View> */}
+      </TouchableOpacity>
+
+      {/* Back button at top left */}
+      <View style={[styles.backButtonContainer, { top: insets.top }]}>
+        <AnimatedButton onPress={handleBack} instant={true}>
+          <View style={styles.backButtonWrapper}>
+            <Image
+              source={require('../../assets/level_select/toggle_4.png')}
+              style={styles.backButtonImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.backButtonText}>← Back</Text>
+          </View>
+        </AnimatedButton>
+      </View>
+
+      {/* Bottom navigation buttons */}
+      <View style={[styles.bottomNavigationContainer, { bottom: insets.bottom }]}>
+        <AnimatedButton onPress={handleLeftArrow} instant={true}>
+          <Animated.View
+            style={[
+              styles.navButtonWrapper,
+              {
+                transform: [{ scale: leftButtonScale }],
+                opacity: leftButtonOpacity,
+              },
+            ]}
+          >
+            <Image
+              source={require('../../assets/ui/Asset_30.png')}
+              style={styles.navButtonImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.navArrowText}>←</Text>
+          </Animated.View>
+        </AnimatedButton>
+
+        <AnimatedButton onPress={handleRightArrow} instant={true}>
+          <Animated.View
+            style={[
+              styles.navButtonWrapper,
+              {
+                transform: [{ scale: rightButtonScale }],
+                opacity: rightButtonOpacity,
+              },
+            ]}
+          >
+            <Image
+              source={require('../../assets/ui/Asset_30.png')}
+              style={[styles.navButtonImage, { transform: [{ rotate: '180deg' }] }]}
+              resizeMode="contain"
+            />
+            <Text style={styles.navArrowText}>→</Text>
+          </Animated.View>
+        </AnimatedButton>
+      </View>
 
       {/* Level Info Modal */}
       <LevelInfoModal
         visible={modalVisible}
-        level={selectedLevel || 1}
+        level={currentLevel}
         onClose={handleModalClose}
         onReady={handleReady}
       />
-    </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1a1a2e',
   },
-  backgroundImage: {
+  backButtonContainer: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 10,
+  },
+  backButton: {
+    backgroundColor: '#ff4444',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  backButtonText: {
+    position: 'absolute',
+    color: '#ffffff',
+    fontSize: 26,
+    fontWeight: 'bold',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 3,
+  },
+  backButtonImage: {
+    width: 160,
+    height: 160,
+  },
+  backButtonWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bodyArea: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#0236F2',
+  },
+  backgroundGif: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
     height: '100%',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-  },
-  contentContainer: {
     flex: 1,
-    paddingHorizontal: 20,
+    zIndex: 2,
   },
-  titleContainer: {
+  levelInfo: {
     alignItems: 'center',
-    marginBottom: 30,
+    zIndex: 1,
   },
-  title: {
-    fontSize: 36,
+  levelNumber: {
+    fontSize: 48,
     fontWeight: 'bold',
-    color: '#ffffff',
-    textAlign: 'center',
+    color: '#00ffff',
     textShadowColor: '#000000',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
-    marginBottom: 10,
+    marginBottom: 20,
+    letterSpacing: 2,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#cccccc',
+  levelTitle: {
+    fontSize: 24,
+    color: '#ffffff',
     textAlign: 'center',
     textShadowColor: '#000000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+    marginBottom: 15,
+    fontWeight: '600',
   },
-  backButton: {
-    alignSelf: 'flex-start',
+  levelDifficulty: {
+    fontSize: 18,
+    color: '#ff8800',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    fontWeight: 'bold',
+  },
+  bottomNavigationContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 50,
+    zIndex: 10,
+  },
+  navButton: {
     backgroundColor: '#ff4444',
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 15,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#ffffff',
-    marginBottom: 20,
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  backButtonText: {
+  navButtonText: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 24,
     fontWeight: 'bold',
   },
-  scrollContainer: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  levelGrid: {
-    flexDirection: 'column',
-    justifyContent: 'center',
-    gap: 15,
-    paddingHorizontal: 10,
-  },
-  levelButtonContainer: {
-    width: '100%',
+  navButtonImage: {
+    width: 140,
     height: 140,
-    borderRadius: 15,
-    borderWidth: 3,
-    borderColor: '#ffffff',
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-    overflow: 'hidden',
   },
-  levelButtonBackground: {
-    width: '100%',
-    height: '100%',
+  navButtonWrapper: {
+    position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  levelButtonOverlay: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  navArrowText: {
+    position: 'absolute',
+    color: '#ffffff',
+    fontSize: 48,
+    fontWeight: 'bold',
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 3,
+  },
+
+  hudContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderTopWidth: 2,
+    borderTopColor: '#00ffff',
+    paddingVertical: 15,
     paddingHorizontal: 20,
-    paddingVertical: 25,
+    zIndex: 4,
   },
-  levelNumber: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    textShadowColor: '#000000',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
-    marginBottom: 10,
-    letterSpacing: 1,
+  hudContent: {
+    alignItems: 'center',
   },
-  chapterTitle: {
-    fontSize: 16,
+  hudChapterTitle: {
     color: '#00ffff',
-    textShadowColor: '#000000',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    marginBottom: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  levelDifficulty: {
-    fontSize: 14,
-    color: '#ffffff',
-    textShadowColor: '#000000',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    marginBottom: 12,
-    fontWeight: '600',
-    opacity: 0.9,
-  },
-  levelStars: {
-    flexDirection: 'row',
-    gap: 4,
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  star: {
-    fontSize: 14,
-  },
-  sectionContainer: {
-    marginBottom: 30,
-    paddingHorizontal: 10,
-  },
-  sectionTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffff',
-    textAlign: 'center',
+    marginBottom: 8,
     textShadowColor: '#000000',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
-    marginBottom: 10,
-  },
-  sectionSubtitle: {
-    fontSize: 16,
-    color: '#cccccc',
     textAlign: 'center',
+    letterSpacing: 1,
+    fontFamily: 'Round8Four',
+  },
+  hudOpponentName: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
     textShadowColor: '#000000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
-    marginBottom: 20,
+    textAlign: 'center',
+    fontFamily: 'Round8Four',
+  },
+  hudDifficulty: {
+    color: '#ff8800',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textShadowColor: '#000000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    textAlign: 'center',
+    fontFamily: 'Round8Four',
+  },
+  hudMetersSection: {
+    flexDirection: 'row',
+    gap: 20,
+    justifyContent: 'center',
+  },
+  meterPlaceholder: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#00ffff',
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  meterPlaceholderText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: 'Round8Four',
+  },
+  characterNameContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  characterNameImage: {
+    width: '100%',
+    height: '100%',
+  },
+  characterImageContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 3,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  paperTexture: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    // opacity: 0.3,
+    zIndex: 1,
+  },
+  paperBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 2,
   },
 });
 
