@@ -23,6 +23,24 @@ interface ChooseLevelScreenProps {
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Character mapping for each level
+const getCharacterForLevel = (level: number) => {
+  const characters = [
+    require('../../assets/characters/henry_hitchens .png'), // Level 1
+    require('../../assets/characters/cyborg_boxer.png'), // Level 2
+    require('../../assets/characters/rigoberto_hazuki.png'), // Level 3
+    require('../../assets/characters/oronzo_hazuki.png'), // Level 4
+    require('../../assets/characters/moai_man.png'), // Level 5
+    require('../../assets/characters/king.png'), // Level 6
+    require('../../assets/characters/henry_hitchens .png'), // Level 7 (reuse)
+    require('../../assets/characters/cyborg_boxer.png'), // Level 8 (reuse)
+    require('../../assets/characters/rigoberto_hazuki.png'), // Level 9 (reuse)
+    require('../../assets/characters/oronzo_hazuki.png'), // Level 10 (reuse)
+  ];
+
+  return characters[(level - 1) % characters.length];
+};
+
 interface AnimatedButtonProps {
   onPress: () => void;
   style?: any;
@@ -150,8 +168,8 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
   const leftButtonOpacity = useRef(new Animated.Value(1)).current;
   const rightButtonOpacity = useRef(new Animated.Value(1)).current;
 
-  // Animation for hero image sliding in from right
-  const heroImageTranslateX = useRef(new Animated.Value(screenWidth)).current;
+  // Animation for character image sliding in from right
+  const characterImageTranslateX = useRef(new Animated.Value(screenWidth)).current;
 
   // Animation for character name image sliding down from top
   const characterNameTranslateY = useRef(new Animated.Value(-screenHeight)).current;
@@ -196,6 +214,11 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
     await playButtonSound();
     setCurrentLevel(prev => Math.min(10, prev + 1));
   };
+
+  // Debug logging for character mapping
+  useEffect(() => {
+    console.log(`🎯 Level ${currentLevel}: Character image changed`);
+  }, [currentLevel]);
 
   // Animate navigation buttons based on current level
   useEffect(() => {
@@ -254,19 +277,19 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
     animateButton(leftButtonScale, leftButtonOpacity, currentLevel > 1);
   }, [currentLevel, leftButtonScale, leftButtonOpacity, rightButtonScale, rightButtonOpacity]);
 
-  // Animate hero image when level changes
+  // Animate character image when level changes
   useEffect(() => {
     // Start offscreen
-    heroImageTranslateX.setValue(screenWidth);
+    characterImageTranslateX.setValue(screenWidth);
 
     // Slide in from right
-    Animated.timing(heroImageTranslateX, {
+    Animated.timing(characterImageTranslateX, {
       toValue: 0,
       duration: 800,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [currentLevel, heroImageTranslateX]);
+  }, [currentLevel, characterImageTranslateX]);
 
   // Animate character name image sliding down
   useEffect(() => {
@@ -304,7 +327,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       {/* Main body area with background */}
-      <View style={styles.bodyArea}>
+      <TouchableOpacity style={styles.bodyArea} onPress={handleSelect} activeOpacity={0.9}>
         {/* Background GIF */}
         <Image
           source={require('../../assets/video/world_black.gif')}
@@ -342,17 +365,17 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
           />
         </Animated.View>
 
-        {/* Hero image that slides in from right */}
+        {/* Character image that slides in from right */}
         <Animated.View
           style={[
-            styles.heroImageContainer,
+            styles.characterImageContainer,
             {
-              transform: [{ translateX: heroImageTranslateX }],
+              transform: [{ translateX: characterImageTranslateX }],
             },
           ]}
         >
           <Image
-            source={require('../../assets/characters/hero.png')}
+            source={getCharacterForLevel(currentLevel)}
             style={styles.heroImage}
             resizeMode="contain"
           />
@@ -374,10 +397,10 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
             </View>
           </View>
         </View> */}
-      </View>
+      </TouchableOpacity>
 
       {/* Back button at top left */}
-      <View style={[styles.backButtonContainer, { top: insets.top + 20 }]}>
+      <View style={[styles.backButtonContainer, { top: insets.top }]}>
         <AnimatedButton onPress={handleBack} instant={true}>
           <View style={styles.backButtonWrapper}>
             <Image
@@ -391,7 +414,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
       </View>
 
       {/* Bottom navigation buttons */}
-      <View style={[styles.bottomNavigationContainer, { bottom: insets.bottom + 20 }]}>
+      <View style={[styles.bottomNavigationContainer, { bottom: insets.bottom }]}>
         <AnimatedButton onPress={handleLeftArrow} instant={true}>
           <Animated.View
             style={[
@@ -403,16 +426,12 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
             ]}
           >
             <Image
-              source={require('../../assets/level_select/toggle_on_bg.png')}
+              source={require('../../assets/ui/Asset_30.png')}
               style={styles.navButtonImage}
               resizeMode="contain"
             />
             <Text style={styles.navArrowText}>←</Text>
           </Animated.View>
-        </AnimatedButton>
-
-        <AnimatedButton style={styles.selectButton} onPress={handleSelect} instant={true}>
-          <Text style={styles.selectButtonText}>Select</Text>
         </AnimatedButton>
 
         <AnimatedButton onPress={handleRightArrow} instant={true}>
@@ -426,7 +445,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
             ]}
           >
             <Image
-              source={require('../../assets/level_select/toggle_on_bg.png')}
+              source={require('../../assets/ui/Asset_30.png')}
               style={[styles.navButtonImage, { transform: [{ rotate: '180deg' }] }]}
               resizeMode="contain"
             />
@@ -467,15 +486,15 @@ const styles = StyleSheet.create({
   backButtonText: {
     position: 'absolute',
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 26,
     fontWeight: 'bold',
     textShadowColor: '#000000',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 3,
   },
   backButtonImage: {
-    width: 80,
-    height: 80,
+    width: 160,
+    height: 160,
   },
   backButtonWrapper: {
     position: 'relative',
@@ -540,7 +559,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 30,
+    paddingHorizontal: 50,
     zIndex: 10,
   },
   navButton: {
@@ -560,8 +579,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   navButtonImage: {
-    width: 60,
-    height: 60,
+    width: 140,
+    height: 140,
   },
   navButtonWrapper: {
     position: 'relative',
@@ -571,33 +590,13 @@ const styles = StyleSheet.create({
   navArrowText: {
     position: 'absolute',
     color: '#ffffff',
-    fontSize: 24,
+    fontSize: 48,
     fontWeight: 'bold',
     textShadowColor: '#000000',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 3,
   },
-  selectButton: {
-    backgroundColor: '#000000',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    minWidth: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectButtonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'Round8Four',
-    textAlign: 'center',
-    width: '100%',
-    height: '100%',
-    textAlignVertical: 'center',
-  },
+
   hudContainer: {
     position: 'absolute',
     bottom: 0,
@@ -682,7 +681,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  heroImageContainer: {
+  characterImageContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
