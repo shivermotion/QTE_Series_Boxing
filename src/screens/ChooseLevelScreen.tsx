@@ -41,6 +41,24 @@ const getCharacterForLevel = (level: number) => {
   return characters[(level - 1) % characters.length];
 };
 
+// Character name image mapping for each level
+const getCharacterNameForLevel = (level: number) => {
+  const characterNames = [
+    require('../../assets/level_select/name5-game-assets.png'), // Level 1 - Henry Hitchens
+    require('../../assets/level_select/cyborg_boxer.png'), // Level 2 - Cyborg Boxer
+    require('../../assets/level_select/rigoberto_hazuki.png'), // Level 3 - Rigoberto Hazuki
+    require('../../assets/level_select/oronzo_hazuki.png'), // Level 4 - Oronzo Hazuki
+    require('../../assets/level_select/moai_man.png'), // Level 5 - Moai Man
+    require('../../assets/level_select/king.png'), // Level 6 - King
+    require('../../assets/level_select/name5-game-assets.png'), // Level 7 - Henry Hitchens (reuse)
+    require('../../assets/level_select/cyborg_boxer.png'), // Level 8 - Cyborg Boxer (reuse)
+    require('../../assets/level_select/rigoberto_hazuki.png'), // Level 9 - Rigoberto Hazuki (reuse)
+    require('../../assets/level_select/oronzo_hazuki.png'), // Level 10 - Oronzo Hazuki (reuse)
+  ];
+
+  return characterNames[(level - 1) % characterNames.length];
+};
+
 interface AnimatedButtonProps {
   onPress: () => void;
   style?: any;
@@ -359,7 +377,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
           ]}
         >
           <Image
-            source={require('../../assets/level_select/character_name.png')}
+            source={getCharacterNameForLevel(currentLevel)}
             style={styles.characterNameImage}
             resizeMode="contain"
           />

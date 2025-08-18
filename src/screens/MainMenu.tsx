@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing, Image } from 'react-native';
 
-import { Audio } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { useAudio } from '../contexts/AudioContext';
 import { useTransition } from '../contexts/TransitionContext';
 import ChooseLevelScreen from './ChooseLevelScreen';
@@ -13,6 +13,7 @@ interface MainMenuProps {
   onOpenChooseLevel: () => void;
   onOpenGym: () => void;
   onToggleDebugMode: () => void;
+  onBackToTitle: () => void;
 }
 
 interface AnimatedButtonProps {
@@ -101,6 +102,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
   onOpenSettings,
   onOpenChooseLevel,
   onOpenGym,
+  onBackToTitle,
 }) => {
   const { getEffectiveVolume, startMainTheme, isMainThemePlaying } = useAudio();
   const { startTransition, setTargetScreen } = useTransition();
@@ -184,12 +186,33 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.background} />
+      <Video
+        source={require('../../assets/video/crowd.mp4')}
+        style={styles.backgroundVideo}
+        shouldPlay={true}
+        isLooping={true}
+        isMuted={true}
+        resizeMode={ResizeMode.COVER}
+      />
 
       <View style={[styles.contentContainer, { zIndex: 6 }]}>
         {menuAreaReady && (
           <View style={[styles.menuContainer, { zIndex: 7 }]}>
             <>
+              <View style={styles.topLeftContainer}>
+                <AnimatedButton
+                  style={styles.backToTitleButton}
+                  onPress={async () => {
+                    await playPunchSound();
+                    onBackToTitle();
+                  }}
+                  delay={0}
+                  instant={true}
+                >
+                  <Text style={styles.backToTitleButtonText}>← Back to Title</Text>
+                </AnimatedButton>
+              </View>
+
               <View style={styles.topRightContainer}>
                 <AnimatedButton
                   style={styles.settingsButton}
@@ -236,7 +259,11 @@ const MainMenu: React.FC<MainMenuProps> = ({
                 delay={0}
                 instant={true}
               >
-                <Text style={styles.bigStoryButtonText}>Story</Text>
+                <Image
+                  source={require('../../assets/ui/Story.png')}
+                  style={styles.storyButtonImage}
+                  resizeMode="contain"
+                />
               </AnimatedButton>
 
               <View style={styles.sideBySideContainer}>
@@ -269,7 +296,11 @@ const MainMenu: React.FC<MainMenuProps> = ({
                   delay={0}
                   instant={true}
                 >
-                  <Text style={styles.buttonText}>GYM</Text>
+                  <Image
+                    source={require('../../assets/ui/GYM.png')}
+                    style={styles.gymButtonImage}
+                    resizeMode="contain"
+                  />
                 </AnimatedButton>
 
                 <AnimatedButton
@@ -281,7 +312,11 @@ const MainMenu: React.FC<MainMenuProps> = ({
                   delay={0}
                   instant={true}
                 >
-                  <Text style={styles.buttonText}>Endless</Text>
+                  <Image
+                    source={require('../../assets/ui/Endless.png')}
+                    style={styles.endlessButtonImage}
+                    resizeMode="contain"
+                  />
                 </AnimatedButton>
               </View>
             </>
@@ -299,6 +334,15 @@ const styles = StyleSheet.create({
   background: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#808080',
+  },
+  backgroundVideo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   contentContainer: {
     flex: 1,
@@ -356,38 +400,53 @@ const styles = StyleSheet.create({
   },
 
   bigStoryButton: {
-    backgroundColor: '#ff00ff',
-    paddingHorizontal: 60,
-    paddingVertical: 30,
-    borderRadius: 12,
-    borderWidth: 3,
-    borderColor: '#00ffff',
+    backgroundColor: 'transparent',
     width: 320,
     height: 120,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 40,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
-  bigStoryButtonText: {
-    color: 'white',
-    fontSize: 28,
-    fontWeight: 'bold',
-    fontFamily: 'System',
-    textAlign: 'center',
+  storyButtonImage: {
+    width: '100%',
+    height: '100%',
   },
   sideBySideContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     width: '100%',
     gap: 40,
+  },
+  topLeftContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    zIndex: 10,
+  },
+  backToTitleButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    minWidth: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  backToTitleButtonText: {
+    color: '#333333',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'System',
   },
   topRightContainer: {
     position: 'absolute',
@@ -396,24 +455,19 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   sideButton: {
-    backgroundColor: '#ff8800',
-    paddingHorizontal: 40,
-    paddingVertical: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#ff00ff',
+    backgroundColor: 'transparent',
     width: 140,
     height: 80,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
+  },
+  gymButtonImage: {
+    width: '100%',
+    height: '100%',
+  },
+  endlessButtonImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 

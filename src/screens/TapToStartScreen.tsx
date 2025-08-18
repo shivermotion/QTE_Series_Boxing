@@ -8,8 +8,9 @@ import {
   Easing,
   Dimensions,
   Platform,
+  Image,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { useAudio } from '../contexts/AudioContext';
 import { useTransition } from '../contexts/TransitionContext';
 
@@ -123,8 +124,15 @@ const TapToStartScreen: React.FC<TapToStartScreenProps> = ({ onComplete }) => {
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      {/* Grey background */}
-      <View style={styles.background} />
+      {/* Background Video */}
+      <Video
+        source={require('../../assets/video/title_card.mp4')}
+        style={styles.backgroundVideo}
+        shouldPlay={true}
+        isLooping={true}
+        isMuted={true}
+        resizeMode={ResizeMode.CONTAIN}
+      />
 
       {/* Tap to Start Button */}
       <TouchableOpacity
@@ -146,6 +154,13 @@ const TapToStartScreen: React.FC<TapToStartScreenProps> = ({ onComplete }) => {
           Tap to Start
         </Animated.Text>
       </TouchableOpacity>
+
+      {/* Paper Texture Overlay */}
+      <Image
+        source={require('../../assets/transition_screen/paper_texture.png')}
+        style={styles.paperTexture}
+        resizeMode="cover"
+      />
     </Animated.View>
   );
 };
@@ -156,19 +171,28 @@ const styles = StyleSheet.create({
   },
   background: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#808080', // Grey background
+    backgroundColor: '#ffffff', // White background
+  },
+  backgroundVideo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
+    backgroundColor: '#ffffff',
   },
   tapToStartText: {
-    color: '#00ffff',
+    color: '#000000',
     fontSize: 36,
     fontWeight: 'bold',
-    textShadowColor: '#000',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 8,
     letterSpacing: 2,
     padding: 24,
     textAlign: 'center',
-    fontFamily: 'System',
+    fontFamily: 'Round8Four',
+    zIndex: 4,
   },
   tapToStartMenuArea: {
     position: 'absolute',
@@ -179,6 +203,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 40,
+    zIndex: 4,
+  },
+  paperTexture: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 3,
   },
 });
 

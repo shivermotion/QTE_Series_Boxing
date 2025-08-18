@@ -178,6 +178,7 @@ function AppContent() {
               onOpenChooseLevel={() => setCurrentScreen('chooseLevel')}
               onOpenGym={handleOpenGym}
               onToggleDebugMode={toggleDebugMode}
+              onBackToTitle={handleReturnToTitle}
             />
           ) : currentScreen === 'chooseLevel' ? (
             <ChooseLevelScreen
