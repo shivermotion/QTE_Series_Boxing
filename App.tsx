@@ -19,6 +19,7 @@ import CreditsScreen from './src/screens/CreditsScreen';
 import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
 import SplashScreenComponent from './src/screens/SplashScreen';
+import TeaserScreen from './src/screens/TeaserScreen';
 import CutsceneScreen from './src/screens/CutsceneScreen';
 import GymScreen from './src/screens/GymScreen';
 import { cutscenes } from './src/data/cutscenes';
@@ -38,6 +39,7 @@ LogBox.ignoreLogs([
 type GameMode = 'arcade' | 'endless';
 type Screen =
   | 'splash'
+  | 'teaser'
   | 'tapToStart'
   | 'menu'
   | 'chooseLevel'
@@ -81,6 +83,10 @@ function AppContent() {
   }
 
   const handleSplashFinish = () => {
+    setCurrentScreen('teaser');
+  };
+
+  const handleTeaserComplete = () => {
     setCurrentScreen('tapToStart');
   };
 
@@ -169,6 +175,8 @@ function AppContent() {
         <TransitionWrapper>
           {currentScreen === 'splash' ? (
             <SplashScreenComponent onFinish={handleSplashFinish} />
+          ) : currentScreen === 'teaser' ? (
+            <TeaserScreen onComplete={handleTeaserComplete} />
           ) : currentScreen === 'tapToStart' ? (
             <TapToStartScreen onComplete={handleTapToStartComplete} />
           ) : currentScreen === 'menu' ? (
