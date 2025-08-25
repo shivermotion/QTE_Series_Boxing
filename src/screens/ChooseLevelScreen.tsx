@@ -41,6 +41,24 @@ const getCharacterForLevel = (level: number) => {
   return characters[(level - 1) % characters.length];
 };
 
+// Character name image mapping for each level
+const getCharacterNameForLevel = (level: number) => {
+  const characterNames = [
+    require('../../assets/level_select/name5-game-assets.png'), // Level 1 - Henry Hitchens
+    require('../../assets/level_select/cyborg_boxer.png'), // Level 2 - Cyborg Boxer
+    require('../../assets/level_select/rigoberto_hazuki.png'), // Level 3 - Rigoberto Hazuki
+    require('../../assets/level_select/oronzo_hazuki.png'), // Level 4 - Oronzo Hazuki
+    require('../../assets/level_select/moai_man.png'), // Level 5 - Moai Man
+    require('../../assets/level_select/king.png'), // Level 6 - King
+    require('../../assets/level_select/name5-game-assets.png'), // Level 7 - Henry Hitchens (reuse)
+    require('../../assets/level_select/cyborg_boxer.png'), // Level 8 - Cyborg Boxer (reuse)
+    require('../../assets/level_select/rigoberto_hazuki.png'), // Level 9 - Rigoberto Hazuki (reuse)
+    require('../../assets/level_select/oronzo_hazuki.png'), // Level 10 - Oronzo Hazuki (reuse)
+  ];
+
+  return characterNames[(level - 1) % characterNames.length];
+};
+
 interface AnimatedButtonProps {
   onPress: () => void;
   style?: any;
@@ -175,6 +193,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
   const characterNameTranslateY = useRef(new Animated.Value(-screenHeight)).current;
 
   const buttonSoundRef = useRef<Audio.Sound | null>(null);
+  const bellSoundRef = useRef<Audio.Sound | null>(null);
 
   useEffect(() => {
     const loadSounds = async () => {
@@ -182,6 +201,10 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
         const buttonSound = new Audio.Sound();
         await buttonSound.loadAsync(require('../../assets/audio/punch_1.mp3'));
         buttonSoundRef.current = buttonSound;
+
+        const bell = new Audio.Sound();
+        await bell.loadAsync(require('../../assets/audio/boxing_bell_1.mp3'));
+        bellSoundRef.current = bell;
       } catch (e) {
         console.log('Error loading sounds:', e);
       }
@@ -190,6 +213,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
 
     return () => {
       if (buttonSoundRef.current) buttonSoundRef.current.unloadAsync();
+      if (bellSoundRef.current) bellSoundRef.current.unloadAsync();
     };
   }, []);
 
@@ -202,6 +226,18 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
       }
     } catch (e) {
       console.log('Error playing button sound:', e);
+    }
+  };
+
+  const playBellSound = async () => {
+    try {
+      if (bellSoundRef.current) {
+        const effectiveVolume = getEffectiveVolume('sfx');
+        await bellSoundRef.current.setVolumeAsync(effectiveVolume);
+        await bellSoundRef.current.replayAsync();
+      }
+    } catch (e) {
+      console.log('Error playing bell sound:', e);
     }
   };
 
@@ -306,7 +342,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
   }, [currentLevel, characterNameTranslateY]);
 
   const handleSelect = async () => {
-    await playButtonSound();
+    await playBellSound();
     setModalVisible(true);
   };
 
@@ -315,6 +351,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
   };
 
   const handleReady = async () => {
+    await playBellSound();
     setModalVisible(false);
     onSelectLevel(currentLevel);
   };
@@ -359,7 +396,7 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
           ]}
         >
           <Image
-            source={require('../../assets/level_select/character_name.png')}
+            source={getCharacterNameForLevel(currentLevel)}
             style={styles.characterNameImage}
             resizeMode="contain"
           />

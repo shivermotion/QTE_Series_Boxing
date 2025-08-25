@@ -17,6 +17,9 @@ interface AudioContextType {
   startMainTheme: () => Promise<void>;
   stopMainTheme: () => Promise<void>;
   isMainThemePlaying: boolean;
+  startJazz: () => Promise<void>;
+  stopJazz: () => Promise<void>;
+  isJazzPlaying: boolean;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -38,7 +41,9 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
   const settings = gameState.audioSettings;
 
   const [isMainThemePlaying, setIsMainThemePlaying] = useState(false);
+  const [isJazzPlaying, setIsJazzPlaying] = useState(false);
   const mainThemeRef = useRef<Audio.Sound | null>(null);
+  const jazzRef = useRef<Audio.Sound | null>(null);
 
   const updateMasterVolume = (volume: number) => {
     updateAudioSettings({ masterVolume: volume });
@@ -107,6 +112,40 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     }
   };
 
+  const startJazz = async () => {
+    try {
+      if (jazzRef.current) {
+        await jazzRef.current.stopAsync();
+        await jazzRef.current.unloadAsync();
+      }
+
+      const jazz = new Audio.Sound();
+      await jazz.loadAsync(require('../../assets/audio/jazz.mp3'));
+      await jazz.setIsLoopingAsync(true);
+      const effectiveVolume = getEffectiveVolume('music');
+      await jazz.setVolumeAsync(effectiveVolume);
+      await jazz.playAsync();
+
+      jazzRef.current = jazz;
+      setIsJazzPlaying(true);
+    } catch (e) {
+      console.log('Error starting jazz:', e);
+    }
+  };
+
+  const stopJazz = async () => {
+    try {
+      if (jazzRef.current) {
+        await jazzRef.current.stopAsync();
+        await jazzRef.current.unloadAsync();
+        jazzRef.current = null;
+        setIsJazzPlaying(false);
+      }
+    } catch (e) {
+      console.log('Error stopping jazz:', e);
+    }
+  };
+
   // Apply volume changes to main theme when settings change
   useEffect(() => {
     const updateMainThemeVolume = async () => {
@@ -120,8 +159,20 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       }
     };
 
+    const updateJazzVolume = async () => {
+      if (jazzRef.current && isJazzPlaying) {
+        try {
+          const effectiveVolume = getEffectiveVolume('music');
+          await jazzRef.current.setVolumeAsync(effectiveVolume);
+        } catch (e) {
+          console.log('Error updating jazz volume:', e);
+        }
+      }
+    };
+
     updateMainThemeVolume();
-  }, [settings, isMainThemePlaying]);
+    updateJazzVolume();
+  }, [settings, isMainThemePlaying, isJazzPlaying]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -129,6 +180,10 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       if (mainThemeRef.current) {
         mainThemeRef.current.stopAsync();
         mainThemeRef.current.unloadAsync();
+      }
+      if (jazzRef.current) {
+        jazzRef.current.stopAsync();
+        jazzRef.current.unloadAsync();
       }
     };
   }, []);
@@ -148,6 +203,9 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
     startMainTheme,
     stopMainTheme,
     isMainThemePlaying,
+    startJazz,
+    stopJazz,
+    isJazzPlaying,
   };
 
   return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>;

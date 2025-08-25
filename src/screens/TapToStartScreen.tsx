@@ -8,8 +8,9 @@ import {
   Easing,
   Dimensions,
   Platform,
+  Image,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { useAudio } from '../contexts/AudioContext';
 import { useTransition } from '../contexts/TransitionContext';
 
@@ -31,6 +32,7 @@ const TapToStartScreen: React.FC<TapToStartScreenProps> = ({ onComplete }) => {
   const tapToStartOpacity = useRef(new Animated.Value(1)).current;
 
   const bellSoundRef = React.useRef<Audio.Sound | null>(null);
+  const titleSongRef = React.useRef<Audio.Sound | null>(null);
 
   // Start fade-in animation when component mounts
   React.useEffect(() => {
@@ -48,22 +50,32 @@ const TapToStartScreen: React.FC<TapToStartScreenProps> = ({ onComplete }) => {
     // Only load audio after fade-in is complete
     if (!fadeInComplete) return;
 
-    // Preload bell sound
-    const loadBell = async () => {
+    // Preload bell sound and title song
+    const loadAudio = async () => {
       try {
         const bell = new Audio.Sound();
         await bell.loadAsync(require('../../assets/audio/boxing_bell_1.mp3'));
         bellSoundRef.current = bell;
+
+        const titleSong = new Audio.Sound();
+        await titleSong.loadAsync(require('../../assets/audio/title_song.mp3'));
+        await titleSong.setVolumeAsync(getEffectiveVolume('music') * 0.8);
+        await titleSong.setIsLoopingAsync(true);
+        await titleSong.playAsync();
+        titleSongRef.current = titleSong;
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.log('Error preloading bell sound:', e);
+        console.log('Error preloading audio:', e);
       }
     };
-    loadBell();
+    loadAudio();
 
     return () => {
       if (bellSoundRef.current) {
         bellSoundRef.current.unloadAsync();
+      }
+      if (titleSongRef.current) {
+        titleSongRef.current.unloadAsync();
       }
     };
   }, [fadeInComplete, getEffectiveVolume]);
@@ -109,6 +121,15 @@ const TapToStartScreen: React.FC<TapToStartScreenProps> = ({ onComplete }) => {
   const handleTapToStart = async () => {
     await playBellSound();
 
+    // Fade out title song when transitioning
+    if (titleSongRef.current) {
+      try {
+        await titleSongRef.current.fadeOutAsync(2000);
+      } catch (e) {
+        console.log('Error fading out title song:', e);
+      }
+    }
+
     startTransition(
       () => {
         onComplete();
@@ -123,8 +144,15 @@ const TapToStartScreen: React.FC<TapToStartScreenProps> = ({ onComplete }) => {
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      {/* Grey background */}
-      <View style={styles.background} />
+      {/* Background Video */}
+      <Video
+        source={require('../../assets/video/title_card.mp4')}
+        style={styles.backgroundVideo}
+        shouldPlay={true}
+        isLooping={true}
+        isMuted={true}
+        resizeMode={ResizeMode.CONTAIN}
+      />
 
       {/* Tap to Start Button */}
       <TouchableOpacity
@@ -146,6 +174,13 @@ const TapToStartScreen: React.FC<TapToStartScreenProps> = ({ onComplete }) => {
           Tap to Start
         </Animated.Text>
       </TouchableOpacity>
+
+      {/* Paper Texture Overlay */}
+      <Image
+        source={require('../../assets/transition_screen/paper_texture.png')}
+        style={styles.paperTexture}
+        resizeMode="cover"
+      />
     </Animated.View>
   );
 };
@@ -156,19 +191,28 @@ const styles = StyleSheet.create({
   },
   background: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#808080', // Grey background
+    backgroundColor: '#ffffff', // White background
+  },
+  backgroundVideo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
+    backgroundColor: '#ffffff',
   },
   tapToStartText: {
-    color: '#00ffff',
+    color: '#000000',
     fontSize: 36,
     fontWeight: 'bold',
-    textShadowColor: '#000',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 8,
     letterSpacing: 2,
     padding: 24,
     textAlign: 'center',
-    fontFamily: 'System',
+    fontFamily: 'Round8Four',
+    zIndex: 4,
   },
   tapToStartMenuArea: {
     position: 'absolute',
@@ -179,6 +223,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 40,
+    zIndex: 4,
+  },
+  paperTexture: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 3,
   },
 });
 

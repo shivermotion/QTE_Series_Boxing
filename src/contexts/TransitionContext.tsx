@@ -36,39 +36,21 @@ export const TransitionProvider: React.FC<TransitionProviderProps> = ({ children
   const startTransition = useCallback((onComplete: () => void, options: TransitionOptions = {}) => {
     const {
       transitionImage: newTransitionImage,
-      loadingDuration: newLoadingDuration = 2000,
-      wipeDuration: newWipeDuration = 800,
+      loadingDuration: newLoadingDuration = 0,
+      wipeDuration: newWipeDuration = 0,
     } = options;
 
-    // Update transition options
+    // Update options for completeness (though unused in no-transition mode)
     setTransitionImage(newTransitionImage);
     setLoadingDuration(newLoadingDuration);
     setWipeDuration(newWipeDuration);
 
-    // Reset target mounting state
+    // No transition: ensure flags are reset and call onComplete immediately
+    setIsTransitioning(false);
     setShouldMountTarget(false);
     setInitialWipeComplete(false);
 
-    // Start transition
-    setIsTransitioning(true);
-
-    // Store completion handler
-    (global as any).__transitionCompleteHandler = () => {
-      setIsTransitioning(false);
-      setShouldMountTarget(false);
-      setInitialWipeComplete(false);
-      onComplete();
-    };
-
-    // Store mount target handler
-    (global as any).__mountTargetHandler = () => {
-      setShouldMountTarget(true);
-    };
-
-    // Store initial wipe complete handler
-    (global as any).__initialWipeCompleteHandler = () => {
-      setInitialWipeComplete(true);
-    };
+    onComplete();
   }, []);
 
   const value: TransitionContextType = {

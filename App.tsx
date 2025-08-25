@@ -5,7 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { AudioProvider } from './src/contexts/AudioContext';
+import { AudioProvider, useAudio } from './src/contexts/AudioContext';
 import { TransitionProvider } from './src/contexts/TransitionContext';
 import { GameProvider } from './src/contexts/GameContext';
 import TransitionWrapper from './src/components/TransitionWrapper';
@@ -19,8 +19,10 @@ import CreditsScreen from './src/screens/CreditsScreen';
 import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
 import SplashScreenComponent from './src/screens/SplashScreen';
+import TeaserScreen from './src/screens/TeaserScreen';
 import CutsceneScreen from './src/screens/CutsceneScreen';
 import GymScreen from './src/screens/GymScreen';
+import TransitionScreen from './src/screens/TransitionScreen';
 import { cutscenes } from './src/data/cutscenes';
 import PlayerDetailsScreen from './src/screens/PlayerDetailsScreen';
 import TutorialScreen from './src/screens/TutorialScreen';
@@ -38,8 +40,10 @@ LogBox.ignoreLogs([
 type GameMode = 'arcade' | 'endless';
 type Screen =
   | 'splash'
+  | 'teaser'
   | 'tapToStart'
   | 'menu'
+  | 'transition'
   | 'chooseLevel'
   | 'cutscene'
   | 'game'
@@ -57,7 +61,9 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [gameMode, setGameMode] = useState<GameMode>('arcade');
   const [selectedLevel, setSelectedLevel] = useState(1);
+  const [pendingScreen, setPendingScreen] = useState<Screen | null>(null);
   const [debugMode, setDebugMode] = useState(false);
+  const { startJazz, stopJazz, isJazzPlaying } = useAudio();
 
   // Load custom fonts
   const [fontsLoaded, fontError] = useFonts({
@@ -75,12 +81,41 @@ function AppContent() {
     }
   }, [fontsLoaded, fontError]);
 
+  // Manage jazz music based on current screen
+  React.useEffect(() => {
+    const jazzScreens = [
+      'menu',
+      'gym',
+      'tutorial',
+      'equipment',
+      'playerDetails',
+      'chooseLevel',
+      'transition',
+    ];
+    const shouldPlayJazz = jazzScreens.includes(currentScreen);
+
+    if (shouldPlayJazz && !isJazzPlaying) {
+      startJazz();
+    } else if (!shouldPlayJazz && isJazzPlaying) {
+      stopJazz();
+    }
+  }, [currentScreen, isJazzPlaying, startJazz, stopJazz]);
+
   // Don't render anything until fonts are loaded
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
+  const startTransitionTo = (next: Screen, duration = 2000) => {
+    setPendingScreen(next);
+    setCurrentScreen('transition');
+  };
+
   const handleSplashFinish = () => {
+    setCurrentScreen('teaser');
+  };
+
+  const handleTeaserComplete = () => {
     setCurrentScreen('tapToStart');
   };
 
@@ -91,13 +126,21 @@ function AppContent() {
   const handleStartGame = (mode: GameMode) => {
     setGameMode(mode);
     if (mode === 'arcade') {
-      setCurrentScreen('chooseLevel');
+      startTransitionTo('chooseLevel');
     } else {
       setCurrentScreen('game');
     }
   };
 
+  const handleOpenChooseLevel = () => {
+    // Ensure story mode when entering Choose Level via transition screen
+    setGameMode('arcade');
+    startTransitionTo('chooseLevel');
+  };
+
   const handleSelectLevel = (level: number) => {
+    // Force arcade mode for story levels
+    setGameMode('arcade');
     setSelectedLevel(level);
     setCurrentScreen('cutscene');
   };
@@ -139,11 +182,11 @@ function AppContent() {
   };
 
   const handleOpenGym = () => {
-    setCurrentScreen('gym');
+    startTransitionTo('gym');
   };
 
   const handleBackToGym = () => {
-    setCurrentScreen('gym');
+    startTransitionTo('gym');
   };
 
   const handleNavigateToTutorial = () => {
@@ -169,15 +212,25 @@ function AppContent() {
         <TransitionWrapper>
           {currentScreen === 'splash' ? (
             <SplashScreenComponent onFinish={handleSplashFinish} />
+          ) : currentScreen === 'teaser' ? (
+            <TeaserScreen onComplete={handleTeaserComplete} />
           ) : currentScreen === 'tapToStart' ? (
             <TapToStartScreen onComplete={handleTapToStartComplete} />
           ) : currentScreen === 'menu' ? (
             <MainMenu
               onStartGame={handleStartGame}
               onOpenSettings={handleOpenSettings}
-              onOpenChooseLevel={() => setCurrentScreen('chooseLevel')}
+              onOpenChooseLevel={handleOpenChooseLevel}
               onOpenGym={handleOpenGym}
               onToggleDebugMode={toggleDebugMode}
+              onBackToTitle={handleReturnToTitle}
+            />
+          ) : currentScreen === 'transition' ? (
+            <TransitionScreen
+              onComplete={() => {
+                setCurrentScreen(pendingScreen || 'menu');
+                setPendingScreen(null);
+              }}
             />
           ) : currentScreen === 'chooseLevel' ? (
             <ChooseLevelScreen
@@ -202,7 +255,6 @@ function AppContent() {
               onBackToMenu={handleBackToMenu}
               onOpenCredits={handleOpenCredits}
               onReturnToTitle={handleReturnToTitle}
-              onOpenSaveInfo={handleOpenSaveInfo}
             />
           ) : currentScreen === 'saveInfo' ? (
             <SaveInfoScreen onBack={handleBackToMenu} />
@@ -212,10 +264,11 @@ function AppContent() {
             <AudioDebugScreen onBackToMenu={handleBackToMenu} />
           ) : currentScreen === 'gym' ? (
             <GymScreen
-              onBack={handleBackToMenu}
+              onBack={() => startTransitionTo('menu')}
               onNavigateToTutorial={handleNavigateToTutorial}
               onNavigateToEquipment={handleNavigateToEquipment}
               onNavigateToPlayerDetails={handleNavigateToPlayerDetails}
+              onNavigateToCredits={() => setCurrentScreen('credits')}
             />
           ) : currentScreen === 'tutorial' ? (
             <TutorialScreen onBack={handleBackToMenu} />
