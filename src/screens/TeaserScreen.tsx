@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode, Audio } from 'expo-av';
 
 interface TeaserScreenProps {
   onComplete: () => void;
@@ -8,10 +8,35 @@ interface TeaserScreenProps {
 
 const TeaserScreen: React.FC<TeaserScreenProps> = ({ onComplete }) => {
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const crowdCheerRef = useRef<Audio.Sound | null>(null);
 
   useEffect(() => {
-    // After 4 seconds, fade to white
-    const timer = setTimeout(() => {
+    // Load and play crowd cheer sound
+    const loadAndPlayCrowdCheer = async () => {
+      try {
+        const crowdCheer = new Audio.Sound();
+        await crowdCheer.loadAsync(require('../../assets/main_menu/crowd_cheer.mp3'));
+        await crowdCheer.setVolumeAsync(0.7);
+        await crowdCheer.playAsync();
+        crowdCheerRef.current = crowdCheer;
+      } catch (error) {
+        console.log('Error loading crowd cheer sound:', error);
+      }
+    };
+
+    loadAndPlayCrowdCheer();
+
+    // After 4 seconds, fade to white and fade out audio
+    const timer = setTimeout(async () => {
+      // Fade out the crowd cheer sound
+      if (crowdCheerRef.current) {
+        try {
+          await crowdCheerRef.current.fadeOutAsync(1000);
+        } catch (error) {
+          console.log('Error fading out crowd cheer:', error);
+        }
+      }
+
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 1000,
@@ -22,7 +47,13 @@ const TeaserScreen: React.FC<TeaserScreenProps> = ({ onComplete }) => {
       });
     }, 4000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // Cleanup audio
+      if (crowdCheerRef.current) {
+        crowdCheerRef.current.unloadAsync();
+      }
+    };
   }, [fadeAnim, onComplete]);
 
   return (

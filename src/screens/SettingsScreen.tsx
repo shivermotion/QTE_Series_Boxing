@@ -8,17 +8,10 @@ import { Audio } from 'expo-av';
 
 interface SettingsScreenProps {
   onBackToMenu: () => void;
-  onOpenCredits: () => void;
   onReturnToTitle: () => void;
-  onOpenSaveInfo: () => void;
 }
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({
-  onBackToMenu,
-  onOpenCredits,
-  onReturnToTitle,
-  onOpenSaveInfo,
-}) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onReturnToTitle }) => {
   const insets = useSafeAreaInsets();
 
   const {
@@ -85,9 +78,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
             minimumValue={0}
             maximumValue={1}
             step={0.05}
-            minimumTrackTintColor="#ff00ff"
-            maximumTrackTintColor="#333"
-            thumbTintColor="#ff00ff"
+            minimumTrackTintColor="#00b4d8"
+            maximumTrackTintColor="#404040"
+            thumbTintColor="#ff6b35"
           />
 
           <View style={styles.settingRow}>
@@ -108,9 +101,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
               minimumValue={0}
               maximumValue={1}
               step={0.05}
-              minimumTrackTintColor="#00ffff"
-              maximumTrackTintColor="#333"
-              thumbTintColor="#00ffff"
+              minimumTrackTintColor="#00b4d8"
+              maximumTrackTintColor="#404040"
+              thumbTintColor="#ff6b35"
             />
           </View>
 
@@ -128,9 +121,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
             minimumValue={0}
             maximumValue={1}
             step={0.05}
-            minimumTrackTintColor="#ff8800"
-            maximumTrackTintColor="#333"
-            thumbTintColor="#ff8800"
+            minimumTrackTintColor="#00b4d8"
+            maximumTrackTintColor="#404040"
+            thumbTintColor="#ff6b35"
           />
 
           <View style={styles.settingRow}>
@@ -139,10 +132,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
               value={settings.audioEnabled}
               onValueChange={value => {
                 toggleAudioEnabled(value);
-                // Persisting audioEnabled is not part of GameState.audioSettings; skip save here
               }}
-              trackColor={{ false: '#767577', true: '#ff00ff' }}
-              thumbColor={settings.audioEnabled ? '#00ffff' : '#f4f3f4'}
+              trackColor={{ false: '#404040', true: '#00b4d8' }}
+              thumbColor={settings.audioEnabled ? '#ff6b35' : '#b0b0b0'}
             />
           </View>
         </View>
@@ -156,18 +148,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
             <Switch
               value={true}
               onValueChange={() => {}}
-              trackColor={{ false: '#767577', true: '#ff00ff' }}
-              thumbColor={'#00ffff'}
+              trackColor={{ false: '#404040', true: '#00b4d8' }}
+              thumbColor={'#ff6b35'}
             />
           </View>
-        </View>
-
-        {/* Save Information Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Save Information</Text>
-          <TouchableOpacity style={styles.saveInfoButton} onPress={onOpenSaveInfo}>
-            <Text style={styles.saveInfoButtonText}>View Save Details</Text>
-          </TouchableOpacity>
         </View>
 
         {/* About Section */}
@@ -181,27 +165,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
           <View style={styles.aboutItem}>
             <Text style={styles.aboutLabel}>Developer</Text>
-            <Text style={styles.aboutValue}>QTE Series Team</Text>
+            <Text style={styles.aboutValue}>Nexrage Studios</Text>
           </View>
-
-          <View style={styles.aboutItem}>
-            <Text style={styles.aboutLabel}>Inspired by</Text>
-            <Text style={styles.aboutValue}>Sega AM2 Classics</Text>
-          </View>
-        </View>
-
-        {/* Credits */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Credits</Text>
-          <Text style={styles.creditsText}>
-            Built with React Native & Expo{'\n'}
-            Retro gaming inspiration{'\n'}
-            Pixel art aesthetic{'\n'}
-            Chiptune audio design
-          </Text>
-          <TouchableOpacity style={styles.watchCreditsButton} onPress={onOpenCredits}>
-            <Text style={styles.watchCreditsButtonText}>Watch Credits</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -217,7 +182,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#1a1a1a',
   },
   header: {
     flexDirection: 'row',
@@ -226,21 +191,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     borderBottomWidth: 2,
-    borderBottomColor: '#00ffff',
+    borderBottomColor: '#00b4d8',
   },
   backButton: {
-    backgroundColor: '#ff00ff',
+    backgroundColor: '#00b4d8',
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 5,
   },
   backButtonText: {
-    color: 'white',
+    color: '#ffffff',
     fontSize: 14,
     fontWeight: 'bold',
   },
   title: {
-    color: '#00ffff',
+    color: '#00b4d8',
     fontSize: 24,
     fontWeight: 'bold',
   },
@@ -255,7 +220,7 @@ const styles = StyleSheet.create({
     marginTop: 30,
   },
   sectionTitle: {
-    color: '#ff8800',
+    color: '#ff6b35',
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 15,
@@ -266,10 +231,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#333333',
   },
   settingLabel: {
-    color: 'white',
+    color: '#e0e0e0',
     fontSize: 16,
   },
   aboutItem: {
@@ -278,18 +243,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#333333',
   },
   aboutLabel: {
-    color: 'white',
+    color: '#e0e0e0',
     fontSize: 16,
   },
   aboutValue: {
-    color: '#00ffff',
+    color: '#00b4d8',
     fontSize: 16,
   },
   creditsText: {
-    color: '#ccc',
+    color: '#b0b0b0',
     fontSize: 14,
     lineHeight: 20,
   },
@@ -299,14 +264,14 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   volumeValue: {
-    color: '#00ffff',
+    color: '#ff6b35',
     fontSize: 16,
     fontWeight: 'bold',
     minWidth: 50,
     textAlign: 'right',
   },
   testButton: {
-    backgroundColor: '#ff00ff',
+    backgroundColor: '#ff6b35',
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 5,
@@ -315,7 +280,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   testButtonText: {
-    color: 'white',
+    color: '#ffffff',
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -324,22 +289,8 @@ const styles = StyleSheet.create({
     height: 40,
     marginBottom: 15,
   },
-  watchCreditsButton: {
-    backgroundColor: '#ff00ff',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 5,
-    alignSelf: 'flex-start',
-    marginTop: 15,
-    marginBottom: 15,
-  },
-  watchCreditsButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
   returnToTitleButton: {
-    backgroundColor: '#ff8800',
+    backgroundColor: '#ff6b35',
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderRadius: 8,
@@ -347,27 +298,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#ff00ff',
+    borderColor: '#00b4d8',
   },
   returnToTitleButtonText: {
-    color: 'white',
+    color: '#ffffff',
     fontSize: 18,
-    fontWeight: 'bold',
-  },
-  saveInfoButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
-    borderWidth: 2,
-    borderColor: '#45a049',
-  },
-  saveInfoButtonText: {
-    color: 'white',
-    fontSize: 16,
     fontWeight: 'bold',
   },
 });

@@ -32,6 +32,7 @@ const TapToStartScreen: React.FC<TapToStartScreenProps> = ({ onComplete }) => {
   const tapToStartOpacity = useRef(new Animated.Value(1)).current;
 
   const bellSoundRef = React.useRef<Audio.Sound | null>(null);
+  const titleSongRef = React.useRef<Audio.Sound | null>(null);
 
   // Start fade-in animation when component mounts
   React.useEffect(() => {
@@ -49,22 +50,32 @@ const TapToStartScreen: React.FC<TapToStartScreenProps> = ({ onComplete }) => {
     // Only load audio after fade-in is complete
     if (!fadeInComplete) return;
 
-    // Preload bell sound
-    const loadBell = async () => {
+    // Preload bell sound and title song
+    const loadAudio = async () => {
       try {
         const bell = new Audio.Sound();
         await bell.loadAsync(require('../../assets/audio/boxing_bell_1.mp3'));
         bellSoundRef.current = bell;
+
+        const titleSong = new Audio.Sound();
+        await titleSong.loadAsync(require('../../assets/audio/title_song.mp3'));
+        await titleSong.setVolumeAsync(getEffectiveVolume('music') * 0.8);
+        await titleSong.setIsLoopingAsync(true);
+        await titleSong.playAsync();
+        titleSongRef.current = titleSong;
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.log('Error preloading bell sound:', e);
+        console.log('Error preloading audio:', e);
       }
     };
-    loadBell();
+    loadAudio();
 
     return () => {
       if (bellSoundRef.current) {
         bellSoundRef.current.unloadAsync();
+      }
+      if (titleSongRef.current) {
+        titleSongRef.current.unloadAsync();
       }
     };
   }, [fadeInComplete, getEffectiveVolume]);
@@ -109,6 +120,15 @@ const TapToStartScreen: React.FC<TapToStartScreenProps> = ({ onComplete }) => {
   // Handler for tap-to-start
   const handleTapToStart = async () => {
     await playBellSound();
+
+    // Fade out title song when transitioning
+    if (titleSongRef.current) {
+      try {
+        await titleSongRef.current.fadeOutAsync(2000);
+      } catch (e) {
+        console.log('Error fading out title song:', e);
+      }
+    }
 
     startTransition(
       () => {

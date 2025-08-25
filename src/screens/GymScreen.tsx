@@ -8,6 +8,7 @@ interface GymScreenProps {
   onNavigateToTutorial?: () => void;
   onNavigateToEquipment?: () => void;
   onNavigateToPlayerDetails?: () => void;
+  onNavigateToCredits?: () => void;
 }
 
 const GymScreen: React.FC<GymScreenProps> = ({
@@ -15,6 +16,7 @@ const GymScreen: React.FC<GymScreenProps> = ({
   onNavigateToTutorial,
   onNavigateToEquipment,
   onNavigateToPlayerDetails,
+  onNavigateToCredits,
 }) => {
   useEffect(() => {
     console.log('[GymScreen] Component mounted, videos should start playing');
@@ -25,32 +27,26 @@ const GymScreen: React.FC<GymScreenProps> = ({
   const bottomVideoRef = useRef<any>(null);
 
   const handleTopThirdTap = () => {
-    console.log('Top third tapped - navigating to equipment');
-    console.log('onNavigateToEquipment function:', onNavigateToEquipment);
-    if (onNavigateToEquipment) {
+    console.log('Top third tapped - navigating to credits');
+    if (onNavigateToCredits) {
+      onNavigateToCredits();
+    } else if (onNavigateToEquipment) {
+      // Fallback for older prop usage
       onNavigateToEquipment();
-    } else {
-      console.log('onNavigateToEquipment function is not provided');
     }
   };
 
   const handleMiddleThirdTap = () => {
     console.log('Middle third tapped - navigating to tutorial');
-    console.log('onNavigateToTutorial function:', onNavigateToTutorial);
     if (onNavigateToTutorial) {
       onNavigateToTutorial();
-    } else {
-      console.log('onNavigateToTutorial function is not provided');
     }
   };
 
   const handleBottomThirdTap = () => {
     console.log('Bottom third tapped - navigating to player details');
-    console.log('onNavigateToPlayerDetails function:', onNavigateToPlayerDetails);
     if (onNavigateToPlayerDetails) {
       onNavigateToPlayerDetails();
-    } else {
-      console.log('onNavigateToPlayerDetails function is not provided');
     }
   };
 
@@ -111,7 +107,7 @@ const GymScreen: React.FC<GymScreenProps> = ({
               }}
             />
             <View style={styles.textOverlay}>
-              <Text style={styles.sectionText}>Equipment</Text>
+              <Text style={styles.sectionText}>Watch Credit</Text>
             </View>
           </TouchableOpacity>
 
@@ -239,9 +235,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 4,
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'yellow',
-    borderStyle: 'dashed',
     minHeight: 100,
   },
   videoBackground: {

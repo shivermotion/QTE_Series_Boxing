@@ -104,7 +104,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
   onOpenGym,
   onBackToTitle,
 }) => {
-  const { getEffectiveVolume, startMainTheme, isMainThemePlaying } = useAudio();
+  const { getEffectiveVolume } = useAudio();
   const { startTransition, setTargetScreen } = useTransition();
 
   const [menuAreaReady, setMenuAreaReady] = React.useState(true);
@@ -177,12 +177,6 @@ const MainMenu: React.FC<MainMenuProps> = ({
   useEffect(() => {
     setMenuAreaReady(true);
   }, []);
-
-  useEffect(() => {
-    if (!isMainThemePlaying) {
-      startMainTheme();
-    }
-  }, [isMainThemePlaying, startMainTheme]);
 
   return (
     <View style={styles.container}>
