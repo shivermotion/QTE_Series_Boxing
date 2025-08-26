@@ -8,10 +8,9 @@ import { Audio } from 'expo-av';
 
 interface SettingsScreenProps {
   onBackToMenu: () => void;
-  onReturnToTitle: () => void;
 }
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onReturnToTitle }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
   const insets = useSafeAreaInsets();
 
   const {
@@ -137,6 +136,23 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onReturnT
               thumbColor={settings.audioEnabled ? '#ff6b35' : '#b0b0b0'}
             />
           </View>
+
+          <TouchableOpacity
+            style={styles.restoreButton}
+            onPress={() => {
+              updateMasterVolume(1.0);
+              updateSoundEffectsVolume(0.8);
+              updateMusicVolume(0.6);
+              toggleAudioEnabled(true);
+              handleAudioSettingChange({
+                masterVolume: 1.0,
+                sfxVolume: 0.8,
+                musicVolume: 0.6,
+              });
+            }}
+          >
+            <Text style={styles.restoreButtonText}>Restore to Default</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Gameplay Settings */}
@@ -167,12 +183,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu, onReturnT
             <Text style={styles.aboutLabel}>Developer</Text>
             <Text style={styles.aboutValue}>Nexrage Studios</Text>
           </View>
-        </View>
-
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.returnToTitleButton} onPress={onReturnToTitle}>
-            <Text style={styles.returnToTitleButtonText}>Return to Title Screen</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -289,20 +299,18 @@ const styles = StyleSheet.create({
     height: 40,
     marginBottom: 15,
   },
-  returnToTitleButton: {
+  restoreButton: {
     backgroundColor: '#ff6b35',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: '#00b4d8',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+    alignSelf: 'flex-start',
+    marginTop: 15,
+    marginBottom: 15,
   },
-  returnToTitleButtonText: {
+  restoreButtonText: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });
