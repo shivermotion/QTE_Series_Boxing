@@ -31,11 +31,11 @@ const getCharacterForLevel = (level: number) => {
     require('../../assets/characters/rigoberto_hazuki.png'), // Level 3
     require('../../assets/characters/oronzo_hazuki.png'), // Level 4
     require('../../assets/characters/moai_man.png'), // Level 5
-    require('../../assets/characters/king.png'), // Level 6
-    require('../../assets/characters/henry_hitchens .png'), // Level 7 (reuse)
-    require('../../assets/characters/cyborg_boxer.png'), // Level 8 (reuse)
-    require('../../assets/characters/rigoberto_hazuki.png'), // Level 9 (reuse)
-    require('../../assets/characters/oronzo_hazuki.png'), // Level 10 (reuse)
+    require('../../assets/characters/ripper.png'), // Level 6
+    require('../../assets/characters/ms_nozomi.png'), // Level 7 (reuse)
+    require('../../assets/characters/gus_yamato.png'), // Level 8 (reuse)
+    require('../../assets/characters/cyborg_boxer.png'), // Level 9 (reuse)
+    require('../../assets/characters/king.png'), // Level 10 (reuse)
   ];
 
   return characters[(level - 1) % characters.length];

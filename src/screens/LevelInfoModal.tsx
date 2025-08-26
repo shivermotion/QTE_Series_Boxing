@@ -30,11 +30,11 @@ const getCharacterNameForLevel = (level: number) => {
     'Rigoberto Hazuki', // Level 3
     'Oronzo Hazuki', // Level 4
     'Moai Man', // Level 5
-    'King', // Level 6
-    'Henry Hitchens', // Level 7 (reuse)
-    'Cyborg Boxer', // Level 8 (reuse)
-    'Rigoberto Hazuki', // Level 9 (reuse)
-    'Oronzo Hazuki', // Level 10 (reuse)
+    'Ripper', // Level 6
+    'Ms. Nozomi', // Level 7
+    'Gus Yamato', // Level 8
+    'Cyborg Boxer Mach 2', // Level 9
+    'King', // Level 10
   ];
 
   return characterNames[(level - 1) % characterNames.length];
@@ -48,11 +48,11 @@ const getCharacterModalImageForLevel = (level: number) => {
     require('../../assets/character_menu/rigoberto_hazuki_modal.png'), // Level 3
     require('../../assets/character_menu/oronzo_hazuki_modal.png'), // Level 4
     require('../../assets/character_menu/moai_man_modal.png'), // Level 5
-    require('../../assets/character_menu/king_modal.png'), // Level 6
-    require('../../assets/character_menu/henry_hitchens_modal.png'), // Level 7 (reuse)
-    require('../../assets/character_menu/cyborg_boxer_modal.png'), // Level 8 (reuse)
-    require('../../assets/character_menu/rigoberto_hazuki_modal.png'), // Level 9 (reuse)
-    require('../../assets/character_menu/oronzo_hazuki_modal.png'), // Level 10 (reuse)
+    require('../../assets/character_menu/ripper_modal.png'), // Level 6
+    require('../../assets/character_menu/ms_nozomi_modal.png'), // Level 7 (reuse)
+    require('../../assets/character_menu/gus_yamato_modal.png'), // Level 8 (reuse)
+    require('../../assets/character_menu/cyborg_boxer_modal.png'), // Level 9 (reuse)
+    require('../../assets/character_menu/king_modal.png'), // Level 10 (reuse)
   ];
 
   return characterModalImages[(level - 1) % characterModalImages.length];

@@ -149,7 +149,7 @@ export const levels: LevelConfig[] = [
   // ============================================================================
   {
     id: 'level_2',
-    name: 'Gym Rat',
+    name: 'Mechanoid mixer',
     hp: 2200,
     damage: {
       success: 15,
@@ -213,7 +213,7 @@ export const levels: LevelConfig[] = [
   // ============================================================================
   {
     id: 'level_3',
-    name: 'Amateur Boxer',
+    name: ' Twin Boxer',
     hp: 2400,
     damage: {
       success: 20,
@@ -277,7 +277,7 @@ export const levels: LevelConfig[] = [
   // ============================================================================
   {
     id: 'level_4',
-    name: 'Club Champion',
+    name: 'Twin Boxer',
     hp: 2600,
     damage: {
       success: 25,
@@ -352,7 +352,7 @@ export const levels: LevelConfig[] = [
   // ============================================================================
   {
     id: 'level_5',
-    name: 'Underground Fighter',
+    name: 'Regional Mythical Fighter',
     hp: 2800,
     damage: {
       success: 30,
@@ -427,7 +427,7 @@ export const levels: LevelConfig[] = [
   // ============================================================================
   {
     id: 'level_6',
-    name: 'Regional Champ',
+    name: 'Pouncing Champ',
     hp: 3000,
     damage: {
       success: 35,
@@ -502,7 +502,7 @@ export const levels: LevelConfig[] = [
   // ============================================================================
   {
     id: 'level_7',
-    name: 'Shadow Boxer',
+    name: 'Boxing Empress',
     hp: 3200,
     damage: {
       success: 40,
@@ -577,7 +577,7 @@ export const levels: LevelConfig[] = [
   // ============================================================================
   {
     id: 'level_8',
-    name: 'Elite Contender',
+    name: 'Shadow Boxer',
     hp: 3400,
     damage: {
       success: 45,
@@ -652,7 +652,7 @@ export const levels: LevelConfig[] = [
   // ============================================================================
   {
     id: 'level_9',
-    name: 'Legendary Warrior',
+    name: 'Resurrected Mechanoid',
     hp: 3600,
     damage: {
       success: 50,
