@@ -252,13 +252,11 @@ function AppContent() {
               debugMode={debugMode}
             />
           ) : currentScreen === 'settings' ? (
-            <SettingsScreen
-              onBackToMenu={handleBackToMenu}
-            />
+            <SettingsScreen onBackToMenu={handleBackToMenu} />
           ) : currentScreen === 'saveInfo' ? (
             <SaveInfoScreen onBack={handleBackToMenu} />
           ) : currentScreen === 'credits' ? (
-            <CreditsScreen onBackToMenu={handleBackToMenu} />
+            <CreditsScreen onBackToMenu={handleBackToGym} />
           ) : currentScreen === 'audioDebug' ? (
             <AudioDebugScreen onBackToMenu={handleBackToMenu} />
           ) : currentScreen === 'gym' ? (
