@@ -82,32 +82,30 @@ const GymScreen: React.FC<GymScreenProps> = ({
           {/* Top third */}
           <TouchableOpacity
             style={styles.sectionButton}
-            onPress={handleTopThirdTap}
-            onPressIn={() => console.log('Top button pressed in')}
-            onPressOut={() => console.log('Top button pressed out')}
+            onPress={handleBottomThirdTap}
             activeOpacity={0.8}
           >
             <Video
-              ref={topVideoRef}
-              source={require('../../assets/video/crowd.mp4')}
+              ref={bottomVideoRef}
+              source={require('../../assets/video/judges.mp4')}
               style={styles.videoBackground}
               shouldPlay={true}
               isLooping={true}
               isMuted={true}
               resizeMode={ResizeMode.COVER}
-              onLoadStart={() => console.log('[GymScreen] Top video loading started')}
+              onLoadStart={() => console.log('[GymScreen] Bottom video loading started')}
               onLoad={async () => {
-                console.log('[GymScreen] Top video loaded successfully');
+                console.log('[GymScreen] Bottom video loaded successfully');
                 try {
-                  await topVideoRef.current?.replayAsync();
+                  await bottomVideoRef.current?.replayAsync();
                 } catch {}
               }}
               onError={e => {
-                console.log('[GymScreen] Top video error:', e);
+                console.log('[GymScreen] Bottom video error:', e);
               }}
             />
             <View style={styles.textOverlay}>
-              <Text style={styles.sectionText}>Watch Credit</Text>
+              <Text style={styles.sectionText}>Player Stats</Text>
             </View>
           </TouchableOpacity>
 
@@ -144,30 +142,32 @@ const GymScreen: React.FC<GymScreenProps> = ({
           {/* Bottom third */}
           <TouchableOpacity
             style={styles.sectionButton}
-            onPress={handleBottomThirdTap}
+            onPress={handleTopThirdTap}
+            onPressIn={() => console.log('Top button pressed in')}
+            onPressOut={() => console.log('Top button pressed out')}
             activeOpacity={0.8}
           >
             <Video
-              ref={bottomVideoRef}
-              source={require('../../assets/video/judges.mp4')}
+              ref={topVideoRef}
+              source={require('../../assets/video/crowd.mp4')}
               style={styles.videoBackground}
               shouldPlay={true}
               isLooping={true}
               isMuted={true}
               resizeMode={ResizeMode.COVER}
-              onLoadStart={() => console.log('[GymScreen] Bottom video loading started')}
+              onLoadStart={() => console.log('[GymScreen] Top video loading started')}
               onLoad={async () => {
-                console.log('[GymScreen] Bottom video loaded successfully');
+                console.log('[GymScreen] Top video loaded successfully');
                 try {
-                  await bottomVideoRef.current?.replayAsync();
+                  await topVideoRef.current?.replayAsync();
                 } catch {}
               }}
               onError={e => {
-                console.log('[GymScreen] Bottom video error:', e);
+                console.log('[GymScreen] Top video error:', e);
               }}
             />
             <View style={styles.textOverlay}>
-              <Text style={styles.sectionText}>Player Stats</Text>
+              <Text style={styles.sectionText}>Credits</Text>
             </View>
           </TouchableOpacity>
         </View>

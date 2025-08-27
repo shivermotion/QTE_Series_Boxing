@@ -91,6 +91,7 @@ function AppContent() {
       'playerDetails',
       'chooseLevel',
       'transition',
+      'credits',
     ];
     const shouldPlayJazz = jazzScreens.includes(currentScreen);
 
@@ -251,15 +252,11 @@ function AppContent() {
               debugMode={debugMode}
             />
           ) : currentScreen === 'settings' ? (
-            <SettingsScreen
-              onBackToMenu={handleBackToMenu}
-              onOpenCredits={handleOpenCredits}
-              onReturnToTitle={handleReturnToTitle}
-            />
+            <SettingsScreen onBackToMenu={handleBackToMenu} />
           ) : currentScreen === 'saveInfo' ? (
             <SaveInfoScreen onBack={handleBackToMenu} />
           ) : currentScreen === 'credits' ? (
-            <CreditsScreen onBackToMenu={handleBackToMenu} />
+            <CreditsScreen onBackToMenu={handleBackToGym} />
           ) : currentScreen === 'audioDebug' ? (
             <AudioDebugScreen onBackToMenu={handleBackToMenu} />
           ) : currentScreen === 'gym' ? (
