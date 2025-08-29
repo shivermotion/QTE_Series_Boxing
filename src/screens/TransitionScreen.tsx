@@ -62,7 +62,7 @@ const TransitionScreen: React.FC<TransitionScreenProps> = ({
             flex: 1,
           }}
         >
-          <ActivityIndicator size="large" color="#000000" style={styles.spinner} />
+          <ActivityIndicator size="large" color="#ffffff" style={styles.spinner} />
         </Animated.View>
       )}
     </View>
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   spinner: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     borderRadius: 20,
     padding: 20,
   },

@@ -203,7 +203,11 @@ const MainMenu: React.FC<MainMenuProps> = ({
                   delay={0}
                   instant={true}
                 >
-                  <Text style={styles.backToTitleButtonText}>← Back to Title</Text>
+                  <Image
+                    source={require('../../assets/ui/Back.png')}
+                    style={styles.backIconImage}
+                    resizeMode="contain"
+                  />
                 </AnimatedButton>
               </View>
 
@@ -217,7 +221,11 @@ const MainMenu: React.FC<MainMenuProps> = ({
                   delay={0}
                   instant={true}
                 >
-                  <Text style={styles.settingsButtonText}>Settings</Text>
+                  <Image
+                    source={require('../../assets/ui/Settings.png')}
+                    style={styles.settingsIconImage}
+                    resizeMode="contain"
+                  />
                 </AnimatedButton>
               </View>
 
@@ -368,23 +376,15 @@ const styles = StyleSheet.create({
     fontFamily: 'System',
   },
   settingsButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    minWidth: 100,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: 0,
+    borderWidth: 0,
+    minWidth: 44,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   settingsButtonText: {
     color: '#333333',
@@ -418,29 +418,29 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backToTitleButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    minWidth: 120,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderRadius: 0,
+    borderWidth: 0,
+    minWidth: 44,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   backToTitleButtonText: {
     color: '#333333',
     fontSize: 14,
     fontWeight: '600',
     fontFamily: 'System',
+  },
+  backIconImage: {
+    width: 120,
+    height: 44,
+  },
+  settingsIconImage: {
+    width: 100,
+    height: 44,
   },
   topRightContainer: {
     position: 'absolute',

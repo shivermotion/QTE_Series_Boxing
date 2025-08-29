@@ -476,43 +476,14 @@ const GameScreen: React.FC<GameScreenProps> = ({
             gameLogic.setGameState(prev => ({ ...prev, isPaused: !prev.isPaused }));
             playGameSound(audioRefs.boxingBell2Sound);
           }}
+          activeOpacity={0.8}
         >
-          <Text style={styles.pauseButtonText}>⏸️</Text>
-        </TouchableOpacity>
-
-        {/* Test Pre-Round Button */}
-        <TouchableOpacity
-          style={styles.testPreRoundButton}
-          onPress={() => {
-            gameLogic.setIsPreRound(true);
-            gameLogic.setPreRoundText(`ROUND ${gameLogic.gameState.currentRound}`);
-          }}
-        >
-          <Text style={styles.testPreRoundButtonText}>🎬</Text>
-        </TouchableOpacity>
-
-        {/* Test Audio Button */}
-        <TouchableOpacity
-          style={styles.testAudioButton}
-          onPress={() => {
-            playGameSound(audioRefs.qteSuccessSound);
-            setTimeout(() => {
-              playGameSound(audioRefs.qteFailureSound);
-            }, 1000);
-          }}
-        >
-          <Text style={styles.testAudioButtonText}>🔊</Text>
-        </TouchableOpacity>
-
-        {/* Test Feint Button */}
-        <TouchableOpacity
-          style={styles.testFeintButton}
-          onPress={() => {
-            // Force spawn a tap prompt to test feints
-            gameLogic.spawnPrompt();
-          }}
-        >
-          <Text style={styles.testFeintButtonText}>🎯</Text>
+          <Image
+            source={require('../../assets/ui/Asset_28.png')}
+            style={styles.pauseButtonImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.pauseButtonOverlayText}>II</Text>
         </TouchableOpacity>
 
         {/* Pause Overlay */}
@@ -590,8 +561,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a2e',
-    borderWidth: 2,
-    borderColor: '#ff0000',
   },
   backgroundVideo: {
     position: 'absolute',
@@ -639,58 +608,35 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 120,
     left: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 12,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'transparent',
+    padding: 0,
+    borderRadius: 0,
+    borderWidth: 0,
     zIndex: 50,
+    width: 120,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pauseButtonText: {
     fontSize: 20,
   },
-  testPreRoundButton: {
+  pauseButtonImage: {
+    width: 120,
+    height: 40,
+  },
+  pauseButtonOverlayText: {
     position: 'absolute',
-    top: 120,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 12,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    zIndex: 50,
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'Round8Four',
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    letterSpacing: 2,
   },
-  testPreRoundButtonText: {
-    fontSize: 20,
-  },
-  testAudioButton: {
-    position: 'absolute',
-    top: 120,
-    right: 80,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 12,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    zIndex: 50,
-  },
-  testAudioButtonText: {
-    fontSize: 20,
-  },
-  testFeintButton: {
-    position: 'absolute',
-    top: 120,
-    right: 140,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 12,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    zIndex: 50,
-  },
-  testFeintButtonText: {
-    fontSize: 20,
-  },
+
   pauseOverlay: {
     position: 'absolute',
     top: 0,

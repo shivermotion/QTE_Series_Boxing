@@ -9,6 +9,7 @@ import {
   Easing,
   Dimensions,
   Image,
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
@@ -49,11 +50,11 @@ const getCharacterNameForLevel = (level: number) => {
     require('../../assets/level_select/rigoberto_hazuki.png'), // Level 3 - Rigoberto Hazuki
     require('../../assets/level_select/oronzo_hazuki.png'), // Level 4 - Oronzo Hazuki
     require('../../assets/level_select/moai_man.png'), // Level 5 - Moai Man
-    require('../../assets/level_select/king.png'), // Level 6 - King
-    require('../../assets/level_select/name5-game-assets.png'), // Level 7 - Henry Hitchens (reuse)
-    require('../../assets/level_select/cyborg_boxer.png'), // Level 8 - Cyborg Boxer (reuse)
-    require('../../assets/level_select/rigoberto_hazuki.png'), // Level 9 - Rigoberto Hazuki (reuse)
-    require('../../assets/level_select/oronzo_hazuki.png'), // Level 10 - Oronzo Hazuki (reuse)
+    require('../../assets/level_select/ripper.png'), // Level 6 - King
+    require('../../assets/level_select/ms_nozomi.png'), // Level 7 - Henry Hitchens (reuse)
+    require('../../assets/level_select/gus_yamato.png'), // Level 8 - Cyborg Boxer (reuse)
+    require('../../assets/level_select/cyborg_boxer_mk2.png'), // Level 9 - Rigoberto Hazuki (reuse)
+    require('../../assets/level_select/king.png'), // Level 10 - Oronzo Hazuki (reuse)
   ];
 
   return characterNames[(level - 1) % characterNames.length];
@@ -363,6 +364,8 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+
       {/* Main body area with background */}
       <TouchableOpacity style={styles.bodyArea} onPress={handleSelect} activeOpacity={0.9}>
         {/* Background GIF */}
@@ -370,13 +373,6 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
           source={require('../../assets/video/world_black.gif')}
           style={styles.backgroundGif}
           resizeMode="contain"
-        />
-
-        {/* Paper texture overlay */}
-        <Image
-          source={require('../../assets/transition_screen/paper_texture.png')}
-          style={styles.paperTexture}
-          resizeMode="cover"
         />
 
         {/* Paper border overlay */}
@@ -441,11 +437,10 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
         <AnimatedButton onPress={handleBack} instant={true}>
           <View style={styles.backButtonWrapper}>
             <Image
-              source={require('../../assets/level_select/toggle_4.png')}
-              style={styles.backButtonImage}
+              source={require('../../assets/ui/Back.png')}
+              style={styles.backIconImage}
               resizeMode="contain"
             />
-            <Text style={styles.backButtonText}>← Back</Text>
           </View>
         </AnimatedButton>
       </View>
@@ -505,8 +500,9 @@ const ChooseLevelScreen: React.FC<ChooseLevelScreenProps> = ({ onSelectLevel, on
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#000000',
   },
+
   backButtonContainer: {
     position: 'absolute',
     left: 20,
@@ -532,6 +528,10 @@ const styles = StyleSheet.create({
   backButtonImage: {
     width: 160,
     height: 160,
+  },
+  backIconImage: {
+    width: 120,
+    height: 44,
   },
   backButtonWrapper: {
     position: 'relative',
@@ -732,17 +732,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  paperTexture: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-    // opacity: 0.3,
-    zIndex: 1,
-  },
+
   paperBorder: {
     position: 'absolute',
     top: 0,

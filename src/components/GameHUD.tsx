@@ -23,6 +23,21 @@ const GameHUD: React.FC<GameHUDProps> = ({
   onSuperButtonPress,
   gameMode = 'arcade',
 }) => {
+  const getOpponentModalForLevel = (level: number) => {
+    const images = [
+      require('../../assets/character_menu/henry_hitchens_modal.png'),
+      require('../../assets/character_menu/cyborg_boxer_modal.png'),
+      require('../../assets/character_menu/rigoberto_hazuki_modal.png'),
+      require('../../assets/character_menu/oronzo_hazuki_modal.png'),
+      require('../../assets/character_menu/moai_man_modal.png'),
+      require('../../assets/character_menu/ripper_modal.png'),
+      require('../../assets/character_menu/ms_nozomi_modal.png'),
+      require('../../assets/character_menu/gus_yamato_modal.png'),
+      require('../../assets/character_menu/cyborg_boxer_modal.png'),
+      require('../../assets/character_menu/king_modal.png'),
+    ];
+    return images[(level - 1) % images.length];
+  };
   // Animation for breathing glow effect
   const glowAnim = useRef(new Animated.Value(0)).current;
 
@@ -88,7 +103,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
             </View>
             <View style={styles.avatarContainer}>
               <Animated.Image
-                source={getAvatarImage(gameState.avatarState)}
+                source={getOpponentModalForLevel(gameState.level)}
                 style={[styles.avatar, avatarScaleStyle]}
               />
             </View>
@@ -101,17 +116,22 @@ const GameHUD: React.FC<GameHUDProps> = ({
         <View style={styles.playerRow}>
           <TouchableOpacity
             style={styles.playerAvatarContainer}
-            onPress={gameMode === 'arcade' && gameState.superMeter >= 100 ? onSuperButtonPress : undefined}
+            onPress={
+              gameMode === 'arcade' && gameState.superMeter >= 100 ? onSuperButtonPress : undefined
+            }
             activeOpacity={gameMode === 'arcade' && gameState.superMeter >= 100 ? 0.8 : 1}
           >
             <Animated.Image
-              source={getAvatarImage(gameState.avatarState)}
+              source={require('../../assets/characters/hero_avatar.png')}
               style={[
                 styles.avatar,
                 avatarScaleStyle,
                 {
                   borderWidth: 4,
-                   borderColor: gameMode === 'arcade' && gameState.superMeter >= 100 ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+                  borderColor:
+                    gameMode === 'arcade' && gameState.superMeter >= 100
+                      ? '#ffffff'
+                      : 'rgba(255, 255, 255, 0.3)',
                   // Match the irregular shape from the avatar style
                   borderTopLeftRadius: 30,
                   borderTopRightRadius: 12,
@@ -127,15 +147,19 @@ const GameHUD: React.FC<GameHUDProps> = ({
               <View style={styles.playerStatsInline}>
                 <Text style={styles.scoreTextInline}>{gameState.score}</Text>
                 <View style={styles.livesBar}>
-                  {[1, 2, 3].map(i => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.lifeSegment,
-                        { backgroundColor: i <= gameState.lives ? '#00ff00' : '#333' },
-                      ]}
-                    />
-                  ))}
+                  {[1, 2, 3].map(i =>
+                    i <= gameState.lives ? (
+                      <LinearGradient
+                        key={i}
+                        colors={['#ef4444', '#dc2626']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.lifeSegment, styles.lifeSegmentActive]}
+                      />
+                    ) : (
+                      <View key={i} style={[styles.lifeSegment, styles.lifeSegmentInactive]} />
+                    )
+                  )}
                 </View>
               </View>
             </View>
@@ -230,7 +254,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   playerLabel: {
-    color: '#00ff00',
+    color: '#000000',
     fontSize: 12,
     fontWeight: 'bold',
     textAlign: 'center',
@@ -325,6 +349,14 @@ const styles = StyleSheet.create({
     height: 20,
     marginHorizontal: 2,
     borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  lifeSegmentActive: {
+    // Gradient provided via LinearGradient component
+  },
+  lifeSegmentInactive: {
+    backgroundColor: '#333',
   },
 
   superMeterContainer: {

@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   arrow: {
-    color: '#00ff00',
+    color: '#ffffff',
     fontSize: 48,
     fontWeight: 'bold',
     marginHorizontal: 10,

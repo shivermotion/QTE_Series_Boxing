@@ -33,7 +33,7 @@ const getCharacterNameForLevel = (level: number) => {
     'Ripper', // Level 6
     'Ms. Nozomi', // Level 7
     'Gus Yamato', // Level 8
-    'Cyborg Boxer Mach 2', // Level 9
+    'Cyborg Boxer Mk II', // Level 9
     'King', // Level 10
   ];
 
@@ -205,27 +205,23 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
   };
 
   const handleReadyPress = () => {
-    // Show shatter animation
+    // Slow fade to white, then continue
     setShowShatter(true);
     shatterOpacity.setValue(0);
-
-    // Animate shatter in
     Animated.timing(shatterOpacity, {
       toValue: 1,
-      duration: 300,
+      duration: 2200,
+      easing: Easing.inOut(Easing.quad),
       useNativeDriver: true,
     }).start(() => {
-      // After shatter animation completes, call onReady
-      setTimeout(() => {
-        setShowShatter(false);
-        onReady();
-      }, 1000); // Wait 1 second for shatter effect
+      onReady();
+      setShowShatter(false);
     });
   };
 
   return (
     <Modal visible={visible} transparent={true} animationType="none" onRequestClose={onClose}>
-      {/* Shatter animation overlay */}
+      {/* Fade-to-white overlay */}
       {showShatter && (
         <Animated.View
           style={[
@@ -234,13 +230,7 @@ const LevelInfoModal: React.FC<LevelInfoModalProps> = ({ visible, level, onClose
               opacity: shatterOpacity,
             },
           ]}
-        >
-          <Image
-            source={require('../../assets/video/shatter.gif')}
-            style={styles.shatterGif}
-            resizeMode="cover"
-          />
-        </Animated.View>
+        />
       )}
 
       <Animated.View
@@ -595,6 +585,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 1000,
+    backgroundColor: '#ffffff',
   },
   shatterGif: {
     width: '100%',

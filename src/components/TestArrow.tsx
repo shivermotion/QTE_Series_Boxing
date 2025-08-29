@@ -58,18 +58,7 @@ const TestArrow: React.FC<TestArrowProps> = ({ direction, isActive }) => {
   };
 
   const getArrowColor = () => {
-    switch (direction) {
-      case 'left':
-        return '#ff6b6b'; // Red
-      case 'right':
-        return '#4ecdc4'; // Teal
-      case 'up':
-        return '#45b7d1'; // Blue
-      case 'down':
-        return '#96ceb4'; // Green
-      default:
-        return '#ffffff';
-    }
+    return '#ffffff';
   };
 
   if (!isActive) {

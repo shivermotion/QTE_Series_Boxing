@@ -23,45 +23,29 @@ const PlayerDetailsScreen: React.FC<PlayerDetailsScreenProps> = ({ onBack }) => 
       <View style={styles.headerRow}>
         <Text style={styles.title}>player details</Text>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backText}>back</Text>
+          <Image
+            source={require('../../assets/ui/Back.png')}
+            style={styles.backIconImage}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Progress</Text>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Score</Text>
             <Text style={styles.value}>{gameState.totalScore}</Text>
           </View>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Gems</Text>
             <Text style={styles.value}>{gameState.gems}</Text>
           </View>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Highest Level</Text>
             <Text style={styles.value}>{gameState.highestLevelUnlocked}</Text>
           </View>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Games</Text>
             <Text style={styles.value}>
               {gameState.gamesWon}/{gameState.gamesPlayed} won
@@ -72,56 +56,26 @@ const PlayerDetailsScreen: React.FC<PlayerDetailsScreenProps> = ({ onBack }) => 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Statistics</Text>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Play Time</Text>
             <Text style={styles.value}>{formatSeconds(gameState.statistics.totalPlayTime)}</Text>
           </View>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Best Combo</Text>
             <Text style={styles.value}>{gameState.statistics.bestCombo}</Text>
           </View>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Punches</Text>
             <Text style={styles.value}>{gameState.statistics.totalPunches}</Text>
           </View>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Misses</Text>
             <Text style={styles.value}>{gameState.statistics.totalMisses}</Text>
           </View>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Rounds</Text>
             <Text style={styles.value}>{gameState.statistics.roundsCompleted}</Text>
           </View>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Continues</Text>
             <Text style={styles.value}>{gameState.statistics.continuesUsed}</Text>
           </View>
@@ -130,42 +84,14 @@ const PlayerDetailsScreen: React.FC<PlayerDetailsScreenProps> = ({ onBack }) => 
         {/* Audio details intentionally omitted */}
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Meta</Text>
+          <Text style={styles.sectionTitle}>Log</Text>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
-            <Text style={styles.label}>Achievements</Text>
-            <Text style={styles.value}>{gameState.achievements.length}</Text>
-          </View>
-          <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
-            <Text style={styles.label}>Characters</Text>
-            <Text style={styles.value}>{gameState.unlockedCharacters.length}</Text>
-          </View>
-          <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Last Save</Text>
             <Text style={styles.value}>
               {gameState.lastSaved ? new Date(gameState.lastSaved).toLocaleString() : '—'}
             </Text>
           </View>
           <View style={styles.row}>
-            <Image
-              source={require('../../assets/ui/Asset_27.png')}
-              style={styles.rowAccent}
-              resizeMode="cover"
-            />
             <Text style={styles.label}>Version</Text>
             <Text style={styles.value}>{gameState.gameVersion}</Text>
           </View>
@@ -197,15 +123,23 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 8,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   backText: {
     color: 'white',
     fontSize: 18,
     fontFamily: 'Round8Four',
+  },
+  backIconImage: {
+    width: 120,
+    height: 44,
   },
   content: {
     padding: 16,
@@ -229,14 +163,6 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     overflow: 'hidden',
     borderRadius: 8,
-  },
-  rowAccent: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0.15,
   },
   label: {
     color: '#ccc',

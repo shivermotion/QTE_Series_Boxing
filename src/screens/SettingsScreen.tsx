@@ -6,6 +6,19 @@ import { useAudio } from '../contexts/AudioContext';
 import { useGameSave } from '../hooks/useGameSave';
 import { Audio } from 'expo-av';
 
+const colors = {
+  background: '#0f172a',
+  textPrimary: '#e2e8f0',
+  textSecondary: '#94a3b8',
+  textMuted: '#9ca3af',
+  primary: '#3b82f6',
+  border: '#334155',
+  borderStrong: '#1f2937',
+  onPrimary: '#ffffff',
+  thumbActive: '#e2e8f0',
+  thumbInactive: '#cbd5e1',
+};
+
 interface SettingsScreenProps {
   onBackToMenu: () => void;
 }
@@ -77,9 +90,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
             minimumValue={0}
             maximumValue={1}
             step={0.05}
-            minimumTrackTintColor="#00b4d8"
-            maximumTrackTintColor="#404040"
-            thumbTintColor="#ff6b35"
+            minimumTrackTintColor={colors.primary}
+            maximumTrackTintColor={colors.border}
+            thumbTintColor={colors.thumbActive}
           />
 
           <View style={styles.settingRow}>
@@ -100,9 +113,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
               minimumValue={0}
               maximumValue={1}
               step={0.05}
-              minimumTrackTintColor="#00b4d8"
-              maximumTrackTintColor="#404040"
-              thumbTintColor="#ff6b35"
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor={colors.border}
+              thumbTintColor={colors.thumbActive}
             />
           </View>
 
@@ -120,9 +133,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
             minimumValue={0}
             maximumValue={1}
             step={0.05}
-            minimumTrackTintColor="#00b4d8"
-            maximumTrackTintColor="#404040"
-            thumbTintColor="#ff6b35"
+            minimumTrackTintColor={colors.primary}
+            maximumTrackTintColor={colors.border}
+            thumbTintColor={colors.thumbActive}
           />
 
           <View style={styles.settingRow}>
@@ -132,8 +145,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
               onValueChange={value => {
                 toggleAudioEnabled(value);
               }}
-              trackColor={{ false: '#404040', true: '#00b4d8' }}
-              thumbColor={settings.audioEnabled ? '#ff6b35' : '#b0b0b0'}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={settings.audioEnabled ? colors.thumbActive : colors.thumbInactive}
             />
           </View>
 
@@ -164,8 +177,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
             <Switch
               value={true}
               onValueChange={() => {}}
-              trackColor={{ false: '#404040', true: '#00b4d8' }}
-              thumbColor={'#ff6b35'}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.thumbActive}
             />
           </View>
         </View>
@@ -192,7 +205,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBackToMenu }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -200,22 +213,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: '#00b4d8',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderStrong,
   },
   backButton: {
-    backgroundColor: '#00b4d8',
+    backgroundColor: 'transparent',
     paddingHorizontal: 15,
     paddingVertical: 8,
-    borderRadius: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   backButtonText: {
-    color: '#ffffff',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: 'bold',
   },
   title: {
-    color: '#00b4d8',
+    color: colors.textPrimary,
     fontSize: 24,
     fontWeight: 'bold',
   },
@@ -230,7 +245,7 @@ const styles = StyleSheet.create({
     marginTop: 30,
   },
   sectionTitle: {
-    color: '#ff6b35',
+    color: colors.textSecondary,
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 15,
@@ -241,10 +256,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: colors.border,
   },
   settingLabel: {
-    color: '#e0e0e0',
+    color: colors.textPrimary,
     fontSize: 16,
   },
   aboutItem: {
@@ -253,18 +268,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: colors.border,
   },
   aboutLabel: {
-    color: '#e0e0e0',
+    color: colors.textPrimary,
     fontSize: 16,
   },
   aboutValue: {
-    color: '#00b4d8',
+    color: colors.primary,
     fontSize: 16,
   },
   creditsText: {
-    color: '#b0b0b0',
+    color: colors.textMuted,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -274,14 +289,14 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   volumeValue: {
-    color: '#ff6b35',
+    color: colors.primary,
     fontSize: 16,
     fontWeight: 'bold',
     minWidth: 50,
     textAlign: 'right',
   },
   testButton: {
-    backgroundColor: '#ff6b35',
+    backgroundColor: colors.primary,
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 5,
@@ -290,7 +305,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   testButtonText: {
-    color: '#ffffff',
+    color: colors.onPrimary,
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -300,7 +315,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   restoreButton: {
-    backgroundColor: '#ff6b35',
+    backgroundColor: colors.primary,
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 5,
@@ -309,7 +324,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   restoreButtonText: {
-    color: '#ffffff',
+    color: colors.onPrimary,
     fontSize: 14,
     fontWeight: 'bold',
   },

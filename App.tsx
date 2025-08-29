@@ -20,10 +20,10 @@ import AudioDebugScreen from './src/screens/AudioDebugScreen';
 import UIDebugScreen from './src/screens/UIDebugScreen';
 import SplashScreenComponent from './src/screens/SplashScreen';
 import TeaserScreen from './src/screens/TeaserScreen';
-import CutsceneScreen from './src/screens/CutsceneScreen';
+// import CutsceneScreen from './src/screens/CutsceneScreen';
 import GymScreen from './src/screens/GymScreen';
 import TransitionScreen from './src/screens/TransitionScreen';
-import { cutscenes } from './src/data/cutscenes';
+// import { cutscenes } from './src/data/cutscenes';
 import PlayerDetailsScreen from './src/screens/PlayerDetailsScreen';
 import TutorialScreen from './src/screens/TutorialScreen';
 import EquipmentScreen from './src/screens/EquipmentScreen';
@@ -45,7 +45,6 @@ type Screen =
   | 'menu'
   | 'transition'
   | 'chooseLevel'
-  | 'cutscene'
   | 'game'
   | 'settings'
   | 'saveInfo'
@@ -143,10 +142,6 @@ function AppContent() {
     // Force arcade mode for story levels
     setGameMode('arcade');
     setSelectedLevel(level);
-    setCurrentScreen('cutscene');
-  };
-
-  const handleCutsceneFinish = () => {
     setCurrentScreen('game');
   };
 
@@ -237,11 +232,6 @@ function AppContent() {
             <ChooseLevelScreen
               onSelectLevel={handleSelectLevel}
               onBack={handleBackFromLevelSelect}
-            />
-          ) : currentScreen === 'cutscene' ? (
-            <CutsceneScreen
-              images={(cutscenes as any)[`level${selectedLevel}`]?.cutscene || []}
-              onFinish={handleCutsceneFinish}
             />
           ) : currentScreen === 'game' ? (
             <GameScreen

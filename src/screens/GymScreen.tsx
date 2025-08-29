@@ -66,14 +66,10 @@ const GymScreen: React.FC<GymScreenProps> = ({
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.8}>
             <Image
-              source={require('../../assets/ui/Asset_28.png')}
+              source={require('../../assets/ui/Back.png')}
               style={styles.backButtonImage}
               resizeMode="contain"
             />
-            <View style={styles.backButtonOverlay}>
-              <Text style={styles.backArrow}>←</Text>
-              <Text style={styles.backText}>BACK</Text>
-            </View>
           </TouchableOpacity>
         </View>
 
@@ -281,39 +277,7 @@ const styles = StyleSheet.create({
   },
   backButtonImage: {
     width: 120,
-    height: 40,
-  },
-  backButtonOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  backArrow: {
-    fontSize: 50,
-    color: 'white',
-    fontWeight: 'bold',
-    fontFamily: 'Round8Four',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.9)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
-    flex: 1,
-  },
-  backText: {
-    fontSize: 20,
-    color: 'white',
-    fontWeight: 'bold',
-    fontFamily: 'Round8Four',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.9)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
-    flex: 1,
+    height: 44,
   },
 });
 
